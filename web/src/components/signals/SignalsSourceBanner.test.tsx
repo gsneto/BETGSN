@@ -11,7 +11,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import SignalsSourceBanner from "@/components/signals/SignalsSourceBanner";
-import type { SignalsSourceStatus } from "@/types/api";
+import { betDecisionNoBet } from "@/test/fixtures";
+import type { BetDecision, SignalsSourceStatus } from "@/types/api";
 
 const status: SignalsSourceStatus = {
   real: {
@@ -35,7 +36,7 @@ const calibration = {
   verdict: "O modelo é sistematicamente superconfiante.",
 };
 
-function setup(source: "real" | "synthetic" = "real") {
+function setup(source: "real" | "synthetic" = "real", decision: BetDecision | null = betDecisionNoBet) {
   const onChange = vi.fn();
   render(
     <SignalsSourceBanner
@@ -44,6 +45,7 @@ function setup(source: "real" | "synthetic" = "real") {
       detail="fonte de teste"
       calibration={source === "real" ? calibration : null}
       skippedNoRating={18}
+      decision={decision}
       onChange={onChange}
     />,
   );
@@ -82,6 +84,7 @@ describe("SignalsSourceBanner — origem", () => {
         detail=""
         calibration={null}
         skippedNoRating={0}
+        decision={null}
         onChange={() => {}}
       />,
     );
@@ -144,3 +147,81 @@ describe("SignalsSourceBanner — viés medido do modelo", () => {
     expect(screen.queryByText(/O EV não é confiável/i)).not.toBeInTheDocument();
   });
 });
+
+describe("SignalsSourceBanner — decisão do Quant (BET | NO_BET)", () => {
+  it("exibe NO_BET como resultado de primeira classe", () => {
+    setup("real", betDecisionNoBet);
+    expect(
+      screen.getByText(/Decisão do Quant: NÃO APOSTAR/i),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("quant-decision")).toHaveAttribute(
+      "data-decision",
+      "NO_BET",
+    );
+  });
+
+  it("preserva o motivo da decisão vindo do backend", () => {
+    setup("real", betDecisionNoBet);
+    expect(screen.getByTestId("quant-decision-reason")).toHaveTextContent(
+      "falhou: evidencia_confiavel",
+    );
+  });
+
+  it("expõe qual verificação falhou, com o detalhe", () => {
+    renderBannerOnlyDecision();
+    const panel = screen.getByTestId("quant-decision");
+    expect(panel.textContent).toContain("evidencia_confiavel");
+    expect(panel.textContent).toContain("odds sem timestamp/validacao");
+  });
+
+  it("não cria aposta nem stake para NO_BET", () => {
+    const { container } = renderBannerOnlyDecision();
+    // o painel de decisão não contém botão de aposta nem valor de stake
+    const panel = screen.getByTestId("quant-decision");
+    expect(panel.querySelector("button")).toBeNull();
+    expect(panel.textContent).not.toMatch(/stake|fracao da banca|aposte agora/i);
+    expect(container.textContent).not.toMatch(/stake/i);
+  });
+
+  it("distingue BET de NO_BET", () => {
+    const bet: BetDecision = {
+      action: "BET",
+      reason: "vantagem conservadora +0,71%, Kelly 7,62%, fracao 1,91%",
+      fraction: 0.0191,
+      conservative_roi: 0.0071,
+      kelly_full: 0.0762,
+      checks: betDecisionNoBet.checks.map((c) => ({ ...c, passed: true })),
+    };
+    setup("real", bet);
+    expect(
+      screen.getByText(/Decisão do Quant: APOSTAR/i),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("quant-decision")).toHaveAttribute(
+      "data-decision",
+      "BET",
+    );
+    // no NO_BET o painel avisa que nenhuma aposta e criada; no BET nao
+    expect(
+      screen.queryByText(/Nenhuma aposta é criada/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("sem decisão (backend antigo), não renderiza o painel", () => {
+    setup("real", null);
+    expect(screen.queryByTestId("quant-decision")).not.toBeInTheDocument();
+  });
+});
+
+function renderBannerOnlyDecision() {
+  return render(
+    <SignalsSourceBanner
+      source="real"
+      status={status}
+      detail="fonte de teste"
+      calibration={null}
+      skippedNoRating={0}
+      decision={betDecisionNoBet}
+      onChange={() => {}}
+    />,
+  );
+}

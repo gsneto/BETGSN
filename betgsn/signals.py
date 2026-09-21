@@ -14,12 +14,12 @@ O ranking usa EV como criterio principal e a confianca como desempate.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from typing import Sequence
 
 from .engine import ConsensusLine, evaluate_market, stake_plan
 from .model import Fixture, ScoreMatrix, TeamRating
+from .timeutil import now_utc
 
 
 class Confidence(str, Enum):
@@ -225,8 +225,9 @@ def build_report(
     proporcionalmente. Sem esse teto, muitos sinais pequenos somam mais que
     a banca inteira (ex.: 167 sinais -> 262% da banca), o que e ruina certa.
     """
-    report = SignalReport(generated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                          bankroll=bankroll)
+    # generated_at e um INSTANTE (o momento da previsao): carimbo canonico
+    # em UTC, nunca hora local sem offset que depois seria lida como UTC.
+    report = SignalReport(generated_at=now_utc(), bankroll=bankroll)
     for fx in fixtures:
         key = f"{fx.home} vs {fx.away}"
         model_markets = model_by_fixture.get(key)

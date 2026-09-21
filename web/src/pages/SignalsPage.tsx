@@ -138,6 +138,7 @@ export default function SignalsPage() {
       detail={data?.source_detail ?? ""}
       calibration={data?.calibration ?? null}
       skippedNoRating={data?.skipped_no_rating ?? 0}
+      decision={data?.decision ?? null}
       onChange={setSource}
     />
   );

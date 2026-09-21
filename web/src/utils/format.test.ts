@@ -115,6 +115,13 @@ describe("datas", () => {
     expect(fmtDateTime("2025-05-10T16:00:00")).toBe("10/05/2025 16:00");
   });
 
+  it("aceita o carimbo UTC canonico do backend (com Z)", () => {
+    // instante em UTC: exibido sem conversao de fuso no cliente
+    expect(fmtDateTime("2025-05-10T16:00:00Z")).toBe("10/05/2025 16:00");
+    expect(fmtDate("2025-05-10T16:00:00Z")).toBe("10/05/2025");
+    expect(fmtClock("2025-05-10T16:05:09Z")).toBe("16:05:09");
+  });
+
   it("extrai a hora", () => {
     expect(fmtClock("2025-05-10 16:05:09")).toBe("16:05:09");
     expect(fmtClock(null)).toBe("—");

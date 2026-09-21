@@ -43,7 +43,7 @@ from .markets import ALL_MARKET_KEYS, MARKET_LABELS, validate_market_keys
 from .model import Fixture, TeamRating, fit_ratings
 from .pipeline import analyze_fixture
 from .signals import MIN_BOOKS, SignalReport, build_report
-from .timeutil import day_of, utc_key
+from .timeutil import day_of, now_utc, utc_key
 
 #: Ratings sao ajustados com o historico destes ultimos anos. Janela
 #: recente: um time de 2010 nao ajuda a prever 2026.
@@ -230,7 +230,7 @@ class RealSignalsService:
             teams=teams,
             n_history=n_hist,
             history_window=window,
-            generated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            generated_at=now_utc(),
             computed_in_ms=round(elapsed, 2),
             sources=sources,
             cutoff=cutoff,
