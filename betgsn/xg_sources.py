@@ -1,8 +1,14 @@
-"""Contrato intercambiável para xG observado/estimado, com proveniência."""
+"""Contrato intercambiável para xG observado/estimado, com proveniência.
+
+Regra de ouro: xG NUNCA é fabricado. Ausência é um estado explícito
+(`XGStatus.UNAVAILABLE`), não um zero silencioso. Quando a fonte entrega
+xG real, `source` e `available_at` são obrigatórios para permitir o corte
+point-in-time.
+"""
 from dataclasses import dataclass, replace
 from enum import Enum
 from math import isfinite
-from typing import Protocol
+from typing import Iterable, Protocol
 
 
 class XGStatus(str, Enum):
@@ -20,6 +26,8 @@ class XGObservation:
     status: XGStatus = XGStatus.UNAVAILABLE
     source: str | None = None
     available_at: str | None = None
+    #: Motivo da ausência ou observação de proveniência. Nunca inventa valor.
+    note: str = ""
 
     def __post_init__(self):
         vals = (self.home_xg, self.away_xg, self.home_xg_against, self.away_xg_against)
@@ -30,14 +38,57 @@ class XGObservation:
         if self.status == XGStatus.UNAVAILABLE and any(v is not None for v in vals):
             raise ValueError("xG indisponível deve ser null")
 
+    @property
+    def available(self) -> bool:
+        """True apenas quando há valor observado com proveniência."""
+        return self.status != XGStatus.UNAVAILABLE and (
+            self.home_xg is not None or self.away_xg is not None
+        )
+
 
 class XGSource(Protocol):
     def fetch(self, match_id: str) -> XGObservation: ...
 
 
+def unavailable(reason: str = "", source: str | None = None) -> XGObservation:
+    """Observação explícita de ausência de xG (nunca zero)."""
+    return XGObservation(status=XGStatus.UNAVAILABLE, source=source, note=reason)
+
+
 class UnavailableXGSource:
+    """Fonte que sempre declara ausência — default honesto do sistema."""
+
+    def __init__(self, reason: str = "nenhuma fonte de xG configurada") -> None:
+        self.reason = reason
+
     def fetch(self, match_id: str) -> XGObservation:
-        return XGObservation()
+        return unavailable(self.reason)
+
+
+class ChainXGSource:
+    """Tenta fontes em ordem e devolve a primeira observação real.
+
+    Nunca mistura fontes nem fabrica valor: se nenhuma tiver xG, devolve
+    ausência com o motivo agregado (para auditoria). Erro de uma fonte não
+    derruba a cadeia — apenas a registra e segue para a próxima.
+    """
+
+    def __init__(self, sources: Iterable[XGSource]) -> None:
+        self.sources = tuple(sources)
+
+    def fetch(self, match_id: str) -> XGObservation:
+        notes: list[str] = []
+        for source in self.sources:
+            name = getattr(source, "name", type(source).__name__)
+            try:
+                obs = source.fetch(match_id)
+            except Exception as exc:  # fonte quebrada não invalida as demais
+                notes.append(f"{name}: erro ({type(exc).__name__})")
+                continue
+            if obs.available:
+                return obs
+            notes.append(f"{name}: {obs.note or 'sem xG'}")
+        return unavailable("; ".join(notes) or "nenhuma fonte forneceu xG")
 
 
 def attach_xg(match, observation: XGObservation):

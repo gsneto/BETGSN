@@ -4,7 +4,55 @@ Detecta conflitos, registra proveniência e nunca corrige silenciosamente.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Optional
+
+
+class QualityGrade(str, Enum):
+    """Qualidade de um dado, do ponto de vista de quem vai consumi-lo.
+
+    Distinta de `canonical.DataConfidence` (que compara fontes):
+    aqui o foco e a confiabilidade da ENTREGA — fonte primaria ou cache,
+    resposta completa ou truncada, dado fresco ou stale.
+    """
+
+    HIGH = "HIGH"        # fonte primaria, resposta completa e fresca
+    MEDIUM = "MEDIUM"    # fonte confiavel, mas via cache ou com lacunas
+    LOW = "LOW"          # fonte secundaria, resposta incompleta ou stale
+    UNKNOWN = "UNKNOWN"  # nao ha informacao suficiente para classificar
+
+
+def grade_from_confidence(value: Any) -> QualityGrade:
+    """Converte `canonical.DataConfidence` (ou string) num `QualityGrade`."""
+    raw = getattr(value, "value", value)
+    return {
+        "HIGH": QualityGrade.HIGH,
+        "MEDIUM": QualityGrade.MEDIUM,
+        "LOW": QualityGrade.LOW,
+        "CONFLICT": QualityGrade.LOW,
+    }.get(str(raw).upper(), QualityGrade.UNKNOWN)
+
+
+def grade_for_fetch(
+    *,
+    primary: bool = True,
+    from_cache: bool = False,
+    complete: bool = True,
+    stale: bool = False,
+) -> QualityGrade:
+    """Classifica uma entrega concreta da camada de dados.
+
+    Regras (conservadoras, nunca otimistas):
+      - resposta incompleta -> LOW, mesmo de fonte primaria;
+      - stale -> no maximo LOW;
+      - cache de resposta completa -> MEDIUM;
+      - fonte primaria, completa e fresca -> HIGH.
+    """
+    if not complete or stale:
+        return QualityGrade.LOW
+    if from_cache:
+        return QualityGrade.MEDIUM
+    return QualityGrade.HIGH if primary else QualityGrade.MEDIUM
 
 @dataclass(frozen=True)
 class FieldComparison:

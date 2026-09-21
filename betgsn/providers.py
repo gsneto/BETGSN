@@ -16,6 +16,11 @@ Chaves via variavel de ambiente OU arquivo .env na raiz do projeto:
 
 Segredo nunca entra no codigo nem no Git: `.env` esta no .gitignore e so
 `.env.example` (com valores vazios) e versionado.
+
+Localizacao do `.env`: `envconfig.resolve_env_file()` procura no worktree
+atual, nos diretorios pais e na raiz do worktree PRINCIPAL do Git. Assim o
+mesmo `.env` da raiz serve para os worktrees de desenvolvimento paralelo,
+sem duplicar chaves.
 """
 
 from __future__ import annotations
@@ -27,6 +32,8 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+
+from .envconfig import env_file_candidates, resolve_env_file
 
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
@@ -55,9 +62,17 @@ def load_env_file(path: Path | None = None, override: bool = False) -> int:
       - por padrao NAO sobrescreve variavel ja definida no ambiente real
         (o ambiente ganha do arquivo, que e o comportamento esperado).
 
+    Sem `path`, o arquivo e localizado por `envconfig.resolve_env_file`:
+    isso faz o `.env` do worktree principal ser encontrado mesmo quando o
+    codigo roda de um linked worktree (ex.: `BETGSN-data`), sem duplicar
+    credenciais. Veja `envconfig` para a ordem de busca.
+
     Devolve quantas variaveis foram efetivamente definidas.
     """
-    target = Path(path) if path else ENV_FILE
+    if path is not None:
+        target = Path(path)
+    else:
+        target = resolve_env_file() or ENV_FILE
     if not target.exists():
         return 0
     applied = 0
@@ -86,6 +101,20 @@ def load_env_file(path: Path | None = None, override: bool = False) -> int:
 def env_status() -> dict[str, bool]:
     """Quais chaves estao presentes (nunca expoe o valor)."""
     return {key: bool(os.environ.get(key, "").strip()) for key in ENV_KEYS}
+
+
+def env_file_location() -> Path | None:
+    """Caminho do `.env` que sera carregado, sem ler o conteudo.
+
+    Util para diagnostico (`--providers`) e testes: mostra ONDE o sistema
+    procura credenciais sem jamais imprimir uma chave.
+    """
+    return resolve_env_file()
+
+
+def env_file_search_paths() -> list[Path]:
+    """Todos os caminhos candidatos de `.env`, na ordem de busca."""
+    return env_file_candidates()
 
 
 # Carrega o .env na importacao: qualquer entrypoint (CLI, API, testes)

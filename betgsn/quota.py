@@ -75,6 +75,30 @@ class QuotaManager:
             q.requests_today += 1
             q.requests_this_minute += 1
             q.last_request = time.time()
+
+    def try_consume(self, provider: str) -> bool:
+        """Reserva UMA requisicao de forma atomica, se ainda houver quota.
+
+        Substitui o par `can_request` + `record_request`, que tem uma janela
+        de corrida entre a checagem e o registro. Devolve False quando a
+        quota diaria ou por minuto se esgotou — o chamador entao degrada para
+        a proxima fonte em vez de insistir e tomar 429.
+        """
+        with self._lock:
+            q = self._quotas.get(provider)
+            if q is None:
+                return True
+            self._maybe_reset(q)
+            if not q.can_request:
+                return False
+            q.requests_today += 1
+            q.requests_this_minute += 1
+            q.last_request = time.time()
+            return True
+
+    def providers(self) -> list[str]:
+        with self._lock:
+            return sorted(self._quotas)
     
     def record_error(self, provider: str) -> None:
         with self._lock:

@@ -17,6 +17,9 @@ output/*.png
 # CSVs baixados do football-data.co.uk (reproduziveis via --import-fduk).
 output/football_data_uk/
 
+# Cache da camada de dados multi-fonte (betgsn/datalayer).
+output/datalayer_cache/
+
 # Artefatos grandes/binarios de benchmark (reproduziveis via --benchmark).
 output/engineering/**/*.jsonl
 output/engineering/**/*.zip
