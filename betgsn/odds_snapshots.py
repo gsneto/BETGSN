@@ -55,6 +55,44 @@ class OddsObservation:
         return delta.total_seconds() / 60.0
 
 
+def observations_from_quotes(
+    quotes: Sequence,
+    *,
+    default_provider: str = "",
+) -> list[OddsObservation]:
+    """Converte cotacoes normalizadas em observacoes persistiveis.
+
+    O `match_key` e `quote.event_id` — a MESMA chave canonica produzida por
+    `odds_normalize.event_key` (mandante|visitante|kickoff UTC). A chave nao
+    e derivada de novo aqui, apenas transportada: escrita e leitura precisam
+    falar do mesmo jogo.
+
+    Cotacoes pos-kickoff ou com preco invalido sao descartadas. A observacao
+    nunca e "corrigida" para caber no contrato: sem dado utilizavel, nada e
+    gravado.
+    """
+    out: list[OddsObservation] = []
+    for quote in quotes:
+        if not getattr(quote, "pre_kickoff", False):
+            continue
+        try:
+            out.append(
+                OddsObservation(
+                    match_key=quote.event_id,
+                    market=quote.market,
+                    outcome=quote.selection,
+                    bookmaker=quote.bookmaker,
+                    odd=quote.price,
+                    timestamp=quote.timestamp,
+                    kickoff=quote.kickoff,
+                    provider=getattr(quote, "provider", "") or default_provider,
+                )
+            )
+        except ValueError:
+            continue
+    return out
+
+
 @dataclass(frozen=True)
 class CLVResult:
     """Closing Line Value de uma aposta."""

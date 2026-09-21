@@ -437,6 +437,21 @@ class UpcomingFixture:
         return f"{self.home} vs {self.away}"
 
     @property
+    def event_key(self) -> str:
+        """Chave canonica de evento independente de provider.
+
+        E exatamente `odds_normalize.event_key(mandante, visitante,
+        kickoff_utc)`: a mesma chave gravada como `match_key` nas
+        observacoes de odds. O kickoff entra convertido para UTC com o fuso
+        da liga, preservando a identidade temporal da partida — sem isso,
+        escrita e leitura apontariam para jogos diferentes.
+        """
+        from .odds_normalize import event_key
+        from .timeutil import utc_key
+
+        return event_key(self.home, self.away, utc_key(self.kickoff, self.timezone))
+
+    @property
     def n_books(self) -> int:
         """Casas distintas com odds de 1X2."""
         return len(self.odds.get("Resultado Final (1X2)", {}))

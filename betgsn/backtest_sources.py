@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from .model import HistoricalMatch
+from .odds_snapshots import OddsSnapshotStore, observations_from_quotes
 from .providers import (
     SOCCER_KEYS,
     ApiFootballProvider,
@@ -51,6 +52,11 @@ CACHE_ROOT = Path(__file__).resolve().parent.parent / "output" / "backtest_cache
 ODDS_DIR = CACHE_ROOT / "odds"
 FIXTURES_DIR = CACHE_ROOT / "fixtures"
 MANIFEST_PATH = CACHE_ROOT / "manifest.json"
+
+#: Nome canonico do provider de odds ao vivo. E o mesmo rotulo usado por
+#: `providers.configured_odds_providers`, para que a observacao persistida
+#: carregue o provider correto e nao um palpite.
+LIVE_ODDS_PROVIDER = "The Odds API"
 
 #: Mercados internos que a The Odds API consegue alimentar diretamente.
 ODDS_API_MARKET_MAP = {
@@ -742,6 +748,8 @@ class CaptureReport:
     captured_at: str
     sport_keys: list[str] = field(default_factory=list)
     snapshots_saved: int = 0
+    #: observacoes por linha gravadas no store canonico (movement/CLV/coverage)
+    observations_saved: int = 0
     events: int = 0
     events_with_odds: int = 0
     credits_last: int | None = None
@@ -781,11 +789,16 @@ class LiveOddsCapture:
         cache: OddsHistoryCache | None = None,
         regions: str = "eu,uk",
         markets: str = "h2h,totals,btts",
+        store: OddsSnapshotStore | None = None,
     ) -> None:
         self.provider = provider
         self.cache = cache or OddsHistoryCache()
         self.regions = regions
         self.markets = markets
+        #: store canonico de observacoes (movement/CLV/coverage). Sem ele a
+        #: captura ainda arquiva o snapshot cru, mas NAO alimenta a API —
+        #: por isso o caminho operacional (CLI) sempre injeta um.
+        self.store = store
 
     def capture(
         self,
@@ -833,9 +846,46 @@ class LiveOddsCapture:
                 provider="the-odds-api-live",
             ))
             report.snapshots_saved += 1
+            report.observations_saved += self._persist_observations(
+                with_odds, sport, stamp
+            )
 
         _append_manifest(self.cache.root.parent / "manifest.json", "capture", report)
         return report
+
+    def _persist_observations(
+        self,
+        events: Sequence[dict],
+        sport: str,
+        stamp: str,
+    ) -> int:
+        """Grava as cotacoes normalizadas no store canonico (SQLite).
+
+        E a MESMA fonte que a API consome em movement/CLV/coverage: o
+        snapshot cru alimenta o backtest; a observacao por linha alimenta a
+        operacao. A conversao reusa `odds_normalize.normalize_events` — nao
+        existe um segundo parser.
+
+        Sem store configurado nada e gravado; cotacoes pos-kickoff ou
+        invalidas sao descartadas por `observations_from_quotes`. Nunca se
+        inventa observacao.
+        """
+        if self.store is None:
+            return 0
+        from .odds_normalize import dedupe_quotes, normalize_events
+
+        quotes = dedupe_quotes(
+            normalize_events(
+                events, LIVE_ODDS_PROVIDER, stamp, sport_key=sport
+            )
+        )
+        observations = observations_from_quotes(quotes)
+        if not observations:
+            return 0
+        try:
+            return self.store.add(observations)
+        except Exception:  # noqa: BLE001 - persistencia nao derruba a captura
+            return 0
 
     def _fetch_with_fallback(
         self,

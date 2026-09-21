@@ -31,7 +31,7 @@ from .odds_health import (
     classify_exception,
 )
 from .odds_normalize import NormalizedQuote, dedupe_quotes, normalize_events
-from .odds_snapshots import OddsObservation, OddsSnapshotStore
+from .odds_snapshots import OddsSnapshotStore, observations_from_quotes
 from .providers import FAILURE_NO_COVERAGE
 from .timeutil import KickoffError, parse_kickoff
 
@@ -273,27 +273,15 @@ class OddsService:
         return self._credits.get(provider).known_remaining
 
     def _persist(self, quotes: Sequence[NormalizedQuote]) -> int:
+        """Grava as cotacoes no store canonico (SQLite).
+
+        Usa `observations_from_quotes`, o mesmo conversor da captura ao vivo,
+        para que exista UMA regra de persistencia de odds no projeto — e para
+        que o `match_key` gravado seja o `event_id` canonico que a API le.
+        """
         if self._store is None:
             return 0
-        observations: list[OddsObservation] = []
-        for quote in quotes:
-            if not quote.pre_kickoff:
-                continue
-            try:
-                observations.append(
-                    OddsObservation(
-                        match_key=quote.event_id,
-                        market=quote.market,
-                        outcome=quote.selection,
-                        bookmaker=quote.bookmaker,
-                        odd=quote.price,
-                        timestamp=quote.timestamp,
-                        kickoff=quote.kickoff,
-                        provider=quote.provider,
-                    )
-                )
-            except ValueError:
-                continue
+        observations = observations_from_quotes(quotes)
         if not observations:
             return 0
         try:

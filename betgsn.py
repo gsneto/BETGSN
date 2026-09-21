@@ -337,6 +337,7 @@ def capture_odds_cli(args: list[str]) -> int:
     Agende para rodar 1x/dia (ex.: Agendador de Tarefas do Windows).
     """
     from betgsn.backtest_sources import LiveOddsCapture, OddsHistoryCache
+    from betgsn.odds_snapshots import OddsSnapshotStore
     from betgsn.providers import OddsApiProvider
 
     provider = OddsApiProvider.from_env()
@@ -351,7 +352,13 @@ def capture_odds_cli(args: list[str]) -> int:
     markets = _arg(args, "markets", "h2h,totals,btts")
 
     cache = OddsHistoryCache()
-    capture = LiveOddsCapture(provider, cache, regions=regions, markets=markets)
+    # Store canonico das observacoes por linha: e a fonte que a API consome
+    # em movement/CLV/coverage. Sem injeta-lo aqui, a captura produziria
+    # historico para o backtest mas a operacao leria um banco vazio.
+    capture = LiveOddsCapture(
+        provider, cache, regions=regions, markets=markets,
+        store=OddsSnapshotStore(),
+    )
 
     print(f"Capturando odds de {len(sports)} esporte(s)...")
     print(f"  regioes: {regions}  mercados: {markets}")
@@ -360,6 +367,7 @@ def capture_odds_cli(args: list[str]) -> int:
     print()
     print(f"  momento da captura : {report.captured_at}")
     print(f"  snapshots gravados : {report.snapshots_saved}")
+    print(f"  observacoes (API)  : {report.observations_saved}")
     print(f"  eventos vistos     : {report.events} ({report.events_with_odds} com odds)")
     if report.credits_last is not None:
         print(f"  custo desta chamada: {report.credits_last} creditos")

@@ -792,7 +792,7 @@ class BetgsnService:
                     odd=o.odd,
                     timestamp=o.timestamp,
                 )
-                for o in store.all_observations(fx.match)
+                for o in store.all_observations(fx.event_key)
             ]
             # `fx.odds` e {mercado: {casa: {resultado: odd}}}; iterar as
             # chaves internas daria NOMES DE CASA como outcome. As linhas
@@ -907,7 +907,7 @@ class BetgsnService:
             for market, best in fx.best_odds.items():
                 for oc, odd in best.items():
                     clv = store.clv(
-                        fx.match, market, oc,
+                        fx.event_key, market, oc,
                         entry_odd=odd,
                     )
                     entries.append(S.ClvEntry(
