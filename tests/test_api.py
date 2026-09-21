@@ -452,3 +452,130 @@ def test_schema_types_are_typed():
     clr = S.ClvReport(generated_at="2026-01-01", total_bets=1, bets_with_clv=1,
                        coverage=1.0, entries=[], source="test")
     assert clr.total_bets == 1
+
+
+# --------------------------------------------------------------------------
+# contratos de odds na API: bookmaker != mercado != resultado != odd
+# --------------------------------------------------------------------------
+
+
+def _upcoming_fixture():
+    """Jogo futuro real no MESMO formato do Data Layer.
+
+    `odds` = {mercado: {casa: {resultado: odd}}}, com varios mercados e
+    resultados. E o formato que a API precisa adaptar sem confundir os
+    niveis (casa / mercado / resultado / odd).
+    """
+    from betgsn.football_data_uk import UpcomingFixture
+
+    odds = {
+        "Resultado Final (1X2)": {
+            "Pinnacle": {"1": 1.90, "X": 3.40, "2": 4.20},
+            "Bet365": {"1": 1.95, "X": 3.35, "2": 4.10},
+        },
+        "Total de Gols": {
+            "Bet365": {"Over 2.5": 1.80, "Under 2.5": 2.05},
+            "Pinnacle": {"Over 2.5": 1.85, "Under 2.5": 2.00},
+        },
+    }
+    best: dict[str, dict[str, float]] = {}
+    who: dict[str, dict[str, str]] = {}
+    for market, books in odds.items():
+        outcomes = {oc for book in books.values() for oc in book}
+        best[market] = {
+            oc: max(book[oc] for book in books.values() if oc in book)
+            for oc in outcomes
+        }
+        who[market] = {
+            oc: next(book for book, prices in books.items()
+                     if prices.get(oc) == best[market][oc])
+            for oc in outcomes
+        }
+    return UpcomingFixture(
+        division="E0", league="Premier League (England)",
+        date="2026-09-20", time="14:00", timezone="Europe/London",
+        home="Arsenal", away="Chelsea",
+        odds=odds, best_odds=best, best_books=who,
+    )
+
+
+def _patch_fixture_source(monkeypatch, tmp_path, fixtures):
+    """Serve fixtures controlados e isola o store de snapshots em tmp."""
+    from betgsn import odds_snapshots as snap_mod
+    from betgsn.football_data_uk import FootballDataClient
+
+    real_store = snap_mod.OddsSnapshotStore
+    monkeypatch.setattr(FootballDataClient, "load_fixtures",
+                        lambda self: list(fixtures))
+    monkeypatch.setattr(
+        FootballDataClient, "fixtures_inventory",
+        lambda self: {"available": True, "n_fixtures": len(fixtures)},
+    )
+    monkeypatch.setattr(FootballDataClient, "corpus_signature",
+                        lambda self: "test-signature")
+    monkeypatch.setattr(
+        snap_mod, "OddsSnapshotStore",
+        lambda *args, **kwargs: real_store(tmp_path / "odds.db"),
+    )
+
+
+def test_fixtures_best_odds_is_flat_numeric_map(monkeypatch, tmp_path):
+    """best_odds precisa ser dict[str, float] com a odd REAL por resultado.
+
+    Nada de {casa: {resultado: odd}} (o que o schema rejeita) nem de
+    valores fabricados: cada odd e o maximo entre as casas da linha.
+    """
+    fixture = _upcoming_fixture()
+    _patch_fixture_source(monkeypatch, tmp_path, [fixture])
+
+    item = BetgsnService().fixtures().fixtures[0]
+    assert item.best_odds is not None
+    assert all(isinstance(value, float) for value in item.best_odds.values())
+    assert item.best_odds == {
+        "1": 1.95, "X": 3.40, "2": 4.20,
+        "Over 2.5": 1.85, "Under 2.5": 2.05,
+    }
+    for market, books in fixture.odds.items():
+        for oc, best in fixture.best_odds[market].items():
+            assert item.best_odds[oc] == best
+
+
+def test_fixtures_bookmakers_are_books_not_markets(monkeypatch, tmp_path):
+    fixture = _upcoming_fixture()
+    _patch_fixture_source(monkeypatch, tmp_path, [fixture])
+
+    item = BetgsnService().fixtures().fixtures[0]
+    assert set(item.bookmakers) == {"Bet365", "Pinnacle"}
+    assert item.n_bookmakers == 2
+    assert set(item.markets) == {"Resultado Final (1X2)", "Total de Gols"}
+    assert set(item.bookmakers).isdisjoint(item.markets)
+
+
+def test_movement_never_treats_market_or_book_as_kickoff(monkeypatch, tmp_path):
+    """O resultado e o resultado; mercado e casa jamais viram kickoff."""
+    fixture = _upcoming_fixture()
+    _patch_fixture_source(monkeypatch, tmp_path, [fixture])
+
+    overview = BetgsnService().movement()
+    assert overview.movements
+    outcomes = {m.outcome for m in overview.movements}
+    assert outcomes <= {"1", "X", "2", "Over 2.5", "Under 2.5"}
+    assert outcomes.isdisjoint({"Bet365", "Pinnacle"})
+    # sem snapshots persistidos o status e explicito, nunca inventado
+    assert all(m.status == "NO_DATA" for m in overview.movements)
+    for m in overview.movements:
+        assert m.current_odd == fixture.best_odds[m.market][m.outcome]
+
+
+def test_clv_entry_odd_is_numeric_and_matches_outcome(monkeypatch, tmp_path):
+    """CLV recebe odd float da linha correta; nunca um dict."""
+    fixture = _upcoming_fixture()
+    _patch_fixture_source(monkeypatch, tmp_path, [fixture])
+
+    report = BetgsnService().clv()
+    assert report.entries
+    assert report.total_bets == len(report.entries)
+    for entry in report.entries:
+        assert isinstance(entry.entry_odd, float)
+        assert entry.outcome in fixture.best_odds[entry.market]
+        assert entry.entry_odd == fixture.best_odds[entry.market][entry.outcome]

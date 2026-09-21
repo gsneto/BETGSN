@@ -724,16 +724,22 @@ class BetgsnService:
         fixture_items: list[S.FixtureItem] = []
         for fx in fixtures_raw:
             has_odds = bool(fx.odds)
-            n_books = len(fx.odds) if has_odds else 0
-            books = list(fx.odds.keys()) if has_odds else []
-            markets = list(fx.odds.keys()) if has_odds else []
-            best_odds = None
+            # `fx.odds` e {mercado: {casa: {resultado: odd}}}. A lista de
+            # casas precisa ser achatada entre mercados; usar as chaves de
+            # `fx.odds` aqui devolveria NOMES DE MERCADO como se fossem casas.
+            markets = list(fx.odds.keys())
+            bookmakers = sorted({b for books in fx.odds.values() for b in books})
+            # Melhor odd por resultado, achatando os mercados. O schema
+            # FixtureItem.best_odds e dict[str, float]: o valor e a odd real,
+            # nunca um dict de resultados.
+            best_odds: dict[str, float] | None = None
             if has_odds:
                 best_odds = {}
-                for m, bmap in fx.odds.items():
-                    for oc, odd in bmap.items():
-                        if oc not in best_odds or odd > best_odds[oc]:
-                            best_odds[oc] = odd
+                for books in fx.odds.values():
+                    for outcomes in books.values():
+                        for oc, odd in outcomes.items():
+                            if odd and (oc not in best_odds or odd > best_odds[oc]):
+                                best_odds[oc] = odd
             fixture_items.append(S.FixtureItem(
                 match=fx.match,
                 home=fx.home,
@@ -742,8 +748,8 @@ class BetgsnService:
                 round_label=fx.division,
                 kickoff=fx.kickoff,
                 has_odds=has_odds,
-                n_bookmakers=n_books,
-                bookmakers=books,
+                n_bookmakers=len(bookmakers),
+                bookmakers=bookmakers,
                 markets=markets,
                 best_odds=best_odds,
                 status="UPCOMING" if has_odds else "NO_ODDS",
@@ -763,7 +769,6 @@ class BetgsnService:
     def movement(self) -> S.OddsMovementOverview:
         from ..football_data_uk import FootballDataClient
         from ..features.movement import movement_features, PricePoint
-        from ..timeutil import utc_key
         from ..odds_snapshots import OddsSnapshotStore
 
         client = FootballDataClient()
@@ -772,32 +777,54 @@ class BetgsnService:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         movements: list[S.OddsMovement] = []
-        cutoff = now
 
         for fx in fixtures[:20]:
             if not fx.has_odds:
                 continue
-            for market, bmap in fx.odds.items():
-                for oc in list(bmap.keys())[:3]:
-                    feat = movement_features(
-                        [], cutoff, cutoff, market, oc
-                    )
+            # Cotacoes persistidas para esta partida, se houver. Sem historico
+            # o movimento e NO_DATA — nunca zero, que se confundiria com
+            # "o preco nao se moveu".
+            points = [
+                PricePoint(
+                    bookmaker=o.bookmaker,
+                    market=o.market,
+                    outcome=o.outcome,
+                    odd=o.odd,
+                    timestamp=o.timestamp,
+                )
+                for o in store.all_observations(fx.match)
+            ]
+            # `fx.odds` e {mercado: {casa: {resultado: odd}}}; iterar as
+            # chaves internas daria NOMES DE CASA como outcome. As linhas
+            # reais sao mercado + resultado.
+            for market, best in fx.best_odds.items():
+                for oc in list(best.keys())[:3]:
+                    # Assinatura: (points, market, outcome,
+                    # prediction_timestamp, kickoff). O kickoff e o da
+                    # partida; o instante da previsao e agora.
+                    feat = movement_features(points, market, oc, now, fx.kickoff)
+                    delta = feat.get("price_delta")
+                    observed = feat.get("n_observations")
                     movements.append(S.OddsMovement(
                         match=fx.match,
                         market=market,
                         outcome=oc,
                         opening_odd=feat.get("opening_odds"),
-                        current_odd=bmap.get(oc),
-                        price_delta=feat.get("price_delta"),
+                        current_odd=feat.get("current_odds") or best.get(oc),
+                        price_delta=delta,
                         price_delta_pct=feat.get("price_delta_pct"),
                         book_consensus_move=feat.get("book_consensus_move"),
                         book_dispersion=feat.get("book_dispersion"),
                         market_direction=feat.get("market_direction"),
-                        n_observations=int(feat.get("n_observations") or 0),
+                        n_observations=int(observed or 0),
                         n_books=int(feat.get("n_books") or 0),
                         minutes_since_open=feat.get("minutes_since_open"),
                         minutes_to_kickoff=feat.get("minutes_to_kickoff"),
-                        status="MOVING" if feat.get("price_delta") and abs(feat["price_delta"]) > 0.01 else "STABLE",
+                        status=(
+                            "NO_DATA" if not observed
+                            else "MOVING" if delta is not None and abs(delta) > 0.01
+                            else "STABLE"
+                        ),
                     ))
 
         return S.OddsMovementOverview(
@@ -874,25 +901,27 @@ class BetgsnService:
         for fx in fixtures_raw[:50]:
             if not fx.has_odds:
                 continue
-            for market, bmap in fx.odds.items():
-                for oc, odd in list(bmap.items())[:3]:
-                    for book in list(bmap.keys())[:2]:
-                        clv = store.clv(
-                            fx.match, market, oc,
-                            entry_odd=odd,
-                        )
-                        entries.append(S.ClvEntry(
-                            match=fx.match,
-                            market=market,
-                            outcome=oc,
-                            entry_odd=odd,
-                            closing_odd=clv.closing_odd,
-                            closing_bookmaker=clv.closing_bookmaker,
-                            closing_timestamp=clv.closing_timestamp,
-                            clv_percentage=clv.clv_percentage,
-                            clv_probability=clv.clv_probability,
-                            status=clv.status,
-                        ))
+            # `fx.odds` e {mercado: {casa: {resultado: odd}}}. O outcome e a
+            # chave interna e o valor e a odd float. A odd de entrada e a
+            # melhor disponivel para a linha (line shopping) — nunca um dict.
+            for market, best in fx.best_odds.items():
+                for oc, odd in best.items():
+                    clv = store.clv(
+                        fx.match, market, oc,
+                        entry_odd=odd,
+                    )
+                    entries.append(S.ClvEntry(
+                        match=fx.match,
+                        market=market,
+                        outcome=oc,
+                        entry_odd=odd,
+                        closing_odd=clv.closing_odd,
+                        closing_bookmaker=clv.closing_bookmaker,
+                        closing_timestamp=clv.closing_timestamp,
+                        clv_percentage=clv.clv_percentage,
+                        clv_probability=clv.clv_probability,
+                        status=clv.status,
+                    ))
 
         total = len(entries)
         with_clv = sum(1 for e in entries if e.status == "OK")
