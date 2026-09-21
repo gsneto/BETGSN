@@ -25,6 +25,8 @@ from betgsn.staking import (
     StakingPlan,
     annual_growth,
     bet_variance,
+    conservative_roi,
+    decide_bet,
     drawdown_probability,
     flat_plan,
     full_kelly,
@@ -327,3 +329,73 @@ def test_simulation_years_affect_growth():
 
 def test_bets_per_year_default_is_realistic():
     assert BETS_PER_YEAR >= 100
+
+
+# --------------------------------------------------------------------------
+# NO BET
+# --------------------------------------------------------------------------
+
+
+def test_conservative_roi_is_below_point_estimate():
+    assert conservative_roi(EDGE_ROI, EDGE_SE) < EDGE_ROI
+    assert conservative_roi(EDGE_ROI, 0.0) == EDGE_ROI
+    with pytest.raises(ValueError):
+        conservative_roi(0.01, -0.001)
+
+
+def test_no_bet_when_evidence_is_exploratory():
+    """Preco sem timestamp de publicacao nao sustenta dinheiro real."""
+    decision = decide_bet(
+        EDGE_ROI, EDGE_SE, EDGE_ODD, evidence_status="exploratory", n_bets=6748,
+    )
+    assert decision.action == "NO_BET"
+    assert not decision.should_bet
+    assert decision.fraction == 0.0
+    assert "evidencia_confiavel" in decision.reason
+
+
+def test_no_bet_when_lower_bound_is_not_positive():
+    decision = decide_bet(
+        0.001, 0.01, 2.0, evidence_status="timestamped", n_bets=5000,
+    )
+    assert decision.action == "NO_BET"
+    assert "limite_inferior_positivo" in decision.reason
+
+
+def test_no_bet_when_sample_is_too_small():
+    decision = decide_bet(
+        0.05, 0.005, 2.0, evidence_status="timestamped", n_bets=100,
+    )
+    assert decision.action == "NO_BET"
+    assert "amostra_suficiente" in decision.reason
+
+
+def test_bet_when_evidence_supports_it():
+    decision = decide_bet(
+        EDGE_ROI, EDGE_SE, EDGE_ODD, evidence_status="timestamped", n_bets=6748,
+    )
+    assert decision.action == "BET"
+    assert decision.conservative_roi > 0
+    assert 0 < decision.fraction <= 0.05
+
+
+def test_bet_decision_serializes_checks():
+    decision = decide_bet(
+        EDGE_ROI, EDGE_SE, EDGE_ODD, evidence_status="timestamped", n_bets=6748,
+    )
+    payload = decision.to_dict()
+    names = {c["name"] for c in payload["checks"]}
+    assert names == {
+        "evidencia_confiavel", "limite_inferior_positivo",
+        "amostra_suficiente", "ruina_toleravel",
+    }
+    assert all(c["detail"] for c in payload["checks"])
+
+
+def test_no_bet_plan_never_stakes():
+    plan = PLANS["no_bet"]
+    assert plan.fraction_for(1000.0, 1000.0) == 0.0
+    assert plan.max_fraction == 0.0
+    result = simulate(plan, years=1.0, n_paths=500)
+    assert result.median_multiple == pytest.approx(1.0)
+    assert result.p_ruin == 0.0

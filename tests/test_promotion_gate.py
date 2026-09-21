@@ -7,11 +7,17 @@ from __future__ import annotations
 
 import pytest
 
-from betgsn.models import MODEL_STATUS, PRODUCTION_MODEL
+from betgsn.models import (
+    MEASURED_ERROR_MARGIN,
+    MODEL_STATUS,
+    PRODUCTION_ELIGIBLE,
+    PRODUCTION_MODEL,
+)
 from betgsn.models.promotion import (
     MAX_ACCEPTABLE_ECE,
     MIN_CONSISTENCY,
     MIN_LEAGUES,
+    MIN_MEANINGFUL_IMPROVEMENT,
     MIN_SAMPLE_PER_SEGMENT,
     MIN_SEASONS,
     ModelStatus,
@@ -192,3 +198,97 @@ def test_ensemble_is_validated_not_production():
 def test_boosters_remain_experimental():
     assert MODEL_STATUS["XGBoost"] == "EXPERIMENTAL"
     assert MODEL_STATUS["LightGBM"] == "EXPERIMENTAL"
+
+
+# --------------------------------------------------- criterios quantitativos
+
+
+def test_single_segment_cannot_estimate_noise():
+    """Com um segmento so, a dispersao do efeito e desconhecida."""
+    d = evaluate_promotion("X", [_segment(league="E0", season="2025")])
+    assert "efeito_acima_do_ruido" in d.blocking_failures
+
+
+def test_improvement_inside_dispersion_blocks():
+    """Media positiva puxada por um segmento sorteado nao e vantagem."""
+    segs = [
+        _segment(league="E0", season="2024", logloss=0.70, base_logloss=0.99),
+        _segment(league="SP1", season="2024", logloss=0.99, base_logloss=0.99),
+        _segment(league="E0", season="2025", logloss=0.99, base_logloss=0.99),
+        _segment(league="SP1", season="2025", logloss=0.99, base_logloss=0.99),
+    ]
+    d = evaluate_promotion("X", segs)
+    assert "efeito_acima_do_ruido" in d.blocking_failures
+    assert d.improvement_t_stat < 2.0
+
+
+def test_consistent_improvement_passes_noise_criterion():
+    d = evaluate_promotion("X", _good_segments())
+    assert "efeito_acima_do_ruido" not in d.blocking_failures
+    assert d.improvement_t_stat == float("inf")
+
+
+def test_improvement_ci_overrides_segment_t_stat():
+    passing = evaluate_promotion("X", _good_segments(), improvement_ci=(0.001, 0.02))
+    assert "efeito_acima_do_ruido" not in passing.blocking_failures
+    failing = evaluate_promotion("X", _good_segments(), improvement_ci=(-0.001, 0.02))
+    assert "efeito_acima_do_ruido" in failing.blocking_failures
+
+
+def test_total_sample_minimum_blocks():
+    d = evaluate_promotion(
+        "X", [_segment(league="E0", season="2025", n=MIN_SAMPLE_PER_SEGMENT)],
+    )
+    assert "amostra_total_minima" in d.blocking_failures
+
+
+def test_tuning_on_test_blocks_promotion():
+    d = evaluate_promotion("X", _good_segments(), tuned_on_test=True)
+    assert "sem_tuning_no_teste" in d.blocking_failures
+    assert d.recommended_status is ModelStatus.EXPERIMENTAL
+
+
+def test_declared_walk_forward_windows_are_required():
+    blocked = evaluate_promotion("X", _good_segments(), n_windows=1)
+    assert "evidencia_oos_janelas" in blocked.blocking_failures
+    approved = evaluate_promotion("X", _good_segments(), n_windows=2)
+    assert "evidencia_oos_janelas" not in approved.blocking_failures
+
+
+def test_clv_and_drawdown_when_declared():
+    clv_blocked = evaluate_promotion(
+        "X", _good_segments(), clv={"mean": -0.01, "ci_low": -0.02},
+    )
+    assert "clv_nao_negativo" in clv_blocked.blocking_failures
+    drawdown_blocked = evaluate_promotion("X", _good_segments(), max_drawdown=0.80)
+    assert "drawdown_aceitavel" in drawdown_blocked.blocking_failures
+
+
+def test_small_effect_is_validated_but_not_production_eligible():
+    """O caso do Ensemble real: real na direcao, abaixo da margem de erro."""
+    segs = [
+        _segment(league=lg, season=se, logloss=0.95, base_logloss=0.99)
+        for se in ("2024", "2025") for lg in ("E0", "SP1")
+    ]
+    d = evaluate_promotion("Ensemble", segs)
+    assert d.recommended_status is ModelStatus.VALIDATED
+    assert d.below_meaningful_margin is True
+    assert d.production_eligible is False
+    assert d.mean_improvement < MIN_MEANINGFUL_IMPROVEMENT
+
+
+def test_meaningful_effect_is_production_eligible():
+    segs = [
+        _segment(league=lg, season=se, logloss=0.90, base_logloss=0.99)
+        for se in ("2024", "2025") for lg in ("E0", "SP1")
+    ]
+    d = evaluate_promotion("X", segs)
+    assert d.production_eligible is True
+    assert d.mean_improvement >= MIN_MEANINGFUL_IMPROVEMENT
+
+
+def test_registry_separates_validated_from_production_eligible():
+    assert MODEL_STATUS["Ensemble"] == "VALIDATED"
+    assert PRODUCTION_ELIGIBLE["Ensemble"] is False
+    assert MEASURED_ERROR_MARGIN == 0.05
+    assert PRODUCTION_MODEL == "BASELINE_V1"
