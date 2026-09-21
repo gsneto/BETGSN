@@ -156,16 +156,35 @@ class ClvReport(BaseModel):
 
 
 class CoverageReport(BaseModel):
-    """Relatorio de cobertura de dados."""
+    """Relatorio de cobertura de dados.
+
+    Cada metrica so existe quando ha evidencia OBSERVADA. `None` quer
+    dizer "nao medido"; 0.0 fica reservado para "medido e zero" (ex.:
+    existem linhas apostaveis, nenhuma com fechamento valido). Fabricar
+    0.0 no lugar de None confundiria ausencia de medicao com cobertura
+    nula.
+
+    - `odds_coverage`: fracao dos fixtures OBSERVADOS com odds de ao
+      menos uma casa. None quando nenhum fixture foi observado.
+    - `clv_coverage`: fracao das linhas apostaveis (mercado/resultado
+      dos fixtures com odds) com fechamento valido no store canonico de
+      odds — a mesma fonte operacional do /api/clv. None quando nao ha
+      linha apostavel a medir.
+    - `xg_coverage`: fracao de fixtures com xG REAL observado. None
+      quando nao ha fonte de xG real; xG estimado/sintetico nao conta.
+    - `n_bookmakers_active`/`bookmakers_observed`: casas efetivamente
+      OBSERVADAS nas odds dos fixtures. Chave de provider configurada
+      nao e bookmaker — e potencialidade, nao evidencia.
+    """
     generated_at: str
     providers: list[ProviderHealth]
-    clv_coverage: float
-    odds_coverage: float
-    xg_coverage: float
-    fixtures_coverage: float
+    clv_coverage: float | None
+    odds_coverage: float | None
+    xg_coverage: float | None
     n_fixtures_with_odds: int
     n_fixtures_total: int
     n_bookmakers_active: int
+    bookmakers_observed: list[str] = Field(default_factory=list)
     gaps: list[dict]
     source: str
 
