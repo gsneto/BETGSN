@@ -23,6 +23,11 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "portfolio", label: "Portfólio" },
   { key: "corners", label: "Cantos" },
   { key: "cards", label: "Cartões" },
+  { key: "fixtures", label: "Fixtures" },
+  { key: "providers", label: "Providers" },
+  { key: "coverage", label: "Coverage" },
+  { key: "clv", label: "CLV" },
+  { key: "movement", label: "Movimento" },
 ];
 
 export default function TabBar() {

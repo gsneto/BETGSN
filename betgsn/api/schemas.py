@@ -19,6 +19,156 @@ from .prediction_schemas import Provenance
 
 ConfidenceLevel = Literal["FORTE", "MEDIA", "FRACA", "DESCARTE"]
 
+# --------------------------------------------------------------------------
+# Status de provider (observabilidade)
+# --------------------------------------------------------------------------
+
+ProviderAvailability = Literal["CURRENT", "STALE", "UNAVAILABLE", "NO_COVERAGE", "DEGRADED"]
+
+
+class ProviderHealth(BaseModel):
+    """Saude detalhada de um provider de dados."""
+    name: str
+    status: ProviderAvailability
+    last_update: str | None = None
+    last_execution: str | None = None
+    latency_ms: float | None = None
+    error: str | None = None
+    quota_used: int = 0
+    quota_remaining: int = 0
+    coverage: dict[str, bool] = Field(default_factory=dict)
+    features: list[str] = Field(default_factory=list)
+    message: str | None = None
+
+
+class ProviderOverview(BaseModel):
+    """Visao geral dos providers."""
+    providers: list[ProviderHealth]
+    generated_at: str
+    any_current: bool
+    any_stale: bool
+    any_unavailable: bool
+
+
+# --------------------------------------------------------------------------
+# Fixtures
+# --------------------------------------------------------------------------
+
+class FixtureItem(BaseModel):
+    """Um jogo futuro com sua disponibilidade de odds."""
+    match: str
+    home: str
+    away: str
+    league: str
+    round_label: str
+    kickoff: str
+    has_odds: bool
+    n_bookmakers: int
+    bookmakers: list[str]
+    markets: list[str]
+    best_odds: dict[str, float] | None = None
+    status: Literal["UPCOMING", "LIVE", "SETTLED", "NO_ODDS"] = "UPCOMING"
+
+
+class FixtureOverview(BaseModel):
+    """Visao geral dos fixtures."""
+    generated_at: str
+    n_fixtures: int
+    n_with_odds: int
+    fixtures: list[FixtureItem]
+    source: str
+    data_version: str | None = None
+
+
+# --------------------------------------------------------------------------
+# Odds Movement
+# --------------------------------------------------------------------------
+
+class PricePoint(BaseModel):
+    """Um ponto de preco observado."""
+    bookmaker: str
+    market: str
+    outcome: str
+    odd: float
+    timestamp: str
+    is_opening: bool = False
+    is_closing: bool = False
+
+
+class OddsMovement(BaseModel):
+    """Movimento de odds para um mercado/resultado."""
+    match: str
+    market: str
+    outcome: str
+    opening_odd: float | None = None
+    current_odd: float | None = None
+    price_delta: float | None = None
+    price_delta_pct: float | None = None
+    book_consensus_move: float | None = None
+    book_dispersion: float | None = None
+    market_direction: float | None = None
+    n_observations: int = 0
+    n_books: int = 0
+    minutes_since_open: float | None = None
+    minutes_to_kickoff: float | None = None
+    status: Literal["MOVING", "STABLE", "NO_DATA"] = "NO_DATA"
+
+
+class OddsMovementOverview(BaseModel):
+    """Visao geral do movimento de odds."""
+    generated_at: str
+    movements: list[OddsMovement]
+    source: str
+    data_version: str | None = None
+
+
+# --------------------------------------------------------------------------
+# CLV e Coverage
+# --------------------------------------------------------------------------
+
+class ClvEntry(BaseModel):
+    """Uma entrada de CLV (Closing Line Value)."""
+    match: str
+    market: str
+    outcome: str
+    entry_odd: float
+    closing_odd: float | None = None
+    closing_bookmaker: str | None = None
+    closing_timestamp: str | None = None
+    clv_percentage: float | None = None
+    clv_probability: float | None = None
+    status: Literal["OK", "NO_CLOSING_ODDS", "BEFORE_OPENING"] = "NO_CLOSING_ODDS"
+
+
+class ClvReport(BaseModel):
+    """Relatorio agregado de CLV."""
+    generated_at: str
+    total_bets: int
+    bets_with_clv: int
+    coverage: float
+    avg_clv_percentage: float | None = None
+    median_clv_percentage: float | None = None
+    positive_clv_rate: float | None = None
+    avg_clv_probability: float | None = None
+    by_market: dict[str, dict] = Field(default_factory=dict)
+    entries: list[ClvEntry]
+    source: str
+
+
+class CoverageReport(BaseModel):
+    """Relatorio de cobertura de dados."""
+    generated_at: str
+    providers: list[ProviderHealth]
+    clv_coverage: float
+    odds_coverage: float
+    xg_coverage: float
+    fixtures_coverage: float
+    n_fixtures_with_odds: int
+    n_fixtures_total: int
+    n_bookmakers_active: int
+    gaps: list[dict]
+    source: str
+
 
 # --------------------------------------------------------------------------
 # Configuracao / entrada
