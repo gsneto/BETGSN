@@ -26,6 +26,14 @@ import { useStore } from "@/store/context";
 import { cn } from "@/utils/cn";
 import { fmtOdd, fmtPct } from "@/utils/format";
 
+/** Rótulos dos estados de movimento — mesmos enums do backend. */
+const movementStatusLabel: Record<string, string> = {
+  MOVING: "Movendo",
+  STABLE: "Estável",
+  NO_DATA: "Sem dados",
+  INSUFFICIENT_DATA: "Dado insuficiente",
+};
+
 export default function MovementPage() {
   const { dataVersion } = useStore();
 
@@ -118,7 +126,7 @@ export default function MovementPage() {
                           tone={m.status === "MOVING" ? "accent" : "neutral"}
                           size="sm"
                         >
-                          {m.status}
+                          {movementStatusLabel[m.status] ?? m.status}
                         </Badge>
                       </Td>
                     </Tr>

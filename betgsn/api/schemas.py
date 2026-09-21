@@ -111,7 +111,10 @@ class OddsMovement(BaseModel):
     n_books: int = 0
     minutes_since_open: float | None = None
     minutes_to_kickoff: float | None = None
-    status: Literal["MOVING", "STABLE", "NO_DATA"] = "NO_DATA"
+    #: Estados do dominio (OddsSnapshotStore): NO_DATA = nenhuma observacao;
+    #: INSUFFICIENT_DATA = uma unica observacao (impossivel medir movimento);
+    #: MOVING/STABLE = duas ou mais observacoes, subdivididas pelo delta.
+    status: Literal["MOVING", "STABLE", "NO_DATA", "INSUFFICIENT_DATA"] = "NO_DATA"
 
 
 class OddsMovementOverview(BaseModel):
@@ -137,7 +140,11 @@ class ClvEntry(BaseModel):
     closing_timestamp: str | None = None
     clv_percentage: float | None = None
     clv_probability: float | None = None
-    status: Literal["OK", "NO_CLOSING_ODDS", "BEFORE_OPENING"] = "NO_CLOSING_ODDS"
+    #: Estados do dominio (CLVResult): OK = fechamento valido apos a
+    #: entrada; NO_CLOSING_ODDS = sem observacao de fechamento valida;
+    #: CLOSING_BEFORE_ENTRY = fechamento encontrado, mas ANTERIOR a entrada
+    #: (aposta pos-fechamento; CLV nao calculado).
+    status: Literal["OK", "NO_CLOSING_ODDS", "CLOSING_BEFORE_ENTRY"] = "NO_CLOSING_ODDS"
 
 
 class ClvReport(BaseModel):
