@@ -22,20 +22,34 @@ ConfidenceLevel = Literal["FORTE", "MEDIA", "FRACA", "DESCARTE"]
 # --------------------------------------------------------------------------
 # Status de provider (observabilidade)
 # --------------------------------------------------------------------------
+#
+# O vocabulario e o do dominio (betgsn.odds_health.ProviderState):
+# HEALTHY / DEGRADED / UNAVAILABLE / STALE / NO_COVERAGE. Nao existe
+# "CURRENT": saude e estado observado pelo Odds Layer, nao freshness
+# inventada na borda. UNKNOWN = provider sem observacao registrada
+# (nunca coletado neste processo) — ausencia de informacao continua
+# ausencia, nunca vira "ativo".
 
-ProviderAvailability = Literal["CURRENT", "STALE", "UNAVAILABLE", "NO_COVERAGE", "DEGRADED"]
+ProviderAvailability = Literal[
+    "HEALTHY", "DEGRADED", "UNAVAILABLE", "STALE", "NO_COVERAGE", "UNKNOWN"
+]
 
 
 class ProviderHealth(BaseModel):
-    """Saude detalhada de um provider de dados."""
+    """Saude detalhada de um provider de dados.
+
+    Todos os campos observaveis sao opcionais e ficam None quando nao ha
+    informacao real: latencia nunca medida, quota desconhecida, nenhuma
+    coleta bem-sucedida. A API nao inventa nenhum desses valores.
+    """
     name: str
     status: ProviderAvailability
     last_update: str | None = None
     last_execution: str | None = None
     latency_ms: float | None = None
     error: str | None = None
-    quota_used: int = 0
-    quota_remaining: int = 0
+    quota_used: int | None = None
+    quota_remaining: int | None = None
     coverage: dict[str, bool] = Field(default_factory=dict)
     features: list[str] = Field(default_factory=list)
     message: str | None = None
@@ -45,7 +59,7 @@ class ProviderOverview(BaseModel):
     """Visao geral dos providers."""
     providers: list[ProviderHealth]
     generated_at: str
-    any_current: bool
+    any_healthy: bool
     any_stale: bool
     any_unavailable: bool
 

@@ -65,6 +65,9 @@ class ProviderHealth:
     credits_remaining: Optional[int] = None
     observations: int = 0
     updated_at: str = ""
+    #: latencia da ultima chamada bem-sucedida, em ms. None = nunca medida;
+    #: nunca e estimada nem preenchida com valor padrao.
+    latency_ms: Optional[float] = None
 
     def to_dict(self) -> dict:
         return {
@@ -81,6 +84,7 @@ class ProviderHealth:
             "credits_remaining": self.credits_remaining,
             "observations": self.observations,
             "updated_at": self.updated_at,
+            "latency_ms": self.latency_ms,
         }
 
 
@@ -108,6 +112,7 @@ class HealthTracker:
         provider: str,
         observations: int = 0,
         credits_remaining: Optional[int] = None,
+        latency_ms: Optional[float] = None,
     ) -> ProviderHealth:
         record = self.get(provider)
         record.state = ProviderState.HEALTHY
@@ -120,6 +125,8 @@ class HealthTracker:
         record.last_kind = ""
         if credits_remaining is not None:
             record.credits_remaining = credits_remaining
+        if latency_ms is not None:
+            record.latency_ms = float(latency_ms)
         record.updated_at = record.last_success_at
         return record
 

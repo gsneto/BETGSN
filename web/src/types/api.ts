@@ -16,7 +16,15 @@ export type ConfidenceLevel = "FORTE" | "MEDIA" | "FRACA" | "DESCARTE";
 
 // ------------------------------------------------------------------ status ---
 
-export type ProviderAvailability = "CURRENT" | "STALE" | "UNAVAILABLE" | "NO_COVERAGE" | "DEGRADED";
+// Vocabulario canonico do dominio (odds_health.ProviderState) + UNKNOWN
+// para provider sem observacao registrada. "CURRENT" nao existe.
+export type ProviderAvailability =
+  | "HEALTHY"
+  | "DEGRADED"
+  | "UNAVAILABLE"
+  | "STALE"
+  | "NO_COVERAGE"
+  | "UNKNOWN";
 
 export interface ProviderHealth {
   name: string;
@@ -25,8 +33,8 @@ export interface ProviderHealth {
   last_execution: string | null;
   latency_ms: number | null;
   error: string | null;
-  quota_used: number;
-  quota_remaining: number;
+  quota_used: number | null;
+  quota_remaining: number | null;
   coverage: Record<string, boolean>;
   features: string[];
   message: string | null;
@@ -35,7 +43,7 @@ export interface ProviderHealth {
 export interface ProviderOverview {
   providers: ProviderHealth[];
   generated_at: string;
-  any_current: boolean;
+  any_healthy: boolean;
   any_stale: boolean;
   any_unavailable: boolean;
 }

@@ -22,19 +22,21 @@ import { fmtInt, fmtDateTime } from "@/utils/format";
 import type { ProviderHealth } from "@/types/api";
 
 const statusTone: Record<string, string> = {
-  CURRENT: "positive",
+  HEALTHY: "positive",
   STALE: "default",
   UNAVAILABLE: "negative",
   NO_COVERAGE: "default",
   DEGRADED: "default",
+  UNKNOWN: "default",
 };
 
 const statusLabel: Record<string, string> = {
-  CURRENT: "Ativo",
+  HEALTHY: "Saudável",
   STALE: "Desatualizado",
   UNAVAILABLE: "Indisponível",
   NO_COVERAGE: "Sem cobertura",
   DEGRADED: "Degradado",
+  UNKNOWN: "Sem observação",
 };
 
 export default function ProvidersPage() {
@@ -73,7 +75,7 @@ export default function ProvidersPage() {
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Providers" value={String(data.providers.length)} />
-        <KpiCard label="Ativos" value={String(data.providers.filter((p: ProviderHealth) => p.status === "CURRENT").length)} tone="positive" />
+        <KpiCard label="Saudáveis" value={String(data.providers.filter((p: ProviderHealth) => p.status === "HEALTHY").length)} tone="positive" />
         <KpiCard label="Degradado" value={String(data.providers.filter((p: ProviderHealth) => p.status === "DEGRADED" || p.status === "STALE").length)} tone="default" />
         <KpiCard label="Indisponíveis" value={String(data.providers.filter((p: ProviderHealth) => p.status === "UNAVAILABLE").length)} tone="negative" />
       </div>
@@ -105,7 +107,7 @@ function ProviderRow({ provider }: { provider: ProviderHealth }) {
     <div
       className={cn(
         "rounded-lg border p-3 flex flex-col gap-2",
-        provider.status === "CURRENT"
+        provider.status === "HEALTHY"
           ? "border-pos-700/30 bg-pos-900/5"
           : provider.status === "UNAVAILABLE"
             ? "border-neg-700/30 bg-neg-900/5"
@@ -122,7 +124,11 @@ function ProviderRow({ provider }: { provider: ProviderHealth }) {
         <span className="text-ink-3">Latência:</span>
         <span className="mono text-ink-2">{provider.latency_ms != null ? `${provider.latency_ms.toFixed(1)} ms` : "—"}</span>
         <span className="text-ink-3">Quota:</span>
-        <span className="mono text-ink-2">{fmtInt(provider.quota_used)} usados / {fmtInt(provider.quota_remaining)} restantes</span>
+        <span className="mono text-ink-2">
+          {provider.quota_used != null && provider.quota_remaining != null
+            ? `${fmtInt(provider.quota_used)} usados / ${fmtInt(provider.quota_remaining)} restantes`
+            : "—"}
+        </span>
         <span className="text-ink-3">Features:</span>
         <span className="text-ink-2">{provider.features.join(", ") || "—"}</span>
       </div>

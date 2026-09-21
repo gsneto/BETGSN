@@ -85,6 +85,79 @@ def movement_status_to_api(
     return "STABLE"
 
 
+# --------------------------------------------------------------------------
+# Borda dominio -> API: saude de provider
+# --------------------------------------------------------------------------
+
+#: Mapeamento EXPLICITO do vocabulario canonico do Odds Layer
+#: (betgsn.odds_health.ProviderState) para o DTO da API. O dominio manda;
+#: a borda so traduz. Sem sinonimos inventados (nao existe "CURRENT").
+_DOMAIN_TO_API_STATUS: dict[str, S.ProviderAvailability] = {
+    "HEALTHY": "HEALTHY",
+    "DEGRADED": "DEGRADED",
+    "UNAVAILABLE": "UNAVAILABLE",
+    "STALE": "STALE",
+    "NO_COVERAGE": "NO_COVERAGE",
+}
+
+#: Capacidades DECLARADAS de cada provider (documentadas em providers.py).
+#: Nao e health observado: e o que cada fonte oferece quando configurada.
+_PROVIDER_FEATURES: dict[str, list[str]] = {
+    "The Odds API": ["odds"],
+    "ParlayAPI": ["odds"],
+    "API-Football": ["fixtures", "historical", "statistics"],
+    "Football-Data.org": ["fixtures", "historical"],
+}
+
+
+def api_provider_status(state) -> S.ProviderAvailability:
+    """Traduz ProviderState (ou ausencia) para o vocabulario da API.
+
+    Ausencia de observacao (None ou estado fora do vocabulario) e UNKNOWN:
+    continua ausencia, nunca vira HEALTHY.
+    """
+    if state is None:
+        return "UNKNOWN"
+    key = state.value if hasattr(state, "value") else str(state)
+    return _DOMAIN_TO_API_STATUS.get(key, "UNKNOWN")
+
+
+def _provider_health_dto(
+    name: str,
+    configured: bool,
+    record: dict | None,
+    credit: dict | None,
+) -> S.ProviderHealth:
+    """Monta o DTO de um provider a partir do registro REAL do Odds Layer.
+
+    `record` e uma entrada de HealthTracker.snapshot(); `credit`, de
+    CreditController.snapshot(). Ambos podem nao existir — e nesse caso
+    cada campo observavel fica None/UNKNOWN em vez de sintetico.
+    """
+    status = api_provider_status(record.get("state") if record else None)
+    if not configured:
+        message = "Chave de API nao configurada"
+    elif record is None:
+        message = "Configurado; nenhuma coleta registrada pelo Odds Layer"
+    else:
+        message = (
+            f"{record.get('total_successes', 0)} coletas bem-sucedidas, "
+            f"{record.get('total_failures', 0)} falhas"
+        )
+    return S.ProviderHealth(
+        name=name,
+        status=status,
+        last_update=(record.get("last_success_at") or None) if record else None,
+        last_execution=(record.get("updated_at") or None) if record else None,
+        latency_ms=record.get("latency_ms") if record else None,
+        error=(record.get("last_error") or None) if record else None,
+        quota_used=credit.get("used") if credit else None,
+        quota_remaining=credit.get("known_remaining") if credit else None,
+        features=list(_PROVIDER_FEATURES.get(name, [])) if configured else [],
+        message=message,
+    )
+
+
 def _model_doc() -> str:
     """Le a documentacao do modelo da GUI legada sem importar Tkinter."""
     try:
@@ -116,7 +189,7 @@ class Snapshot:
 class BetgsnService:
     """Executa o pipeline e serve o ultimo snapshot calculado."""
 
-    def __init__(self, source: str = "synthetic") -> None:
+    def __init__(self, source: str = "synthetic", odds_service=None) -> None:
         self._lock = threading.RLock()
         self._snapshot: Snapshot | None = None
         self._computing = False
@@ -124,6 +197,17 @@ class BetgsnService:
         self._doc = _model_doc()
         self._backtest_cache: dict[tuple, S.ModelPerformance] = {}
         self.source = source
+        #: Odds Layer injetavel (testes) ou criado uma vez por processo.
+        #: E dele que vem o health REAL: HealthTracker + CreditController
+        #: alimentados pelas coletas. A API nunca inventa estado.
+        self._odds_service = odds_service
+
+    def odds_service(self):
+        """O Odds Layer deste processo (um so, para acumular health real)."""
+        if self._odds_service is None:
+            from ..odds_service import OddsService
+            self._odds_service = OddsService.from_env()
+        return self._odds_service
 
     # ------------------------------------------------------------- calculo
 
@@ -713,56 +797,32 @@ class BetgsnService:
     # ---------------------------------------------------------- providers
 
     def providers(self) -> S.ProviderOverview:
-        from ..providers import available_providers, env_status
-        from ..odds_snapshots import OddsSnapshotStore
-        from ..data_quality import ProviderHealth as DQHealth
-        from ..quota import QuotaManager
+        """Traduz o health REAL do Odds Layer para o DTO da API.
 
-        env = env_status()
-        store = OddsSnapshotStore()
-        stats = store.stats()
-        qm = QuotaManager()
+        Fonte unica de verdade: o `OddsService` deste processo, cujo
+        HealthTracker registra sucesso/falha/staleness por provider e cujo
+        CreditController carrega a quota real (header do provider ou teto
+        local). Ausencia de observacao vira UNKNOWN — nunca "HEALTHY por
+        chave configurada", nunca latency fixa, nunca quota ficticia.
+        """
+        odds = self.odds_service()
+        health = odds.health_snapshot()      # real: HealthTracker
+        credits = odds.credits_snapshot()    # real: CreditController
+        configured = available_providers()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         provider_healths: list[S.ProviderHealth] = []
-        for name, configured in env.items():
-            q = qm.status(name)
-            status: S.ProviderAvailability = "UNAVAILABLE"
-            if configured:
-                status = "CURRENT"
-                if stats["observations"] > 0:
-                    status = "CURRENT"
-                else:
-                    status = "NO_COVERAGE"
-            else:
-                status = "UNAVAILABLE"
-
-            provider_healths.append(S.ProviderHealth(
-                name=name,
-                status=status,
-                last_update=now if configured else None,
-                last_execution=now if configured else None,
-                latency_ms=12.0 if configured else None,
-                error=None if configured else "Chave não configurada",
-                quota_used=q["requests_today"] if q else 0,
-                quota_remaining=q["daily_remaining"] if q else 999999,
-                features=["odds", "fixtures", "historical"] if configured else [],
-                message=f"Provider {'ativo' if configured else 'sem chave configurada'}",
-            ))
-
-        any_current = any(p.status == "CURRENT" for p in provider_healths)
-        any_stale = any(p.status == "STALE" for p in provider_healths)
-        any_unavailable = any(
-            p.status in ("UNAVAILABLE", "NO_COVERAGE", "DEGRADED")
-            for p in provider_healths
-        )
+        for name in configured:
+            provider_healths.append(
+                _provider_health_dto(name, configured[name], health.get(name), credits.get(name))
+            )
 
         return S.ProviderOverview(
             providers=provider_healths,
             generated_at=now,
-            any_current=any_current,
-            any_stale=any_stale,
-            any_unavailable=any_unavailable,
+            any_healthy=any(p.status == "HEALTHY" for p in provider_healths),
+            any_stale=any(p.status == "STALE" for p in provider_healths),
+            any_unavailable=any(p.status == "UNAVAILABLE" for p in provider_healths),
         )
 
     # ---------------------------------------------------------- fixtures

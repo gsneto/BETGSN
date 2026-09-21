@@ -124,6 +124,7 @@ class OddsService:
         stale_after_seconds: float = DEFAULT_STALE_AFTER_SECONDS,
         max_attempts_per_provider: int = 1,
         sleep: Callable[[float], None] = time.sleep,
+        perf: Callable[[], float] = time.perf_counter,
     ) -> None:
         self._providers: list[tuple[str, object]] = list(providers or [])
         self._health = health or HealthTracker(now=now)
@@ -133,6 +134,7 @@ class OddsService:
         self._stale_after = max(0.0, float(stale_after_seconds))
         self._max_attempts = max(1, int(max_attempts_per_provider))
         self._sleep = sleep
+        self._perf = perf
         #: ultima coleta bem-sucedida por esporte (para degradacao controlada)
         self._cache: dict[str, tuple[str, str, list[NormalizedQuote], int]] = {}
 
@@ -189,6 +191,7 @@ class OddsService:
                 continue
 
             try:
+                call_started = self._perf()
                 events, headers = self._call(provider, sport_key, markets, regions)
             except Exception as exc:  # noqa: BLE001 - queremos classificar tudo
                 kind, _retryable = classify_exception(exc)
@@ -200,6 +203,10 @@ class OddsService:
                 )
                 result.errors.append(f"{name}: {exc}")
                 continue
+
+            # latencia REAL da chamada que acabou de acontecer — nunca um
+            # valor fixo. Sem chamada, o campo permanece None no tracker.
+            latency_ms = (self._perf() - call_started) * 1000.0
 
             credits_remaining = self._apply_credits(name, headers, cost)
             if not events:
@@ -220,7 +227,10 @@ class OddsService:
                 continue
 
             self._health.record_success(
-                name, observations=len(quotes), credits_remaining=credits_remaining
+                name,
+                observations=len(quotes),
+                credits_remaining=credits_remaining,
+                latency_ms=latency_ms,
             )
             attempts.append(
                 ProviderAttempt(

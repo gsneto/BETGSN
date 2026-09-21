@@ -387,7 +387,12 @@ def test_providers_route(client):
     for p in body["providers"]:
         assert "name" in p
         assert "status" in p
-        assert p["status"] in {"CURRENT", "STALE", "UNAVAILABLE", "NO_COVERAGE", "DEGRADED"}
+        # vocabulario canonico do dominio (odds_health.ProviderState) +
+        # UNKNOWN para provider sem observacao. "CURRENT" nao existe.
+        assert p["status"] in {
+            "HEALTHY", "DEGRADED", "UNAVAILABLE", "STALE", "NO_COVERAGE",
+            "UNKNOWN",
+        }
 
 
 def test_fixtures_route(client):
@@ -433,10 +438,13 @@ def test_schema_types_are_typed():
     """Verifica que os novos schemas Pydantic existem e serializam."""
     from betgsn.api import schemas as S
     from betgsn.api import server as srv
-    # ProviderHealth
-    ph = S.ProviderHealth(name="test", status="CURRENT")
+    # ProviderHealth — vocabulario do dominio; "CURRENT" e invalido
+    ph = S.ProviderHealth(name="test", status="HEALTHY")
     assert ph.name == "test"
-    assert ph.status == "CURRENT"
+    assert ph.status == "HEALTHY"
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        S.ProviderHealth(name="test", status="CURRENT")
     # FixtureOverview
     fo = S.FixtureOverview(generated_at="2026-01-01", n_fixtures=0,
                             n_with_odds=0, fixtures=[], source="test")
