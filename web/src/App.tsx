@@ -15,11 +15,16 @@ import { fetchDashboard } from "@/api/system";
 import DataProvenance from "@/components/DataProvenance";
 import BacktestPage from "@/pages/BacktestPage";
 import CardsPage from "@/pages/CardsPage";
+import ClvPage from "@/pages/ClvPage";
 import CornersPage from "@/pages/CornersPage";
+import CoveragePage from "@/pages/CoveragePage";
+import FixturesPage from "@/pages/FixturesPage";
 import GamesPage from "@/pages/GamesPage";
 import ModelPage from "@/pages/ModelPage";
+import MovementPage from "@/pages/MovementPage";
 import OddsPage from "@/pages/OddsPage";
 import PortfolioPage from "@/pages/PortfolioPage";
+import ProvidersPage from "@/pages/ProvidersPage";
 import SignalsPage from "@/pages/SignalsPage";
 import StatsPage from "@/pages/StatsPage";
 import AppHeader from "@/layout/AppHeader";
@@ -41,6 +46,11 @@ const PAGES: Record<TabKey, () => React.JSX.Element | null> = {
   portfolio: PortfolioPage,
   corners: CornersPage,
   cards: CardsPage,
+  fixtures: FixturesPage,
+  providers: ProvidersPage,
+  coverage: CoveragePage,
+  clv: ClvPage,
+  movement: MovementPage,
 };
 
 function Terminal() {

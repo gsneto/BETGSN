@@ -146,6 +146,31 @@ def health() -> S.SystemStatus:
     return _svc().status()
 
 
+@app.get("/api/providers", response_model=S.ProviderOverview, tags=["system"])
+def providers() -> S.ProviderOverview:
+    return _svc().providers()
+
+
+@app.get("/api/fixtures", response_model=S.FixtureOverview, tags=["fixtures"])
+def fixtures() -> S.FixtureOverview:
+    return _svc().fixtures()
+
+
+@app.get("/api/movement", response_model=S.OddsMovementOverview, tags=["odds"])
+def movement() -> S.OddsMovementOverview:
+    return _svc().movement()
+
+
+@app.get("/api/coverage", response_model=S.CoverageReport, tags=["coverage"])
+def coverage() -> S.CoverageReport:
+    return _svc().coverage()
+
+
+@app.get("/api/clv", response_model=S.ClvReport, tags=["clv"])
+def clv() -> S.ClvReport:
+    return _svc().clv()
+
+
 @app.get("/api/config", response_model=S.ModelConfiguration, tags=["system"])
 def get_config() -> S.ModelConfiguration:
     return _snapshot().config

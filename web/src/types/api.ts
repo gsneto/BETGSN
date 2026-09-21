@@ -14,6 +14,138 @@
 
 export type ConfidenceLevel = "FORTE" | "MEDIA" | "FRACA" | "DESCARTE";
 
+// ------------------------------------------------------------------ status ---
+
+export type ProviderAvailability = "CURRENT" | "STALE" | "UNAVAILABLE" | "NO_COVERAGE" | "DEGRADED";
+
+export interface ProviderHealth {
+  name: string;
+  status: ProviderAvailability;
+  last_update: string | null;
+  last_execution: string | null;
+  latency_ms: number | null;
+  error: string | null;
+  quota_used: number;
+  quota_remaining: number;
+  coverage: Record<string, boolean>;
+  features: string[];
+  message: string | null;
+}
+
+export interface ProviderOverview {
+  providers: ProviderHealth[];
+  generated_at: string;
+  any_current: boolean;
+  any_stale: boolean;
+  any_unavailable: boolean;
+}
+
+// ------------------------------------------------------------------ fixtures ---
+
+export interface FixtureItem {
+  match: string;
+  home: string;
+  away: string;
+  league: string;
+  round_label: string;
+  kickoff: string;
+  has_odds: boolean;
+  n_bookmakers: number;
+  bookmakers: string[];
+  markets: string[];
+  best_odds: Record<string, number> | null;
+  status: "UPCOMING" | "LIVE" | "SETTLED" | "NO_ODDS";
+}
+
+export interface FixtureOverview {
+  generated_at: string;
+  n_fixtures: number;
+  n_with_odds: number;
+  fixtures: FixtureItem[];
+  source: string;
+  data_version: string | null;
+}
+
+// ------------------------------------------------------------ odds movement ---
+
+export interface PricePoint {
+  bookmaker: string;
+  market: string;
+  outcome: string;
+  odd: number;
+  timestamp: string;
+  is_opening: boolean;
+  is_closing: boolean;
+}
+
+export interface OddsMovement {
+  match: string;
+  market: string;
+  outcome: string;
+  opening_odd: number | null;
+  current_odd: number | null;
+  price_delta: number | null;
+  price_delta_pct: number | null;
+  book_consensus_move: number | null;
+  book_dispersion: number | null;
+  market_direction: number | null;
+  n_observations: number;
+  n_books: number;
+  minutes_since_open: number | null;
+  minutes_to_kickoff: number | null;
+  status: "MOVING" | "STABLE" | "NO_DATA";
+}
+
+export interface OddsMovementOverview {
+  generated_at: string;
+  movements: OddsMovement[];
+  source: string;
+  data_version: string | null;
+}
+
+// ------------------------------------------------- CLV e Coverage ----------
+
+export interface ClvEntry {
+  match: string;
+  market: string;
+  outcome: string;
+  entry_odd: number;
+  closing_odd: number | null;
+  closing_bookmaker: string | null;
+  closing_timestamp: string | null;
+  clv_percentage: number | null;
+  clv_probability: number | null;
+  status: "OK" | "NO_CLOSING_ODDS" | "BEFORE_OPENING";
+}
+
+export interface ClvReport {
+  generated_at: string;
+  total_bets: number;
+  bets_with_clv: number;
+  coverage: number;
+  avg_clv_percentage: number | null;
+  median_clv_percentage: number | null;
+  positive_clv_rate: number | null;
+  avg_clv_probability: number | null;
+  by_market: Record<string, { n: number; avg_clv: number; with_clv: number }>;
+  entries: ClvEntry[];
+  source: string;
+}
+
+export interface CoverageReport {
+  generated_at: string;
+  providers: ProviderHealth[];
+  clv_coverage: number;
+  odds_coverage: number;
+  xg_coverage: number;
+  fixtures_coverage: number;
+  n_fixtures_with_odds: number;
+  n_fixtures_total: number;
+  n_bookmakers_active: number;
+  gaps: { provider: string; gap: string; detail: string }[];
+  source: string;
+}
+
 export interface ModelConfiguration {
   bankroll: number;
   kelly_fraction: number;
@@ -397,7 +529,12 @@ export type TabKey =
   | "backtest"
   | "portfolio"
   | "corners"
-  | "cards";
+  | "cards"
+  | "fixtures"
+  | "providers"
+  | "coverage"
+  | "clv"
+  | "movement";
 
 export type ConfidenceFilter = "all" | "FORTE" | "MEDIA" | "FRACA";
 

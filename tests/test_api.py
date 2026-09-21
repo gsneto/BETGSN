@@ -361,3 +361,94 @@ def test_real_signals_use_real_odds(client):
     if not books:
         pytest.skip("jogos atuais sem oportunidades acima do filtro de EV")
     assert books <= reais, f"casas inesperadas: {books - reais}"
+
+
+# --------------------------------------------------------------------------
+# novos endpoints (provider health, fixtures, movement, coverage, CLV)
+# --------------------------------------------------------------------------
+
+
+def test_health_with_providers(client):
+    """GET /api/health deve incluir providers."""
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    body = r.json()
+    assert "providers" in body
+    assert isinstance(body["providers"], dict)
+
+
+def test_providers_route(client):
+    """GET /api/providers deve retornar observabilidade."""
+    r = client.get("/api/providers")
+    assert r.status_code == 200
+    body = r.json()
+    assert "providers" in body
+    assert isinstance(body["providers"], list)
+    for p in body["providers"]:
+        assert "name" in p
+        assert "status" in p
+        assert p["status"] in {"CURRENT", "STALE", "UNAVAILABLE", "NO_COVERAGE", "DEGRADED"}
+
+
+def test_fixtures_route(client):
+    """GET /api/fixtures deve retornar lista de jogos."""
+    r = client.get("/api/fixtures")
+    assert r.status_code == 200
+    body = r.json()
+    assert "n_fixtures" in body
+    assert "fixtures" in body
+    assert isinstance(body["fixtures"], list)
+
+
+def test_movement_route(client):
+    """GET /api/movement deve retornar movimentos."""
+    r = client.get("/api/movement")
+    assert r.status_code == 200
+    body = r.json()
+    assert "movements" in body
+    assert isinstance(body["movements"], list)
+
+
+def test_coverage_route(client):
+    """GET /api/coverage deve retornar cobertura."""
+    r = client.get("/api/coverage")
+    assert r.status_code == 200
+    body = r.json()
+    assert "clv_coverage" in body
+    assert "odds_coverage" in body
+    assert "providers" in body
+
+
+def test_clv_route(client):
+    """GET /api/clv deve retornar CLV."""
+    r = client.get("/api/clv")
+    assert r.status_code == 200
+    body = r.json()
+    assert "total_bets" in body
+    assert "entries" in body
+    assert isinstance(body["entries"], list)
+
+
+def test_schema_types_are_typed():
+    """Verifica que os novos schemas Pydantic existem e serializam."""
+    from betgsn.api import schemas as S
+    from betgsn.api import server as srv
+    # ProviderHealth
+    ph = S.ProviderHealth(name="test", status="CURRENT")
+    assert ph.name == "test"
+    assert ph.status == "CURRENT"
+    # FixtureOverview
+    fo = S.FixtureOverview(generated_at="2026-01-01", n_fixtures=0,
+                            n_with_odds=0, fixtures=[], source="test")
+    assert fo.n_fixtures == 0
+    # CoverageReport
+    cr = S.CoverageReport(generated_at="2026-01-01", providers=[],
+                           clv_coverage=0.5, odds_coverage=0.5,
+                           xg_coverage=0.0, fixtures_coverage=0.5,
+                           n_fixtures_with_odds=1, n_fixtures_total=2,
+                           n_bookmakers_active=1, gaps=[], source="test")
+    assert cr.clv_coverage == 0.5
+    # ClvReport
+    clr = S.ClvReport(generated_at="2026-01-01", total_bets=1, bets_with_clv=1,
+                       coverage=1.0, entries=[], source="test")
+    assert clr.total_bets == 1
