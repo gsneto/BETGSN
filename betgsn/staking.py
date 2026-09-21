@@ -343,3 +343,147 @@ def kelly_table() -> list[dict]:
 def recommend() -> StakingPlan:
     """Plano recomendado: agressivo no inicio, com disjuntor e parada."""
     return PLANS["faseado_disjuntor"]
+
+
+# --------------------------------------------------------------------------
+# NO BET — a decisao que o sistema tem que saber tomar
+# --------------------------------------------------------------------------
+#
+# Um sistema de apostas que so sabe dizer "aposte" nao e um sistema de
+# apostas: e um gerador de apostas. A vantagem estimada tem erro, e quando
+# o limite inferior da vantagem nao e positivo a resposta correta e NAO
+# APOSTAR. Isso nao e covardia, e a unica leitura honesta do intervalo.
+
+#: Nivel do limite inferior da vantagem (one-sided 95%).
+Z_CONSERVATIVE = 1.6448536269514722
+#: Fracao do Kelly usada quando a vantagem e confiavel.
+DEFAULT_KELLY_FRACTION = 0.25
+#: Amostra minima de apostas para a vantagem ser considerada medida.
+MIN_EVIDENCE_BETS = 1000
+#: Status de evidencia aceitos para apostar dinheiro real.
+TRUSTED_EVIDENCE = ("validated", "timestamped", "real")
+
+
+def conservative_roi(roi: float, se: float, z: float = Z_CONSERVATIVE) -> float:
+    """Limite inferior da vantagem (ROI - z*erro-padrao).
+
+    Dimensionar pela estimativa pontual e o erro que quebra bancas: se a
+    vantagem verdadeira for a borda inferior, voce apostou varias vezes
+    demais.
+    """
+    if se < 0:
+        raise ValueError("erro-padrao nao pode ser negativo")
+    return roi - z * se
+
+
+@dataclass(frozen=True)
+class BetDecision:
+    """Decisao explicita de apostar ou nao apostar, com o motivo."""
+
+    action: str                      # "BET" | "NO_BET"
+    reason: str
+    fraction: float = 0.0
+    conservative_roi: float | None = None
+    kelly_full: float | None = None
+    checks: tuple[tuple[str, bool, str], ...] = ()
+
+    @property
+    def should_bet(self) -> bool:
+        return self.action == "BET"
+
+    def to_dict(self) -> dict:
+        return {
+            "action": self.action,
+            "reason": self.reason,
+            "fraction": self.fraction,
+            "conservative_roi": self.conservative_roi,
+            "kelly_full": self.kelly_full,
+            "checks": [
+                {"name": name, "passed": passed, "detail": detail}
+                for name, passed, detail in self.checks
+            ],
+        }
+
+
+def decide_bet(
+    roi: float,
+    roi_se: float,
+    odd: float,
+    *,
+    evidence_status: str = "exploratory",
+    n_bets: int | None = None,
+    kelly_fraction: float = DEFAULT_KELLY_FRACTION,
+    min_lower_bound: float = 0.0,
+    ruin_tolerance: float = 0.10,
+    min_bets: int = MIN_EVIDENCE_BETS,
+) -> BetDecision:
+    """Decide se vale apostar, dado o intervalo de confianca da vantagem.
+
+    NO_BET e a resposta sempre que qualquer verificacao falha. As
+    verificacoes sao explicitas e ficam registradas na decisao.
+    """
+    lower = conservative_roi(roi, roi_se)
+    kelly = full_kelly(roi, odd) if roi > 0 else 0.0
+    checks: list[tuple[str, bool, str]] = []
+
+    trusted = evidence_status in TRUSTED_EVIDENCE
+    checks.append((
+        "evidencia_confiavel", trusted,
+        f"status '{evidence_status}'"
+        + ("" if trusted else ": odds sem timestamp/validacao nao sustentam dinheiro real"),
+    ))
+
+    checks.append((
+        "limite_inferior_positivo", lower > min_lower_bound,
+        f"ROI conservador {lower:+.2%} (exige > {min_lower_bound:+.2%}); "
+        f"ponto {roi:+.2%} +/- {Z_CONSERVATIVE:.2f}*{roi_se:.2%}",
+    ))
+
+    if n_bets is None:
+        checks.append(("amostra_suficiente", True, "numero de apostas nao informado"))
+    else:
+        checks.append((
+            "amostra_suficiente", n_bets >= min_bets,
+            f"{n_bets} apostas (minimo {min_bets})",
+        ))
+
+    ruin = drawdown_probability(kelly_fraction, 0.5) if kelly > 0 else 0.0
+    checks.append((
+        "ruina_toleravel", ruin <= ruin_tolerance,
+        f"P(cair a metade) {ruin:.2%} (tolerancia {ruin_tolerance:.0%})",
+    ))
+
+    failed = [name for name, passed, _ in checks if not passed]
+    if failed:
+        return BetDecision(
+            action="NO_BET",
+            reason="falhou: " + ", ".join(failed),
+            fraction=0.0,
+            conservative_roi=lower,
+            kelly_full=kelly,
+            checks=tuple(checks),
+        )
+
+    fraction = min(kelly * kelly_fraction, 0.05)
+    return BetDecision(
+        action="BET",
+        reason=(
+            f"vantagem conservadora {lower:+.2%}, Kelly {kelly:.2%}, "
+            f"fracao {fraction:.2%}"
+        ),
+        fraction=fraction,
+        conservative_roi=lower,
+        kelly_full=kelly,
+        checks=tuple(checks),
+    )
+
+
+#: Plano explicito de NAO apostar. Existe para que "no bet" seja uma opcao
+#: de primeira classe, e nao a ausencia de uma opcao.
+PLANS["no_bet"] = StakingPlan(
+    name="NO BET (sem vantagem confiavel)",
+    phases=(Phase(until_multiple=1e9, fraction=0.0),),
+    note="Fracao zero. Quando o limite inferior da vantagem nao e positivo, "
+         "apostar e pagar a margem da casa por uma vantagem que voce nao "
+         "consegue medir.",
+)

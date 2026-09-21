@@ -68,3 +68,214 @@ def drift(reference, current, threshold, bins=10):
     psi = float(np.sum((b-a)*np.log(b/a)))
     return {"psi": psi, "threshold": threshold, "drift": psi > threshold,
             "n_reference": len(reference), "n_current": len(current)}
+
+
+# ==========================================================================
+# Comparacao honesta entre modelos
+# ==========================================================================
+#
+# O problema central deste modulo: decidir se uma melhora de metrica e REAL
+# ou apenas ruido amostral. Uma melhora de +0,5% em LogLoss pode ser
+# indistinguivel de zero; chama-la de vantagem e o erro que transforma um
+# resultado inconclusivo em "edge comprovado".
+#
+# A resposta nao e olhar a metrica agregada. E comparar os dois modelos nas
+# MESMAS partidas (teste pareado) e resamplear respeitando a dependencia
+# temporal (block bootstrap por mes/temporada). Sem isso, o erro-padrao
+# esta subestimado e quase tudo "parece" significativo.
+
+#: Numero de reamostragens bootstrap padrao.
+BOOTSTRAP_RESAMPLES = 5000
+#: Seed fixa: o resultado tem que ser reproduzivel, nao "sorteado".
+BOOTSTRAP_SEED = 6767
+
+
+def logloss_terms(probabilities, actual_index):
+    """Perda log-loss POR OBSERVACAO. Menor = melhor.
+
+    Devolver o vetor (e nao a media) e o que permite o bootstrap pareado:
+    cada partida contribui com sua propria perda, e as duas previsoes sao
+    comparadas na MESMA partida.
+    """
+    import numpy as np
+    p = np.asarray(probabilities, dtype=float)
+    y = np.asarray(actual_index, dtype=int)
+    if p.ndim != 2 or len(p) != len(y):
+        raise ValueError("previsoes/resultados desalinhados")
+    if (y < 0).any() or (y >= p.shape[1]).any():
+        raise ValueError("indice de resultado fora das classes")
+    return -np.log(np.clip(p[np.arange(len(y)), y], 1e-12, 1.0))
+
+
+def brier_terms(probabilities, actual_index):
+    """Perda Brier multiclasse POR OBSERVACAO: soma_c (p_c - y_c)^2."""
+    import numpy as np
+    p = np.asarray(probabilities, dtype=float)
+    y = np.asarray(actual_index, dtype=int)
+    if p.ndim != 2 or len(p) != len(y):
+        raise ValueError("previsoes/resultados desalinhados")
+    onehot = np.zeros_like(p)
+    onehot[np.arange(len(y)), y] = 1.0
+    return ((p - onehot) ** 2).sum(axis=1)
+
+
+def rps_terms(probabilities, actual_index):
+    """Ranked Probability Score POR OBSERVACAO (classes ordenadas)."""
+    import numpy as np
+    p = np.asarray(probabilities, dtype=float)
+    y = np.asarray(actual_index, dtype=int)
+    out = np.empty(len(y), dtype=float)
+    for i, (row, a) in enumerate(zip(p, y)):
+        out[i] = rps(list(map(float, row)), int(a))
+    return out
+
+
+#: Perda por observacao, por metrica. Chave = nome publico da metrica.
+LOSS_FUNCTIONS = {"logloss": logloss_terms, "brier": brier_terms, "rps": rps_terms}
+
+
+def _block_indices(block_keys):
+    """Agrupa posicoes em blocos contiguos por chave (ex.: mes)."""
+    import numpy as np
+    keys = np.asarray(block_keys)
+    if len(keys) == 0:
+        return []
+    order = np.argsort(keys, kind="stable")
+    blocks, start = [], 0
+    for i in range(1, len(order) + 1):
+        if i == len(order) or keys[order[i]] != keys[order[start]]:
+            blocks.append(order[start:i])
+            start = i
+    return blocks
+
+
+def paired_bootstrap(a, b, *, resamples=BOOTSTRAP_RESAMPLES, seed=BOOTSTRAP_SEED,
+                     block_keys=None, confidence=0.95):
+    """IC bootstrap da media de `a - b`, pareado por observacao.
+
+    `a` e `b` sao perdas por observacao (ex.: baseline e candidato) na MESMA
+    ordem de partidas. Positivo = `b` perdeu mais = `a` e melhor.
+
+    Com `block_keys` (ex.: mes do kickoff), o bootstrap reamostra BLOCOS
+    inteiros em vez de partidas soltas. E o minimo de honestidade temporal:
+    partidas do mesmo mes compartilham condicoes, entao trata-las como
+    independentes subestima o erro-padrao.
+
+    Devolve dict com `mean_diff`, `se`, `ci_low`, `ci_high`, `p_value`,
+    `distinguishable`, `n` e `n_blocks`.
+    """
+    import numpy as np
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    if len(a) != len(b) or len(a) < 2:
+        raise ValueError("bootstrap pareado requer duas amostras do mesmo tamanho")
+    diff = a - b
+    n = len(diff)
+    blocks = _block_indices(block_keys) if block_keys is not None else None
+    rng = np.random.default_rng(seed)
+    means = np.empty(resamples, dtype=float)
+    if blocks is None:
+        for r in range(resamples):
+            means[r] = diff[rng.integers(0, n, size=n)].mean()
+    else:
+        if len(blocks) < 2:
+            raise ValueError("block bootstrap requer ao menos 2 blocos")
+        for r in range(resamples):
+            pick = rng.integers(0, len(blocks), size=len(blocks))
+            means[r] = np.concatenate([diff[blocks[j]] for j in pick]).mean()
+    alpha = (1.0 - confidence) / 2.0
+    lo, hi = np.quantile(means, [alpha, 1.0 - alpha])
+    p_value = 2.0 * min(float((means <= 0).mean()), float((means >= 0).mean()))
+    return {
+        "mean_diff": float(diff.mean()),
+        "se": float(diff.std(ddof=1) / np.sqrt(n)),
+        "ci_low": float(lo),
+        "ci_high": float(hi),
+        "p_value": float(min(1.0, p_value)),
+        "distinguishable": bool(lo > 0 or hi < 0),
+        "confidence": confidence,
+        "resamples": resamples,
+        "n": int(n),
+        "n_blocks": len(blocks) if blocks is not None else n,
+    }
+
+
+def block_bootstrap_ci(values, block_keys, *, statistic=None, resamples=BOOTSTRAP_RESAMPLES,
+                       seed=BOOTSTRAP_SEED, confidence=0.95):
+    """IC bootstrap percentil de uma serie, reamostrando blocos temporais."""
+    import numpy as np
+    values = np.asarray(values, dtype=float)
+    if len(values) < 2:
+        raise ValueError("bootstrap requer ao menos 2 observacoes")
+    blocks = _block_indices(block_keys)
+    if len(blocks) < 2:
+        raise ValueError("block bootstrap requer ao menos 2 blocos")
+    stat = statistic or (lambda x: float(np.mean(x)))
+    rng = np.random.default_rng(seed)
+    stats = np.empty(resamples, dtype=float)
+    for r in range(resamples):
+        pick = rng.integers(0, len(blocks), size=len(blocks))
+        stats[r] = stat(np.concatenate([values[blocks[j]] for j in pick]))
+    alpha = (1.0 - confidence) / 2.0
+    return {"low": float(np.quantile(stats, alpha)),
+            "high": float(np.quantile(stats, 1.0 - alpha)),
+            "n_blocks": len(blocks), "confidence": confidence}
+
+
+#: Vereditos possiveis de uma comparacao pareada.
+VERDICTS = ("melhora_robusta", "melhora_pequena", "piora_robusta", "inconclusivo")
+
+
+def comparison_verdict(paired, *, min_effect=0.0):
+    """Traduz o IC pareado em um veredito explicito.
+
+    - `inconclusivo`: o IC cruza zero. Nao ha evidencia de diferenca.
+    - `melhora_pequena`: melhora real, mas menor que `min_effect` (a margem
+      de erro medida). Real != relevante.
+    - `melhora_robusta`: IC inteiro acima de `min_effect`.
+    - `piora_robusta`: IC inteiro abaixo de zero.
+    """
+    lo, hi = paired["ci_low"], paired["ci_high"]
+    if lo <= 0 <= hi:
+        return "inconclusivo"
+    if hi < 0:
+        return "piora_robusta"
+    return "melhora_robusta" if lo >= min_effect else "melhora_pequena"
+
+
+def compare_models(predictions_a, predictions_b, actual_index, *, metric="logloss",
+                   resamples=BOOTSTRAP_RESAMPLES, seed=BOOTSTRAP_SEED, block_keys=None,
+                   min_effect=0.0, lower_is_better=True):
+    """Compara dois modelos nas MESMAS observacoes, com IC e veredito.
+
+    `predictions_a` e o BASELINE; `predictions_b` e o CANDIDATO. A metrica
+    padrao e LogLoss. A diferenca e sempre normalizada para "positivo =
+    candidato melhor", independentemente de a metrica ser de erro ou de
+    acerto.
+    """
+    import numpy as np
+    loss = LOSS_FUNCTIONS.get(metric)
+    if loss is None:
+        raise ValueError(f"metrica sem perda por observacao: {metric}")
+    a = loss(predictions_a, actual_index)
+    b = loss(predictions_b, actual_index)
+    if not lower_is_better:
+        a, b = -a, -b
+    paired = paired_bootstrap(a, b, resamples=resamples, seed=seed, block_keys=block_keys)
+    paired["metric"] = metric
+    paired["mean_a"] = float(np.mean(a))
+    paired["mean_b"] = float(np.mean(b))
+    paired["relative_improvement"] = (
+        (paired["mean_a"] - paired["mean_b"]) / abs(paired["mean_a"])
+        if paired["mean_a"] != 0 else None
+    )
+    paired["verdict"] = comparison_verdict(paired, min_effect=min_effect)
+    paired["meets_min_effect"] = bool(paired["ci_low"] >= min_effect)
+    return paired
+
+
+def min_detectable_effect(n, sigma, z=1.959963984540054):
+    """Menor efeito detectavel (aprox. normal) com n observacoes e desvio sigma."""
+    if n <= 0 or sigma < 0:
+        raise ValueError("n deve ser positivo e sigma nao-negativo")
+    return z * sigma / math.sqrt(n)
