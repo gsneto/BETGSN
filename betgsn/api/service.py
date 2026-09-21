@@ -837,34 +837,71 @@ class BetgsnService:
     # ---------------------------------------------------------- coverage
 
     def coverage(self) -> S.CoverageReport:
-        from ..providers import available_providers, env_status
+        from ..providers import env_status
         from ..odds_snapshots import OddsSnapshotStore
         from ..football_data_uk import FootballDataClient
         env = env_status()
         store = OddsSnapshotStore()
         client = FootballDataClient()
-        inv = client.inventory()
-        stats = store.stats()
+        fixtures_raw = client.load_fixtures()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         providers_health = self.providers().providers
 
-        n_fixtures_total = 0
-        n_fixtures_with_odds = 0
-        fixtures_raw = client.load_fixtures()
         n_fixtures_total = len(fixtures_raw)
         n_fixtures_with_odds = sum(1 for f in fixtures_raw if f.has_odds)
 
-        clv_cov = stats["observations"] / max(n_fixtures_with_odds, 1) if n_fixtures_with_odds else 0.0
-        odds_cov = n_fixtures_with_odds / max(n_fixtures_total, 1) if n_fixtures_total else 0.0
-        xg_cov = 0.0
-        fixtures_cov = odds_cov
-        n_bookmakers = len({b for b in env if env[b]}) + 0
+        # Bookmaker ativo = bookmaker EFETIVAMENTE OBSERVADO nas odds dos
+        # fixtures. Chave de provider no ambiente nao e bookmaker: e
+        # potencialidade de coleta, nao evidencia de cotacao (H2).
+        books_observed: set[str] = set()
+        for fx in fixtures_raw:
+            for books in fx.odds.values():
+                books_observed.update(books)
+        bookmakers_observed = sorted(books_observed)
 
-        gaps: list[dict] = []
-        for name, configured in env.items():
-            if not configured:
-                gaps.append({"provider": name, "gap": "no_key", "detail": "Chave de API não configurada"})
+        # Sem fixture observado nao existe medicao de cobertura de odds —
+        # None, nunca 0.0 (0.0 diria "medimos e nenhuma tem odds").
+        odds_cov = (
+            n_fixtures_with_odds / n_fixtures_total if n_fixtures_total else None
+        )
+
+        # CLV pela fonte operacional canonica (C2): o MESMO store onde as
+        # capturas sao gravadas sob `event_key`. A populacao medida e a
+        # das linhas apostaveis — cada mercado/resultado com melhor odd
+        # nos fixtures com odds. Sem linhas, a medicao nao existe.
+        bets = [
+            {"match_key": fx.event_key, "market": market, "outcome": oc, "odd": odd}
+            for fx in fixtures_raw
+            if fx.has_odds
+            for market, best in fx.best_odds.items()
+            for oc, odd in best.items()
+            if odd
+        ]
+        clv_cov = store.coverage(bets).coverage if bets else None
+
+        # xG: o football-data.co.uk nao publica xG e nao existe store de
+        # observacoes de xG neste pipeline. Sem evidencia real, a medicao
+        # e ausente (None) — 0.0 significaria "xG real observado em 0%
+        # dos jogos", que e falso.
+        xg_cov = None
+
+        gaps: list[dict] = [
+            {"provider": name, "gap": "no_key", "detail": "Chave de API não configurada"}
+            for name, configured in env.items() if not configured
+        ]
+        if xg_cov is None:
+            gaps.append({
+                "provider": "xg",
+                "gap": "no_real_xg_source",
+                "detail": "Nenhuma fonte de xG real observada; cobertura de xG não medida",
+            })
+        if not bets:
+            gaps.append({
+                "provider": "clv",
+                "gap": "no_bettable_lines",
+                "detail": "Sem linhas apostáveis observadas; cobertura de CLV não medida",
+            })
 
         return S.CoverageReport(
             generated_at=now,
@@ -872,10 +909,10 @@ class BetgsnService:
             clv_coverage=clv_cov,
             odds_coverage=odds_cov,
             xg_coverage=xg_cov,
-            fixtures_coverage=fixtures_cov,
             n_fixtures_with_odds=n_fixtures_with_odds,
             n_fixtures_total=n_fixtures_total,
-            n_bookmakers_active=n_bookmakers,
+            n_bookmakers_active=len(bookmakers_observed),
+            bookmakers_observed=bookmakers_observed,
             gaps=gaps,
             source="football-data.co.uk",
         )

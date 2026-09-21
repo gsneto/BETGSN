@@ -441,13 +441,16 @@ def test_schema_types_are_typed():
     fo = S.FixtureOverview(generated_at="2026-01-01", n_fixtures=0,
                             n_with_odds=0, fixtures=[], source="test")
     assert fo.n_fixtures == 0
-    # CoverageReport
+    # CoverageReport — None = "não medido"; nunca 0.0 no lugar de None
     cr = S.CoverageReport(generated_at="2026-01-01", providers=[],
                            clv_coverage=0.5, odds_coverage=0.5,
-                           xg_coverage=0.0, fixtures_coverage=0.5,
+                           xg_coverage=None,
                            n_fixtures_with_odds=1, n_fixtures_total=2,
-                           n_bookmakers_active=1, gaps=[], source="test")
+                           n_bookmakers_active=1,
+                           bookmakers_observed=["Pinnacle"],
+                           gaps=[], source="test")
     assert cr.clv_coverage == 0.5
+    assert cr.xg_coverage is None
     # ClvReport
     clr = S.ClvReport(generated_at="2026-01-01", total_bets=1, bets_with_clv=1,
                        coverage=1.0, entries=[], source="test")

@@ -135,13 +135,15 @@ export interface ClvReport {
 export interface CoverageReport {
   generated_at: string;
   providers: ProviderHealth[];
-  clv_coverage: number;
-  odds_coverage: number;
-  xg_coverage: number;
-  fixtures_coverage: number;
+  /** null = não medido (sem população observada), nunca 0 fabricado */
+  clv_coverage: number | null;
+  odds_coverage: number | null;
+  xg_coverage: number | null;
   n_fixtures_with_odds: number;
   n_fixtures_total: number;
+  /** Casas EFETIVAMENTE observadas nas odds — chave de provider não conta */
   n_bookmakers_active: number;
+  bookmakers_observed: string[];
   gaps: { provider: string; gap: string; detail: string }[];
   source: string;
 }
