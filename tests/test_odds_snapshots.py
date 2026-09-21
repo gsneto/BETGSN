@@ -431,3 +431,145 @@ def test_stats_does_not_count_ignored_duplicates(store):
     store.add([obs()])
     store.add([obs()])
     assert store.stats()["observations"] == 1
+
+
+def test_stats_includes_provider_breakdown(store):
+    store.add([
+        obs(outcome="1", provider="theoddsapi"),
+        obs(outcome="X", odd=3.4, provider="theoddsapi"),
+        obs(bookmaker="pinnacle", odd=2.05, provider="parlayapi"),
+    ])
+    assert store.stats()["providers"] == {"theoddsapi": 2, "parlayapi": 1}
+
+
+# --------------------------------------------------------------- as-of / abertura
+
+
+def test_observations_at_or_before_is_inclusive(store):
+    store.add([
+        obs(timestamp="2025-05-05T11:00:00Z", odd=2.2),
+        obs(timestamp="2025-05-05T13:00:00Z", odd=2.0),
+    ])
+    inclusive = store.observations_at_or_before(MATCH, "2025-05-05T13:00:00Z")
+    strict = store.observations_before(MATCH, "2025-05-05T13:00:00Z")
+    assert len(inclusive) == 2
+    assert len(strict) == 1
+
+
+def test_opening_and_latest_line_use_median_across_books(store):
+    store.add([
+        obs(bookmaker="bet365", odd=2.2, timestamp="2025-05-05T11:00:00Z"),
+        obs(bookmaker="pinnacle", odd=2.1, timestamp="2025-05-05T11:00:00Z"),
+        obs(bookmaker="bet365", odd=2.0, timestamp="2025-05-05T13:00:00Z"),
+        obs(bookmaker="pinnacle", odd=2.1, timestamp="2025-05-05T13:00:00Z"),
+    ])
+
+    opening = store.opening_line(MATCH, MARKET, "1")
+    assert opening is not None
+    assert opening[0] == pytest.approx(2.15)
+    assert opening[1] == "2025-05-05T11:00:00Z"
+    assert opening[2] == 2
+
+    latest = store.latest_observation(MATCH, MARKET, "1")
+    assert latest is not None
+    assert latest[0] == pytest.approx(2.05)
+    assert latest[1] == "2025-05-05T13:00:00Z"
+    assert latest[2] == 2
+
+
+def test_opening_and_latest_none_without_data(store):
+    assert store.opening_line(MATCH, MARKET, "1") is None
+    assert store.latest_observation(MATCH, MARKET, "1") is None
+
+
+# --------------------------------------------------------------- movimento
+
+
+def test_movement_reports_opening_to_current(store):
+    store.add([
+        obs(bookmaker="bet365", odd=2.2, timestamp="2025-05-05T11:00:00Z"),
+        obs(bookmaker="pinnacle", odd=2.1, timestamp="2025-05-05T11:00:00Z"),
+        obs(bookmaker="bet365", odd=2.0, timestamp="2025-05-05T13:00:00Z"),
+        obs(bookmaker="pinnacle", odd=2.1, timestamp="2025-05-05T13:00:00Z"),
+    ])
+    result = store.movement(MATCH, MARKET, "1")
+    assert result.status == "OK"
+    assert result.opening_odd == pytest.approx(2.15)
+    assert result.current_odd == pytest.approx(2.05)
+    assert result.price_delta == pytest.approx(-0.10)
+    assert result.price_delta_pct == pytest.approx(-0.10 / 2.15, abs=1e-6)
+    assert result.implied_probability_delta > 0  # odd caiu -> prob subiu
+    assert result.n_observations == 4
+    assert result.n_books == 2
+    assert result.minutes_between == 120.0
+
+
+def test_movement_no_data_is_explicit(store):
+    result = store.movement(MATCH, MARKET, "1")
+    assert result.status == "NO_DATA"
+    assert result.opening_odd is None
+    assert result.current_odd is None
+
+
+def test_movement_single_observation_is_insufficient(store):
+    store.add([obs(odd=2.0, timestamp="2025-05-05T13:00:00Z")])
+    result = store.movement(MATCH, MARKET, "1")
+    assert result.status == "INSUFFICIENT_DATA"
+    assert result.price_delta is None
+    assert result.opening_odd == pytest.approx(2.0)
+    assert result.current_odd == pytest.approx(2.0)
+
+
+# --------------------------------------------------------------- staleness
+
+
+def test_staleness_seconds(store):
+    store.add([obs(timestamp="2025-05-05T13:00:00Z")])
+    age = store.staleness_seconds("2025-05-05T14:30:00Z")
+    assert age == pytest.approx(5400.0)
+    scoped = store.staleness_seconds("2025-05-05T14:30:00Z", match_key=MATCH)
+    assert scoped == pytest.approx(5400.0)
+
+
+def test_staleness_none_without_data(store):
+    assert store.staleness_seconds("2025-05-05T14:30:00Z") is None
+    assert store.staleness_seconds("2025-05-05T14:30:00Z", match_key=MATCH) is None
+
+
+# --------------------------------------------------------------- CLV prospectivo
+
+
+def test_clv_prospective_requires_entry_before_closing(store):
+    store.add([obs(odd=2.0, timestamp="2025-05-05T13:30:00Z")])
+
+    ok = store.clv_prospective(
+        MATCH, MARKET, "1", entry_odd=2.2,
+        entry_timestamp="2025-05-05T12:00:00Z",
+    )
+    assert ok.status == "OK"
+    assert ok.closing_after_entry is True
+    assert ok.clv_percentage == pytest.approx(0.1, abs=1e-6)
+    assert ok.entry_timestamp == "2025-05-05T12:00:00Z"
+
+
+def test_clv_prospective_rejects_closing_before_entry(store):
+    store.add([obs(odd=2.0, timestamp="2025-05-05T13:30:00Z")])
+
+    result = store.clv_prospective(
+        MATCH, MARKET, "1", entry_odd=2.2,
+        entry_timestamp="2025-05-05T13:45:00Z",
+    )
+    assert result.status == "CLOSING_BEFORE_ENTRY"
+    assert result.valid is False
+    assert result.clv_percentage is None
+    assert result.closing_after_entry is False
+
+
+def test_clv_prospective_no_closing(store):
+    store.add([obs(odd=2.0, timestamp="2025-05-05T09:00:00Z")])
+    result = store.clv_prospective(
+        MATCH, MARKET, "1", entry_odd=2.2,
+        entry_timestamp="2025-05-05T12:00:00Z",
+        window_minutes=5.0,
+    )
+    assert result.status == "NO_CLOSING_ODDS"

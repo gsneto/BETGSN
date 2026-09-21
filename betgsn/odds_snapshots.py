@@ -74,10 +74,55 @@ class CLVResult:
     closing_minutes_before: Optional[float] = None
     n_books_closing: int = 0
     status: str = "NO_CLOSING_ODDS"
+    entry_timestamp: str = ""
+    closing_after_entry: bool = False
 
     @property
     def valid(self) -> bool:
         return self.status == "OK"
+
+
+@dataclass(frozen=True)
+class OddsMovement:
+    """Movimento de uma linha entre a abertura e o ultimo preco observado.
+
+    `status` e explicito: "OK" so quando ha ao menos duas observacoes.
+    Sem dado suficiente, os campos ficam None — nunca zero, que seria
+    indistinguivel de "o preco nao se moveu".
+    """
+
+    match_key: str
+    market: str
+    outcome: str
+    status: str = "NO_DATA"
+    opening_odd: Optional[float] = None
+    current_odd: Optional[float] = None
+    price_delta: Optional[float] = None
+    price_delta_pct: Optional[float] = None
+    implied_probability_delta: Optional[float] = None
+    n_observations: int = 0
+    n_books: int = 0
+    first_timestamp: str = ""
+    last_timestamp: str = ""
+    minutes_between: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "match_key": self.match_key,
+            "market": self.market,
+            "outcome": self.outcome,
+            "status": self.status,
+            "opening_odd": self.opening_odd,
+            "current_odd": self.current_odd,
+            "price_delta": self.price_delta,
+            "price_delta_pct": self.price_delta_pct,
+            "implied_probability_delta": self.implied_probability_delta,
+            "n_observations": self.n_observations,
+            "n_books": self.n_books,
+            "first_timestamp": self.first_timestamp,
+            "last_timestamp": self.last_timestamp,
+            "minutes_between": self.minutes_between,
+        }
 
 
 @dataclass
@@ -275,6 +320,165 @@ class OddsSnapshotStore:
             len(usable),
         )
 
+    # ------------------------------------------------------------- movimento
+
+    def observations_at_or_before(
+        self, match_key: str, cutoff: str
+    ) -> list[OddsObservation]:
+        """Observacoes ate o cutoff, inclusive. Consulta 'as of'."""
+        key = utc_key(cutoff)
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    """SELECT * FROM odds_observations
+                       WHERE match_key = ? AND timestamp <= ?
+                       ORDER BY timestamp""",
+                    (match_key, key),
+                ).fetchall()
+            finally:
+                conn.close()
+        return [self._to_obs(r) for r in rows]
+
+    def latest_observation(
+        self, match_key: str, market: str, outcome: str
+    ) -> Optional[tuple[float, str, int]]:
+        """(odd_mediana_das_ultimas_por_casa, timestamp, n_books) ou None.
+
+        A mediana entre casas evita que uma unica casa atrasada determine o
+        preco "atual".
+        """
+        return self._aggregate_line(match_key, market, outcome, last=True)
+
+    def opening_line(
+        self, match_key: str, market: str, outcome: str
+    ) -> Optional[tuple[float, str, int]]:
+        """(odd_mediana_das_primeiras_por_casa, timestamp, n_books) ou None."""
+        return self._aggregate_line(match_key, market, outcome, last=False)
+
+    def _aggregate_line(
+        self, match_key: str, market: str, outcome: str, last: bool
+    ) -> Optional[tuple[float, str, int]]:
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    """SELECT bookmaker, odd, timestamp, id FROM odds_observations
+                       WHERE match_key = ? AND market = ? AND outcome = ?
+                       ORDER BY bookmaker, timestamp, id""",
+                    (match_key, market, outcome),
+                ).fetchall()
+            finally:
+                conn.close()
+        if not rows:
+            return None
+
+        per_book: dict[str, list[sqlite3.Row]] = {}
+        for row in rows:
+            per_book.setdefault(row["bookmaker"], []).append(row)
+        selected = [pts[-1] if last else pts[0] for pts in per_book.values()]
+        odds = [r["odd"] for r in selected]
+        median_odd = statistics.median(odds)
+        reference = (
+            max(selected, key=lambda r: r["timestamp"])
+            if last
+            else min(selected, key=lambda r: r["timestamp"])
+        )
+        return (
+            round(median_odd, 4),
+            reference["timestamp"],
+            len(selected),
+        )
+
+    def movement(
+        self,
+        match_key: str,
+        market: str,
+        outcome: str,
+    ) -> OddsMovement:
+        """Movimento abertura -> ultimo preco. Nunca inventa dado ausente."""
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    """SELECT * FROM odds_observations
+                       WHERE match_key = ? AND market = ? AND outcome = ?
+                       ORDER BY timestamp, id""",
+                    (match_key, market, outcome),
+                ).fetchall()
+            finally:
+                conn.close()
+        if not rows:
+            return OddsMovement(match_key=match_key, market=market, outcome=outcome)
+
+        per_book: dict[str, list[sqlite3.Row]] = {}
+        for row in rows:
+            per_book.setdefault(row["bookmaker"], []).append(row)
+        opening = statistics.median([pts[0]["odd"] for pts in per_book.values()])
+        current = statistics.median([pts[-1]["odd"] for pts in per_book.values()])
+        first_ts = rows[0]["timestamp"]
+        last_ts = rows[-1]["timestamp"]
+        minutes = (
+            parse_kickoff(last_ts) - parse_kickoff(first_ts)
+        ).total_seconds() / 60.0
+
+        if len(rows) < 2:
+            return OddsMovement(
+                match_key=match_key,
+                market=market,
+                outcome=outcome,
+                status="INSUFFICIENT_DATA",
+                opening_odd=round(opening, 4),
+                current_odd=round(current, 4),
+                n_observations=len(rows),
+                n_books=len(per_book),
+                first_timestamp=first_ts,
+                last_timestamp=last_ts,
+                minutes_between=round(minutes, 3),
+            )
+
+        delta = current - opening
+        return OddsMovement(
+            match_key=match_key,
+            market=market,
+            outcome=outcome,
+            status="OK",
+            opening_odd=round(opening, 4),
+            current_odd=round(current, 4),
+            price_delta=round(delta, 4),
+            price_delta_pct=round(delta / opening, 6) if opening else None,
+            implied_probability_delta=round(1.0 / current - 1.0 / opening, 6),
+            n_observations=len(rows),
+            n_books=len(per_book),
+            first_timestamp=first_ts,
+            last_timestamp=last_ts,
+            minutes_between=round(minutes, 3),
+        )
+
+    def staleness_seconds(
+        self, now: str, match_key: Optional[str] = None
+    ) -> Optional[float]:
+        """Segundos desde a observacao mais recente. None quando nao ha dado."""
+        with self._lock:
+            conn = self._conn()
+            try:
+                if match_key is None:
+                    row = conn.execute(
+                        "SELECT MAX(timestamp) AS ts FROM odds_observations"
+                    ).fetchone()
+                else:
+                    row = conn.execute(
+                        "SELECT MAX(timestamp) AS ts FROM odds_observations"
+                        " WHERE match_key = ?",
+                        (match_key,),
+                    ).fetchone()
+            finally:
+                conn.close()
+        last = row["ts"] if row else None
+        if not last:
+            return None
+        return (parse_kickoff(now) - parse_kickoff(last)).total_seconds()
+
     # ------------------------------------------------------------- CLV
 
     def clv(
@@ -307,6 +511,63 @@ class OddsSnapshotStore:
             clv_percentage=round(entry_odd / closing_odd - 1.0, 6),
             closing_bookmaker=book, closing_timestamp=ts,
             closing_minutes_before=minutes, n_books_closing=n_books,
+            status="OK",
+        )
+
+    def clv_prospective(
+        self,
+        match_key: str,
+        market: str,
+        outcome: str,
+        entry_odd: float,
+        entry_timestamp: str,
+        window_minutes: float = CLOSING_WINDOW_MINUTES,
+    ) -> CLVResult:
+        """CLV prospectivo: a entrada TEM de ser anterior ao fechamento.
+
+        Diferente de `clv`, aqui o instante da aposta e explicito. Se o
+        "fechamento" encontrado for anterior a entrada, a aposta ja era
+        pos-fechamento: o CLV seria calculado com informacao que nao
+        existia na hora da decisao. Nesse caso o status e
+        CLOSING_BEFORE_ENTRY e nenhum valor e reportado.
+        """
+        if entry_odd <= 1.0:
+            raise ValueError("entry_odd precisa ser > 1.0")
+        entry_implied = 1.0 / entry_odd
+        closing = self.closing_line(match_key, market, outcome, window_minutes)
+        if closing is None:
+            return CLVResult(
+                match_key=match_key, market=market, outcome=outcome,
+                entry_odd=entry_odd, entry_implied=entry_implied,
+                entry_timestamp=utc_key(entry_timestamp),
+                status="NO_CLOSING_ODDS",
+            )
+
+        closing_odd, book, ts, minutes, n_books = closing
+        entry_key = utc_key(entry_timestamp)
+        if utc_key(ts) <= entry_key:
+            return CLVResult(
+                match_key=match_key, market=market, outcome=outcome,
+                entry_odd=entry_odd, entry_implied=entry_implied,
+                closing_odd=closing_odd,
+                closing_implied=1.0 / closing_odd,
+                closing_bookmaker=book, closing_timestamp=ts,
+                closing_minutes_before=minutes, n_books_closing=n_books,
+                entry_timestamp=entry_key,
+                status="CLOSING_BEFORE_ENTRY",
+            )
+
+        closing_implied = 1.0 / closing_odd
+        return CLVResult(
+            match_key=match_key, market=market, outcome=outcome,
+            entry_odd=entry_odd, entry_implied=entry_implied,
+            closing_odd=closing_odd, closing_implied=closing_implied,
+            clv_price=round(entry_odd - closing_odd, 4),
+            clv_probability=round(closing_implied - entry_implied, 6),
+            clv_percentage=round(entry_odd / closing_odd - 1.0, 6),
+            closing_bookmaker=book, closing_timestamp=ts,
+            closing_minutes_before=minutes, n_books_closing=n_books,
+            entry_timestamp=entry_key, closing_after_entry=True,
             status="OK",
         )
 
@@ -358,6 +619,10 @@ class OddsSnapshotStore:
                               MAX(timestamp) AS last_ts
                        FROM odds_observations"""
                 ).fetchone()
+                provider_rows = conn.execute(
+                    """SELECT provider, COUNT(*) AS n
+                       FROM odds_observations GROUP BY provider"""
+                ).fetchall()
             finally:
                 conn.close()
         return {
@@ -367,6 +632,7 @@ class OddsSnapshotStore:
             "bookmakers": row["books"] or 0,
             "first_timestamp": row["first_ts"] or "",
             "last_timestamp": row["last_ts"] or "",
+            "providers": {r["provider"] or "": r["n"] for r in provider_rows},
         }
 
     @staticmethod
