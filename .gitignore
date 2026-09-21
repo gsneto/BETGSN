@@ -53,3 +53,5 @@ desktop.ini
 .DS_Store
 .idea/
 *.swp
+
+output/odds_snapshots.db
