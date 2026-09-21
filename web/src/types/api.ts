@@ -93,7 +93,7 @@ export interface OddsMovement {
   n_books: number;
   minutes_since_open: number | null;
   minutes_to_kickoff: number | null;
-  status: "MOVING" | "STABLE" | "NO_DATA";
+  status: "MOVING" | "STABLE" | "NO_DATA" | "INSUFFICIENT_DATA";
 }
 
 export interface OddsMovementOverview {
@@ -115,7 +115,7 @@ export interface ClvEntry {
   closing_timestamp: string | null;
   clv_percentage: number | null;
   clv_probability: number | null;
-  status: "OK" | "NO_CLOSING_ODDS" | "BEFORE_OPENING";
+  status: "OK" | "NO_CLOSING_ODDS" | "CLOSING_BEFORE_ENTRY";
 }
 
 export interface ClvReport {

@@ -23,6 +23,20 @@ import { useApiResource } from "@/hooks/useApiResource";
 import { useStore } from "@/store/context";
 import { fmtOdd, fmtPct } from "@/utils/format";
 
+/** Rótulos dos status de CLV — mesmos enums do backend. */
+const clvStatusLabel: Record<string, string> = {
+  OK: "OK",
+  NO_CLOSING_ODDS: "Sem fechamento",
+  CLOSING_BEFORE_ENTRY: "Entrada pós-fechamento",
+};
+
+const clvStatusFilter: Array<{ value: string; label: string }> = [
+  { value: "all", label: "Todos" },
+  { value: "OK", label: "OK" },
+  { value: "NO_CLOSING_ODDS", label: "Sem fechamento" },
+  { value: "CLOSING_BEFORE_ENTRY", label: "Entrada pós-fechamento" },
+];
+
 export default function ClvPage() {
   const { dataVersion } = useStore();
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -68,16 +82,16 @@ export default function ClvPage() {
         padded={false}
         action={
           <div className="flex items-center gap-2">
-            {["all", "OK", "NO_CLOSING_ODDS"].map((s) => (
+            {clvStatusFilter.map((f) => (
               <button
-                key={s}
+                key={f.value}
                 type="button"
-                onClick={() => setFilterStatus(s)}
+                onClick={() => setFilterStatus(f.value)}
                 className={`label-caps px-2 py-1 rounded text-[11.5px] ${
-                  filterStatus === s ? "bg-accent-400/8 text-accent-300" : "bg-surface-2 text-ink-3 hover:bg-surface-3"
+                  filterStatus === f.value ? "bg-accent-400/8 text-accent-300" : "bg-surface-2 text-ink-3 hover:bg-surface-3"
                 }`}
               >
-                {s === "all" ? "Todos" : s === "OK" ? "OK" : "Sem fechamento"}
+                {f.label}
               </button>
             ))}
           </div>
@@ -119,7 +133,7 @@ export default function ClvPage() {
                           tone={e.status === "OK" ? "accent" : "neutral"}
                           size="sm"
                         >
-                          {e.status === "OK" ? "OK" : "Sem fechamento"}
+                          {clvStatusLabel[e.status] ?? e.status}
                         </Badge>
                       </Td>
                     </Tr>

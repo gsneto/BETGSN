@@ -30,6 +30,60 @@ from . import schemas as S
 
 MODEL_DOC_FALLBACK = "Documentacao do modelo indisponivel."
 
+# --------------------------------------------------------------------------
+# Contratos de status: dominio (odds_snapshots) -> API (schemas)
+# --------------------------------------------------------------------------
+# O dominio produz estados que a API precisa representar SEM perder
+# informacao e SEM aceitar string qualquer. Os mapeamentos abaixo sao
+# explicitos e totais: estado desconhecido e erro, nunca silencio.
+
+#: CLV: o dominio (CLVResult) produz exatamente estes tres status — ver
+#: `OddsSnapshotStore.clv` e `clv_prospective`. A API expoe os mesmos
+#: estados porque nenhum deles pode ser colapsado sem mentir:
+#: CLOSING_BEFORE_ENTRY significa "a entrada ja era pos-fechamento", o que
+#: e diferente de NO_CLOSING_ODDS ("nunca houve fechamento valido").
+_CLV_STATUS_API: dict[str, str] = {
+    "OK": "OK",
+    "NO_CLOSING_ODDS": "NO_CLOSING_ODDS",
+    "CLOSING_BEFORE_ENTRY": "CLOSING_BEFORE_ENTRY",
+}
+
+
+def clv_status_to_api(status: str) -> str:
+    """Traduz status de CLV do dominio para o enum da API.
+
+    Total e restritivo: mapeia os tres estados que o dominio produz e
+    recusa qualquer outro — um status novo no dominio precisa de decisao
+    explicita de contrato, nao de passagem automatica.
+    """
+    try:
+        return _CLV_STATUS_API[status]
+    except KeyError:
+        raise ValueError(
+            f"status de CLV do dominio sem representacao na API: {status!r}"
+        ) from None
+
+
+def movement_status_to_api(
+    n_observations: int | None, price_delta: float | None
+) -> str:
+    """Traduz o estado de movimento do dominio para o enum da API.
+
+    O dominio (`OddsSnapshotStore.movement`) conhece tres estados:
+    NO_DATA (zero observacoes), INSUFFICIENT_DATA (uma unica observacao)
+    e OK (duas ou mais). A API preserva os dois primeiros com o mesmo
+    nome e subdivide o OK em MOVING/STABLE pelo delta do preco — nunca
+    colapsa INSUFFICIENT_DATA em STABLE: uma observacao so nao prova que
+    o preco parou.
+    """
+    if not n_observations:
+        return "NO_DATA"
+    if n_observations < 2:
+        return "INSUFFICIENT_DATA"
+    if price_delta is not None and abs(price_delta) > 0.01:
+        return "MOVING"
+    return "STABLE"
+
 
 def _model_doc() -> str:
     """Le a documentacao do modelo da GUI legada sem importar Tkinter."""
@@ -216,8 +270,11 @@ class BetgsnService:
             market_keys=market_keys,
         )
 
-        # adapter minimo: o tradutor precisa de um RunResult. O dataset nao
-        # e usado por _signal/kpis, entao vai vazio e explicito.
+        # adapter minimo: o tradutor precisa de um RunResult. As ANALISES
+        # reais do snapshot sao preservadas — `_signal` busca nelas a liga
+        # e a rodada de cada sinal. Sem elas, todo sinal chegaria com
+        # league=""/round_label="" mesmo quando o snapshot sabe a resposta.
+        # O dataset segue explicito e vazio: `_signal`/`kpis` nao o usam.
         empty_dataset = LeagueDataset(
             teams=snap.teams, history=[], fixtures=[],
             league_goals=snap.league_goals, home_advantage=0.0,
@@ -226,7 +283,7 @@ class BetgsnService:
             result=RunResult(
                 dataset=empty_dataset,
                 ratings=snap.ratings,
-                analyses=[],
+                analyses=list(snap.analyses),
                 report=report,
                 tips=[],
                 league_goals=snap.league_goals,
@@ -820,11 +877,8 @@ class BetgsnService:
                         n_books=int(feat.get("n_books") or 0),
                         minutes_since_open=feat.get("minutes_since_open"),
                         minutes_to_kickoff=feat.get("minutes_to_kickoff"),
-                        status=(
-                            "NO_DATA" if not observed
-                            else "MOVING" if delta is not None and abs(delta) > 0.01
-                            else "STABLE"
-                        ),
+                        status=movement_status_to_api(
+                            int(observed) if observed else None, delta),
                     ))
 
         return S.OddsMovementOverview(
@@ -920,7 +974,7 @@ class BetgsnService:
                         closing_timestamp=clv.closing_timestamp,
                         clv_percentage=clv.clv_percentage,
                         clv_probability=clv.clv_probability,
-                        status=clv.status,
+                        status=clv_status_to_api(clv.status),
                     ))
 
         total = len(entries)
