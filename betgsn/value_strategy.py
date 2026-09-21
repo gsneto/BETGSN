@@ -57,6 +57,9 @@ from .providers import ProviderError
 MAX_ODD = 1.30
 #: Exige consenso de pelo menos N casas (evita preco de uma casa so).
 MIN_BOOKS = 3
+#: Abaixo disso o consenso e marcado como limitado, mesmo se `min_books`
+#: for reduzido explicitamente. Com 2 casas nunca se inventa a terceira.
+MIN_CONSENSUS_BOOKS = 3
 #: Mercado com validacao estatistica. "Total de Gols" nao teve amostra.
 MARKETS = ("Resultado Final (1X2)",)
 
@@ -288,6 +291,10 @@ class Opportunity:
     n_books: int
     edge: float          # best_odd / fair_odd - 1
     is_home: bool
+    #: Numero de casas que sustentam a linha (o mesmo que n_books, explicito).
+    book_count: int = 0
+    #: True quando o consenso tem menos casas que o minimo confiavel.
+    consensus_limited: bool = False
 
     @property
     def label(self) -> str:
@@ -369,6 +376,8 @@ def scan_events(
                     n_books=counts[oc],
                     edge=(best / fair_odd - 1.0) if fair_odd > 0 else 0.0,
                     is_home=(oc == "1"),
+                    book_count=counts[oc],
+                    consensus_limited=counts[oc] < MIN_CONSENSUS_BOOKS,
                 ))
     # mais curto primeiro: o ROI historico e melhor nas odds menores
     out.sort(key=lambda o: o.best_odd)

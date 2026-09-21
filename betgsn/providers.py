@@ -6,13 +6,20 @@ falha de forma explicita (ProviderError) — nunca silenciosa.
 
 Fontes suportadas:
   - The Odds API  (the-odds-api.com)   -> odds de varias casas, futebol
+  - ParlayAPI                          -> odds multi-casa (endpoint configuravel)
   - API-Football  (api-football.com)   -> historico, estatisticas, xG
   - Football-Data (football-data.org)  -> resultados e tabelas
 
 Chaves via variavel de ambiente OU arquivo .env na raiz do projeto:
   BETGSN_ODDS_API_KEY
+  BETGSN_PARLAY_API_KEY   (+ BETGSN_PARLAY_API_BASE, sem ela o adapter fica inerte)
   BETGSN_APIFOOTBALL_KEY
   BETGSN_FOOTBALLDATA_KEY
+
+Worktrees de agente: o `.env` fica no worktree principal do repositorio
+(ex.: BETGSN) e nao e copiado para os worktrees (ex.: BETGSN-odds). Por
+isso `env_file_candidates()` procura o `.env` local e, se este checkout
+for um git worktree, tambem o `.env` do worktree principal.
 
 Segredo nunca entra no codigo nem no Git: `.env` esta no .gitignore e so
 `.env.example` (com valores vazios) e versionado.
@@ -22,44 +29,149 @@ from __future__ import annotations
 
 import json
 import os
+import socket
+import subprocess
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping, Optional
 
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 #: Variaveis lidas do ambiente ou do .env. Usado para documentar e validar.
 ENV_KEYS = (
     "BETGSN_ODDS_API_KEY",
+    "BETGSN_PARLAY_API_KEY",
     "BETGSN_APIFOOTBALL_KEY",
     "BETGSN_FOOTBALLDATA_KEY",
 )
 
+# --------------------------------------------------------------------------
+# Classificacao de falhas — a base do fallback e do health check
+# --------------------------------------------------------------------------
+
+FAILURE_AUTH = "AUTH"
+FAILURE_FORBIDDEN = "FORBIDDEN"
+FAILURE_RATE_LIMIT = "RATE_LIMIT"
+FAILURE_TIMEOUT = "TIMEOUT"
+FAILURE_CONNECTION = "CONNECTION"
+FAILURE_SERVER = "SERVER"
+FAILURE_NO_CREDITS = "NO_CREDITS"
+FAILURE_NO_COVERAGE = "NO_COVERAGE"
+FAILURE_BAD_RESPONSE = "BAD_RESPONSE"
+FAILURE_UNKNOWN = "UNKNOWN"
+
+#: Falhas que nunca adiantam tentar de novo sem intervencao humana.
+_HARD_FAILURES = frozenset({FAILURE_AUTH, FAILURE_FORBIDDEN, FAILURE_NO_CREDITS})
+
+
+def classify_status(status: int) -> tuple[str, bool]:
+    """(kind, retryable) para um status HTTP."""
+    if status == 401:
+        return FAILURE_AUTH, False
+    if status == 403:
+        return FAILURE_FORBIDDEN, False
+    if status == 402:
+        return FAILURE_NO_CREDITS, False
+    if status == 429:
+        return FAILURE_RATE_LIMIT, True
+    if 500 <= status <= 599:
+        return FAILURE_SERVER, True
+    if 400 <= status <= 499:
+        return FAILURE_BAD_RESPONSE, False
+    return FAILURE_UNKNOWN, False
+
 
 class ProviderError(RuntimeError):
-    """Falha de provider. Sempre explicita: o app mostra, nao esconde."""
+    """Falha de provider. Sempre explicita: o app mostra, nao esconde.
 
-
-def load_env_file(path: Path | None = None, override: bool = False) -> int:
-    """Carrega pares KEY=VALUE de um arquivo .env para os.environ.
-
-    Parser minimo da biblioteca padrao: o nucleo do BETGSN nao tem
-    dependencia externa e nao vale adicionar uma so para ler 3 linhas.
-
-    Regras:
-      - linhas em branco e comecando com '#' sao ignoradas;
-      - `export KEY=VALUE` tambem e aceito;
-      - aspas simples ou duplas em volta do valor sao removidas;
-      - por padrao NAO sobrescreve variavel ja definida no ambiente real
-        (o ambiente ganha do arquivo, que e o comportamento esperado).
-
-    Devolve quantas variaveis foram efetivamente definidas.
+    Carrega a classificacao da falha (`kind`, `retryable`, `status`,
+    `retry_after`) para que a camada de fallback decida se tenta outro
+    provider ou se para. A mensagem nunca contem credencial.
     """
-    target = Path(path) if path else ENV_FILE
-    if not target.exists():
-        return 0
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: Optional[int] = None,
+        kind: str = FAILURE_UNKNOWN,
+        retryable: bool = False,
+        retry_after: Optional[float] = None,
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.kind = kind
+        self.retryable = retryable
+        self.retry_after = retry_after
+
+    @property
+    def hard(self) -> bool:
+        return self.kind in _HARD_FAILURES
+
+
+def _git_common_root() -> Optional[Path]:
+    """Raiz do worktree principal quando este repo e um git worktree.
+
+    Cada agente trabalha em um worktree proprio (ex.: BETGSN-odds) e as
+    credenciais ficam centralizadas no `.env` do worktree principal
+    (BETGSN). Sem isso, rodar a partir do worktree nao enxerga a chave.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            cwd=str(ENV_FILE.parent),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    raw = (proc.stdout or "").strip()
+    if not raw:
+        return None
+    common = Path(raw)
+    if not common.is_absolute():
+        common = (ENV_FILE.parent / common).resolve()
+    if common.name == ".git":
+        return common.parent
+    return None
+
+
+def env_file_candidates() -> list[Path]:
+    """Arquivos .env em ordem de prioridade, sem duplicatas.
+
+    1. `BETGSN_ENV_FILE`, quando definido (override explicito);
+    2. `.env` na raiz deste checkout/worktree;
+    3. `.env` no worktree principal do mesmo repositorio git.
+
+    O primeiro arquivo que define uma chave vence, porque `load_env_file`
+    nunca sobrescreve o que ja esta no ambiente.
+    """
+    candidates: list[Path] = []
+    override = os.environ.get("BETGSN_ENV_FILE", "").strip()
+    if override:
+        candidates.append(Path(override))
+    candidates.append(ENV_FILE)
+    common_root = _git_common_root()
+    if common_root is not None:
+        candidates.append(common_root / ".env")
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for path in candidates:
+        key = str(path)
+        if key not in seen:
+            seen.add(key)
+            unique.append(path)
+    return unique
+
+
+def _apply_env_file(target: Path, override: bool) -> int:
     applied = 0
     for raw in target.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
@@ -80,6 +192,30 @@ def load_env_file(path: Path | None = None, override: bool = False) -> int:
             continue
         os.environ[key] = value
         applied += 1
+    return applied
+
+
+def load_env_file(path: Path | None = None, override: bool = False) -> int:
+    """Carrega pares KEY=VALUE de um ou mais arquivos .env para os.environ.
+
+    Parser minimo da biblioteca padrao: o nucleo do BETGSN nao tem
+    dependencia externa e nao vale adicionar uma so para ler poucas linhas.
+
+    Regras:
+      - linhas em branco e comecando com '#' sao ignoradas;
+      - `export KEY=VALUE` tambem e aceito;
+      - aspas simples ou duplas em volta do valor sao removidas;
+      - por padrao NAO sobrescreve variavel ja definida no ambiente real
+        (o ambiente ganha do arquivo, que e o comportamento esperado).
+
+    Sem `path`, carrega todos os candidatos de `env_file_candidates()` na
+    ordem de prioridade. Devolve quantas variaveis foram definidas.
+    """
+    targets = [Path(path)] if path else env_file_candidates()
+    applied = 0
+    for target in targets:
+        if target.exists():
+            applied += _apply_env_file(target, override)
     return applied
 
 
@@ -144,16 +280,109 @@ def _get_with_headers(
             body = e.read().decode("utf-8")[:300]
         except Exception:
             pass
-        raise ProviderError(f"HTTP {e.code} em {safe_url}: {body}") from e
+        kind, retryable = classify_status(e.code)
+        raise ProviderError(
+            f"HTTP {e.code} em {safe_url}: {body}",
+            status=e.code,
+            kind=kind,
+            retryable=retryable,
+            retry_after=_retry_after_seconds(getattr(e, "headers", None)),
+        ) from e
     except urllib.error.URLError as e:
-        raise ProviderError(f"rede falhou em {safe_url}: {e.reason}") from e
+        reason = e.reason
+        timeout_like = isinstance(reason, (TimeoutError, socket.timeout))
+        kind = FAILURE_TIMEOUT if timeout_like else FAILURE_CONNECTION
+        raise ProviderError(
+            f"rede falhou em {safe_url}: {reason}",
+            kind=kind,
+            retryable=True,
+        ) from e
+    except (TimeoutError, socket.timeout) as e:
+        raise ProviderError(
+            f"timeout em {safe_url}: {e}",
+            kind=FAILURE_TIMEOUT,
+            retryable=True,
+        ) from e
     except json.JSONDecodeError as e:
-        raise ProviderError(f"resposta nao-JSON de {safe_url}: {e}") from e
+        raise ProviderError(
+            f"resposta nao-JSON de {safe_url}: {e}",
+            kind=FAILURE_BAD_RESPONSE,
+            retryable=False,
+        ) from e
+
+
+def _retry_after_seconds(headers: Mapping[str, str] | None) -> Optional[float]:
+    """Le Retry-After (segundos). Formato HTTP-date e ignorado com seguranca."""
+    if not headers:
+        return None
+    for key, value in headers.items():
+        if str(key).lower() == "retry-after":
+            try:
+                return max(0.0, float(str(value).strip()))
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+#: Teto de espera entre tentativas. Sem isso, um Retry-After enorme
+#: travaria a coleta inteira.
+MAX_RETRY_DELAY_SECONDS = 30.0
+
+
+def request_json_with_retry(
+    url: str,
+    headers: dict[str, str] | None = None,
+    timeout: int = 20,
+    max_attempts: int = 2,
+    backoff_seconds: float = 1.0,
+    sleep=time.sleep,
+) -> tuple[dict | list, dict[str, str]]:
+    """GET com retry LIMITADO para falhas transitorias (429/5xx/rede).
+
+    Nunca faz retry infinito: `max_attempts` e o teto absoluto. Falhas
+    duras (401/403/402) sobem na hora — nao ha o que tentar de novo.
+    """
+    attempts = max(1, int(max_attempts))
+    last: Optional[ProviderError] = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return _get_with_headers(url, headers, timeout)
+        except ProviderError as exc:
+            last = exc
+            if not exc.retryable or attempt >= attempts:
+                raise
+            delay = exc.retry_after
+            if delay is None:
+                delay = backoff_seconds * (2 ** (attempt - 1))
+            sleep(min(float(delay), MAX_RETRY_DELAY_SECONDS))
+    assert last is not None
+    raise last
 
 
 def _get(url: str, headers: dict[str, str] | None = None, timeout: int = 20) -> dict | list:
     body, _ = _get_with_headers(url, headers, timeout)
     return body
+
+
+def parse_credit_headers(headers: Mapping[str, str]) -> dict[str, int]:
+    """Extrai a quota informada pela The Odds API (headers x-requests-*).
+
+    Devolve so as chaves presentes e numericas. Nunca inventa saldo.
+    """
+    out: dict[str, int] = {}
+    for name in ("x-requests-last", "x-requests-used", "x-requests-remaining"):
+        value = None
+        for key, raw in headers.items():
+            if str(key).lower() == name:
+                value = raw
+                break
+        if value is None:
+            continue
+        try:
+            out[name.replace("x-requests-", "")] = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -264,42 +493,99 @@ def odds_event_to_internal(event: dict) -> dict[str, dict[str, dict[str, float]]
 
     Funcao pura (nao usa chave nem rede) para ser reutilizada pelo Scanner
     e pelo importador de backtest — assim existe UM parser, nao dois que
-    divergem com o tempo.
+    divergem com o tempo. Delega para `odds_normalize.grouped_from_event`.
 
     Devolve {mercado: {casa: {resultado: odd}}}, com os rotulos de mercado
     e resultado do BETGSN.
     """
-    home = event.get("home_team", "")
-    away = event.get("away_team", "")
-    out: dict[str, dict[str, dict[str, float]]] = {}
+    from .odds_normalize import grouped_from_event
 
-    for book in event.get("bookmakers", []):
-        book_name = book.get("title", book.get("key", "?"))
-        for market in book.get("markets", []):
-            mkey = market.get("key")
-            if mkey == "h2h":
-                target = out.setdefault("Resultado Final (1X2)", {})
-                slot = target.setdefault(book_name, {})
-                for oc in market.get("outcomes", []):
-                    name = oc.get("name")
-                    label = "1" if name == home else ("2" if name == away else "X")
-                    slot[label] = float(oc["price"])
-            elif mkey == "totals":
-                target = out.setdefault("Total de Gols", {})
-                slot = target.setdefault(book_name, {})
-                for oc in market.get("outcomes", []):
-                    point = oc.get("point")
-                    if point is None:
-                        continue
-                    side = "Over" if oc.get("name") == "Over" else "Under"
-                    slot[f"{side} {point}"] = float(oc["price"])
-            elif mkey == "btts":
-                target = out.setdefault("Ambas Marcam", {})
-                slot = target.setdefault(book_name, {})
-                for oc in market.get("outcomes", []):
-                    yes = oc.get("name", "").lower() == "yes"
-                    slot["BTTS Sim" if yes else "BTTS Nao"] = float(oc["price"])
-    return out
+    return grouped_from_event(event)
+
+
+# --------------------------------------------------------------------------
+# ParlayAPI (adapter configuravel)
+# --------------------------------------------------------------------------
+
+#: Base do endpoint de odds. NAO tem default: sem BETGSN_PARLAY_API_BASE o
+#: provider fica inerte, porque inventar um dominio seria pior que nao ter
+#: provider. A forma exata do payload deve ser confirmada na conta.
+PARLAY_BASE_ENV = "BETGSN_PARLAY_API_BASE"
+PARLAY_PATH_ENV = "BETGSN_PARLAY_ODDS_PATH"
+PARLAY_DEFAULT_PATH = "/odds"
+
+
+def _parlay_events(body: dict | list) -> list[dict]:
+    """Extrai a lista de eventos de um payload ParlayAPI.
+
+    Aceita uma lista direta ou os invólucros mais comuns (`data`, `events`,
+    `odds`, `results`). Formato desconhecido vira erro explicito — o
+    adapter nunca adivinha o significado dos dados.
+    """
+    if isinstance(body, list):
+        return body
+    if isinstance(body, dict):
+        for key in ("data", "events", "odds", "results"):
+            value = body.get(key)
+            if isinstance(value, list):
+                return value
+    raise ProviderError(
+        "ParlayAPI devolveu um formato desconhecido; confirme o endpoint e "
+        "o schema antes de usar.",
+        kind=FAILURE_BAD_RESPONSE,
+        retryable=False,
+    )
+
+
+@dataclass
+class ParlayApiProvider:
+    """Adapter ParlayAPI: odds multi-casa por esporte.
+
+    Diferente da The Odds API, o contrato deste provider nao e publico e
+    verificado. Por isso a base e o caminho sao configuraveis e o adapter
+    so existe quando ambos a chave e a base estao definidos.
+    """
+
+    api_key: str
+    base_url: str
+    odds_path: str = PARLAY_DEFAULT_PATH
+
+    name: str = "ParlayAPI"
+
+    @classmethod
+    def from_env(cls) -> "ParlayApiProvider | None":
+        key = os.environ.get("BETGSN_PARLAY_API_KEY", "").strip()
+        base = os.environ.get(PARLAY_BASE_ENV, "").strip()
+        if not key or not base:
+            return None
+        path = os.environ.get(PARLAY_PATH_ENV, "").strip() or PARLAY_DEFAULT_PATH
+        return cls(api_key=key, base_url=base.rstrip("/"), odds_path=path)
+
+    def _url(self, sport_key: str, regions: str | None, markets: str | None) -> str:
+        q: dict[str, str] = {"apiKey": self.api_key, "sport": sport_key}
+        if markets:
+            q["markets"] = markets
+        if regions:
+            q["regions"] = regions
+        return f"{self.base_url}{self.odds_path}?{urllib.parse.urlencode(q)}"
+
+    def live_odds_with_meta(
+        self,
+        sport_key: str,
+        regions: str | None = None,
+        markets: str | None = None,
+        max_attempts: int = 2,
+    ) -> tuple[list[dict], dict[str, str]]:
+        """Eventos + headers de quota, no mesmo contrato da The Odds API."""
+        body, headers = request_json_with_retry(
+            self._url(sport_key, regions, markets),
+            {"User-Agent": "BETGSN/1.0", "Accept": "application/json"},
+            max_attempts=max_attempts,
+        )
+        return _parlay_events(body), headers
+
+    def to_odds_by_book(self, event: dict) -> dict[str, dict[str, dict[str, float]]]:
+        return odds_event_to_internal(event)
 
 
 # --------------------------------------------------------------------------
@@ -396,6 +682,29 @@ def available_providers() -> dict[str, bool]:
     """Quais providers tem chave configurada no ambiente ou no .env."""
     return {
         "The Odds API": OddsApiProvider.from_env() is not None,
+        "ParlayAPI": ParlayApiProvider.from_env() is not None,
         "API-Football": ApiFootballProvider.from_env() is not None,
         "Football-Data.org": FootballDataProvider.from_env() is not None,
     }
+
+
+#: Ordem de preferencia dos providers de ODDS. O primeiro saudavel atende;
+#: se falhar, o proximo assume (ver betgsn.odds_service).
+ODDS_PROVIDER_PRIORITY = ("The Odds API", "ParlayAPI")
+
+
+def configured_odds_providers() -> list[tuple[str, object]]:
+    """Providers de odds configurados, na ordem de prioridade.
+
+    Nunca levanta erro por falta de chave: devolve so o que esta pronto.
+    Nenhum provider e obrigatorio para o funcionamento global.
+    """
+    available = {
+        "The Odds API": OddsApiProvider.from_env(),
+        "ParlayAPI": ParlayApiProvider.from_env(),
+    }
+    return [
+        (name, available[name])
+        for name in ODDS_PROVIDER_PRIORITY
+        if available.get(name) is not None
+    ]

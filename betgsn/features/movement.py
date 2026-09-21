@@ -165,3 +165,53 @@ def movement_feature_block(
         for name, value in features.items():
             block[f"movement_{tag}_{name}"] = value
     return block
+
+
+#: Abaixo disso o consenso e fraco demais para ser tratado como mercado.
+MIN_CONSENSUS_BOOKS = 3
+
+
+def book_count(
+    points: Sequence[PricePoint],
+    market: str,
+    outcome: str,
+    cutoff: str,
+) -> int:
+    """Quantas casas tinham preco para a linha antes do cutoff."""
+    return len(
+        {
+            p.bookmaker
+            for p in odds_history_before(points, cutoff, market, outcome)
+        }
+    )
+
+
+def consensus_limited(n_books: int, min_books: int = MIN_CONSENSUS_BOOKS) -> bool:
+    """True quando o numero de casas nao sustenta um consenso de mercado."""
+    return n_books < min_books
+
+
+def latest_quote_age_minutes(
+    points: Sequence[PricePoint], now: str
+) -> Optional[float]:
+    """Minutos desde a cotacao mais recente. None quando nao ha cotacao."""
+    if not points:
+        return None
+    last = max(points, key=lambda p: utc_key(p.timestamp))
+    delta = parse_kickoff(now) - parse_kickoff(last.timestamp)
+    return delta.total_seconds() / 60.0
+
+
+def is_stale(
+    points: Sequence[PricePoint],
+    now: str,
+    max_age_minutes: float = 15.0,
+) -> bool:
+    """True quando nao ha cotacao ou a mais recente esta velha demais.
+
+    Sem cotacao tambem e "stale": nao existe dado atual para apresentar.
+    """
+    age = latest_quote_age_minutes(points, now)
+    if age is None:
+        return True
+    return age > max_age_minutes

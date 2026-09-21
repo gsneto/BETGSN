@@ -7,11 +7,17 @@ import pytest
 
 from betgsn.features.movement import (
     PricePoint,
+    book_count,
+    consensus_limited,
+    is_stale,
+    latest_quote_age_minutes,
     movement_feature_block,
     movement_features,
     odds_before,
     odds_history_before,
 )
+from betgsn.features.odds import MIN_CONSENSUS_BOOKS as ODDS_MIN_BOOKS
+from betgsn.features.odds import OddsQuote, odds_features
 
 MARKET = "Resultado Final (1X2)"
 KICKOFF = "2025-05-05T14:00:00Z"
@@ -494,3 +500,93 @@ def test_movement_feature_block_values_are_float_or_none():
         assert value is None or isinstance(value, float), key
         if isinstance(value, float):
             assert math.isfinite(value), key
+
+
+# --------------------------------------------------------- book count / stale
+
+
+def test_book_count_counts_distinct_bookmakers():
+    points = [
+        point(2.00, "2025-05-05T10:00:00Z", bookmaker="bet365"),
+        point(2.05, "2025-05-05T11:00:00Z", bookmaker="bet365"),
+        point(2.10, "2025-05-05T10:00:00Z", bookmaker="pinnacle"),
+    ]
+    assert book_count(points, MARKET, "1", KICKOFF) == 2
+    assert book_count(points, MARKET, "X", KICKOFF) == 0
+
+
+def test_book_count_respects_cutoff():
+    points = [
+        point(2.00, "2025-05-05T10:00:00Z", bookmaker="bet365"),
+        point(2.10, "2025-05-05T13:00:00Z", bookmaker="pinnacle"),
+    ]
+    assert book_count(points, MARKET, "1", "2025-05-05T12:00:00Z") == 1
+
+
+def test_consensus_limited_threshold():
+    assert consensus_limited(1) is True
+    assert consensus_limited(2) is True
+    assert consensus_limited(3) is False
+    assert ODDS_MIN_BOOKS == 3
+
+
+def test_latest_quote_age_minutes():
+    points = [point(2.00, "2025-05-05T12:00:00Z")]
+    assert latest_quote_age_minutes(points, "2025-05-05T12:30:00Z") == 30.0
+    assert latest_quote_age_minutes([], "2025-05-05T12:30:00Z") is None
+
+
+def test_is_stale_true_without_data_or_when_old():
+    points = [point(2.00, "2025-05-05T12:00:00Z")]
+    assert is_stale(points, "2025-05-05T12:10:00Z", max_age_minutes=15) is False
+    assert is_stale(points, "2025-05-05T12:30:00Z", max_age_minutes=15) is True
+    assert is_stale([], "2025-05-05T12:30:00Z") is True
+
+
+# --------------------------------------------------------- features de odds
+
+
+def test_odds_features_marks_limited_consensus_with_two_books():
+    quotes = [
+        OddsQuote("b1", "1", 2.0, "2025-05-05T10:00:00Z"),
+        OddsQuote("b2", "1", 2.1, "2025-05-05T10:00:00Z"),
+    ]
+    features = odds_features(quotes, "2025-05-05T11:00:00Z", KICKOFF)
+    entry = features["1x2_1"]
+    assert entry["book_count"] == 2
+    assert entry["consensus_limited"] is True
+    assert entry["best_book"] == "b2"
+    assert entry["best"] == 2.1
+
+
+def test_odds_features_full_market_has_fair_odd():
+    quotes = []
+    for book, (home, draw, away) in {
+        "b1": (1.8, 3.6, 4.2),
+        "b2": (2.0, 3.4, 4.0),
+        "b3": (2.2, 3.2, 3.8),
+    }.items():
+        quotes.extend([
+            OddsQuote(book, "1", home, "2025-05-05T10:00:00Z"),
+            OddsQuote(book, "X", draw, "2025-05-05T10:00:00Z"),
+            OddsQuote(book, "2", away, "2025-05-05T10:00:00Z"),
+        ])
+    features = odds_features(quotes, "2025-05-05T11:00:00Z", KICKOFF)
+    entry = features["1x2_1"]
+    assert entry["book_count"] == 3
+    assert entry["consensus_limited"] is False
+    assert entry["fair_probability"] is not None
+    assert entry["fair_odd"] == pytest.approx(1.0 / entry["fair_probability"])
+    assert entry["edge_vs_fair"] == pytest.approx(
+        entry["best"] * entry["fair_probability"] - 1.0
+    )
+    assert entry["overround"] is not None and entry["overround"] > 1.0
+
+
+def test_odds_features_never_sees_future_quotes():
+    quotes = [
+        OddsQuote("b1", "1", 2.0, "2025-05-05T10:00:00Z"),
+        OddsQuote("b1", "1", 9.0, "2025-05-05T13:30:00Z"),  # futuro
+    ]
+    features = odds_features(quotes, "2025-05-05T11:00:00Z", KICKOFF)
+    assert features["1x2_1"]["best"] == 2.0
