@@ -1,0 +1,52 @@
+# BETGSN — arquivos que NUNCA devem ser versionados.
+
+# ---------------------------------------------------------------------------
+# Segredos. Chaves de API vivem apenas no .env local e no ambiente do
+# sistema. O .env.example (valores vazios) e o unico versionado.
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Dados importados e artefatos gerados. Sao reproduziveis a partir das
+# chaves + comandos de importacao, entao nao pertencem ao repositorio.
+output/backtest_cache/
+output/backtests/*.db
+output/*.png
+
+# CSVs baixados do football-data.co.uk (reproduziveis via --import-fduk).
+output/football_data_uk/
+
+# Artefatos grandes/binarios de benchmark (reproduziveis via --benchmark).
+output/engineering/**/*.jsonl
+output/engineering/**/*.zip
+
+# Benchmark temporario de teste (nao e resultado final).
+output/engineering/benchmark/corners_test/
+
+# ---------------------------------------------------------------------------
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------------------------------------------------------------------------
+# Node / frontend
+node_modules/
+web/dist/
+web/node_modules/
+web/.vite/
+web/*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Sistema operacional / editores
+Thumbs.db
+desktop.ini
+.DS_Store
+.idea/
+*.swp

@@ -1,0 +1,4633 @@
+{
+  "betgsn/backtest.py": {
+    "sha256": "614bf554228becec3292e419600d0fd4ed7c449ca2baac810cb79e4625a5b4de",
+    "symbols": [
+      {
+        "name": "outcome_1x2",
+        "line": 43
+      },
+      {
+        "name": "outcome_ou",
+        "line": 47
+      },
+      {
+        "name": "outcome_btts",
+        "line": 51
+      },
+      {
+        "name": "naive_market_probs",
+        "line": 55
+      },
+      {
+        "name": "Calibration",
+        "line": 72
+      },
+      {
+        "name": "_bin_calibration",
+        "line": 80
+      },
+      {
+        "name": "calibrate_1x2",
+        "line": 93
+      },
+      {
+        "name": "BetRecord",
+        "line": 137
+      },
+      {
+        "name": "Betting",
+        "line": 151
+      },
+      {
+        "name": "_best_odds",
+        "line": 166
+      },
+      {
+        "name": "BacktestResult",
+        "line": 181
+      },
+      {
+        "name": "run_backtest",
+        "line": 190
+      },
+      {
+        "name": "_summary",
+        "line": 320
+      }
+    ]
+  },
+  "betgsn/backtest_data.py": {
+    "sha256": "c5f5124ef02b0d664574fe8073c72811d0e15ea3be35fd989702f2f64273fa26",
+    "symbols": [
+      {
+        "name": "MatchResult",
+        "line": 70
+      },
+      {
+        "name": "_resolve_over_under",
+        "line": 104
+      },
+      {
+        "name": "settle_outcome",
+        "line": 109
+      },
+      {
+        "name": "realized_return",
+        "line": 198
+      },
+      {
+        "name": "profit_for",
+        "line": 207
+      },
+      {
+        "name": "CorpusStats",
+        "line": 222
+      },
+      {
+        "name": "HistoricalCorpus",
+        "line": 230
+      },
+      {
+        "name": "_mean",
+        "line": 329
+      },
+      {
+        "name": "league_average_rating",
+        "line": 333
+      },
+      {
+        "name": "league_goals_before",
+        "line": 378
+      },
+      {
+        "name": "PointInTimeContext",
+        "line": 386
+      },
+      {
+        "name": "build_context",
+        "line": 397
+      },
+      {
+        "name": "match_seed",
+        "line": 439
+      },
+      {
+        "name": "OddsSource",
+        "line": 449
+      },
+      {
+        "name": "NaiveSyntheticOddsSource",
+        "line": 467
+      },
+      {
+        "name": "RealHistoricalOddsSource",
+        "line": 504
+      },
+      {
+        "name": "build_fixture",
+        "line": 610
+      },
+      {
+        "name": "from_match",
+        "line": 81
+      },
+      {
+        "name": "__init__",
+        "line": 243
+      },
+      {
+        "name": "matches",
+        "line": 264
+      },
+      {
+        "name": "all_kickoffs",
+        "line": 267
+      },
+      {
+        "name": "utc_key_of",
+        "line": 270
+      },
+      {
+        "name": "matches_before",
+        "line": 274
+      },
+      {
+        "name": "stats",
+        "line": 291
+      },
+      {
+        "name": "filter",
+        "line": 300
+      },
+      {
+        "name": "odds_for",
+        "line": 458
+      },
+      {
+        "name": "__init__",
+        "line": 482
+      },
+      {
+        "name": "odds_for",
+        "line": 488
+      },
+      {
+        "name": "__init__",
+        "line": 522
+      },
+      {
+        "name": "misses",
+        "line": 540
+      },
+      {
+        "name": "odds_for",
+        "line": 544
+      }
+    ]
+  },
+  "betgsn/backtest_engine.py": {
+    "sha256": "5ccd8551cad3e76536d7383094a7cabdaa737c6a93502636ba8bc9599b417408",
+    "symbols": [
+      {
+        "name": "BacktestConfig",
+        "line": 79
+      },
+      {
+        "name": "FrozenSignal",
+        "line": 177
+      },
+      {
+        "name": "SettledSignal",
+        "line": 235
+      },
+      {
+        "name": "BacktestRun",
+        "line": 256
+      },
+      {
+        "name": "_signal_id",
+        "line": 280
+      },
+      {
+        "name": "_freeze",
+        "line": 285
+      },
+      {
+        "name": "_settle",
+        "line": 343
+      },
+      {
+        "name": "_day_index",
+        "line": 367
+      },
+      {
+        "name": "_make_odds_source",
+        "line": 377
+      },
+      {
+        "name": "csv_odds_store",
+        "line": 413
+      },
+      {
+        "name": "invalidate_csv_odds_store",
+        "line": 429
+      },
+      {
+        "name": "run_backtest",
+        "line": 434
+      },
+      {
+        "name": "EquityPoint",
+        "line": 629
+      },
+      {
+        "name": "SimulationResult",
+        "line": 642
+      },
+      {
+        "name": "simulate_bankroll",
+        "line": 662
+      },
+      {
+        "name": "__post_init__",
+        "line": 129
+      },
+      {
+        "name": "attack_blend",
+        "line": 157
+      },
+      {
+        "name": "normalized",
+        "line": 161
+      },
+      {
+        "name": "fingerprint",
+        "line": 165
+      },
+      {
+        "name": "won",
+        "line": 247
+      },
+      {
+        "name": "pushed",
+        "line": 251
+      },
+      {
+        "name": "report",
+        "line": 451
+      }
+    ]
+  },
+  "betgsn/backtest_metrics.py": {
+    "sha256": "da34d18044f089a4a24de7f43f77329214b995dbd96dce2b1cbfb290f39e513c",
+    "symbols": [
+      {
+        "name": "wilson_interval",
+        "line": 57
+      },
+      {
+        "name": "bootstrap_ci",
+        "line": 73
+      },
+      {
+        "name": "brier_score",
+        "line": 99
+      },
+      {
+        "name": "log_loss",
+        "line": 106
+      },
+      {
+        "name": "AggregateMetrics",
+        "line": 123
+      },
+      {
+        "name": "CalibrationBin",
+        "line": 147
+      },
+      {
+        "name": "EvBucket",
+        "line": 160
+      },
+      {
+        "name": "TemporalBucket",
+        "line": 174
+      },
+      {
+        "name": "SegmentRow",
+        "line": 185
+      },
+      {
+        "name": "SignalRow",
+        "line": 199
+      },
+      {
+        "name": "BacktestMetrics",
+        "line": 239
+      },
+      {
+        "name": "_resolvable",
+        "line": 253
+      },
+      {
+        "name": "_pairs",
+        "line": 258
+      },
+      {
+        "name": "_outcome_label",
+        "line": 262
+      },
+      {
+        "name": "_bucketize",
+        "line": 268
+      },
+      {
+        "name": "aggregate_metrics",
+        "line": 309
+      },
+      {
+        "name": "calibration_bins",
+        "line": 347
+      },
+      {
+        "name": "ev_buckets",
+        "line": 379
+      },
+      {
+        "name": "_period_key",
+        "line": 410
+      },
+      {
+        "name": "temporal_series",
+        "line": 421
+      },
+      {
+        "name": "_same_window",
+        "line": 468
+      },
+      {
+        "name": "_segment_rows",
+        "line": 472
+      },
+      {
+        "name": "segment_rows",
+        "line": 505
+      },
+      {
+        "name": "signal_rows",
+        "line": 530
+      },
+      {
+        "name": "compute_metrics",
+        "line": 580
+      },
+      {
+        "name": "ev_monotonicity",
+        "line": 601
+      },
+      {
+        "name": "confidence_spread",
+        "line": 614
+      }
+    ]
+  },
+  "betgsn/backtest_sources.py": {
+    "sha256": "fd024c716666d54c9b4ee62dd3373c2e78632a1cccd827bfe6bcf17e11695f45",
+    "symbols": [
+      {
+        "name": "OddsHistoryError",
+        "line": 66
+      },
+      {
+        "name": "normalize_team",
+        "line": 84
+      },
+      {
+        "name": "OddsSnapshot",
+        "line": 105
+      },
+      {
+        "name": "OddsHistoryCache",
+        "line": 138
+      },
+      {
+        "name": "odds_from_snapshot",
+        "line": 233
+      },
+      {
+        "name": "ImportReport",
+        "line": 261
+      },
+      {
+        "name": "HistoricalOddsImporter",
+        "line": 275
+      },
+      {
+        "name": "fixture_to_match",
+        "line": 391
+      },
+      {
+        "name": "_valid_kickoff",
+        "line": 431
+      },
+      {
+        "name": "apply_statistics",
+        "line": 439
+      },
+      {
+        "name": "_team_id",
+        "line": 487
+      },
+      {
+        "name": "_pick_first",
+        "line": 494
+      },
+      {
+        "name": "_as_int",
+        "line": 498
+      },
+      {
+        "name": "_cards",
+        "line": 502
+      },
+      {
+        "name": "HistoricalFixtureImporter",
+        "line": 508
+      },
+      {
+        "name": "_fixture_id_of",
+        "line": 624
+      },
+      {
+        "name": "_append_manifest",
+        "line": 643
+      },
+      {
+        "name": "redact_text",
+        "line": 671
+      },
+      {
+        "name": "read_manifest",
+        "line": 680
+      },
+      {
+        "name": "load_imported_matches",
+        "line": 688
+      },
+      {
+        "name": "corpus_fingerprint",
+        "line": 711
+      },
+      {
+        "name": "CaptureReport",
+        "line": 732
+      },
+      {
+        "name": "LiveOddsCapture",
+        "line": 751
+      },
+      {
+        "name": "_unsupported_markets",
+        "line": 894
+      },
+      {
+        "name": "_int_or_none",
+        "line": 902
+      },
+      {
+        "name": "utc_key",
+        "line": 115
+      },
+      {
+        "name": "to_json",
+        "line": 118
+      },
+      {
+        "name": "from_json",
+        "line": 128
+      },
+      {
+        "name": "__init__",
+        "line": 145
+      },
+      {
+        "name": "_dir_for",
+        "line": 150
+      },
+      {
+        "name": "_slug",
+        "line": 156
+      },
+      {
+        "name": "save",
+        "line": 159
+      },
+      {
+        "name": "load",
+        "line": 169
+      },
+      {
+        "name": "find_before",
+        "line": 188
+      },
+      {
+        "name": "stats",
+        "line": 211
+      },
+      {
+        "name": "to_json",
+        "line": 271
+      },
+      {
+        "name": "__init__",
+        "line": 284
+      },
+      {
+        "name": "import_window",
+        "line": 294
+      },
+      {
+        "name": "_to_snapshot",
+        "line": 353
+      },
+      {
+        "name": "pick",
+        "line": 452
+      },
+      {
+        "name": "__init__",
+        "line": 511
+      },
+      {
+        "name": "_path",
+        "line": 522
+      },
+      {
+        "name": "import_season",
+        "line": 525
+      },
+      {
+        "name": "load_season",
+        "line": 579
+      },
+      {
+        "name": "load_all",
+        "line": 594
+      },
+      {
+        "name": "available_seasons",
+        "line": 608
+      },
+      {
+        "name": "to_json",
+        "line": 747
+      },
+      {
+        "name": "__init__",
+        "line": 771
+      },
+      {
+        "name": "capture",
+        "line": 783
+      },
+      {
+        "name": "_fetch_with_fallback",
+        "line": 833
+      },
+      {
+        "name": "capture_pending_matches",
+        "line": 864
+      }
+    ]
+  },
+  "betgsn/backtest_store.py": {
+    "sha256": "3372678f22ed2d6db8615f5b2fdc061fb2feb6f4adfe9b9616d9a6667c9cde13",
+    "symbols": [
+      {
+        "name": "BacktestStore",
+        "line": 98
+      },
+      {
+        "name": "compare_runs",
+        "line": 334
+      },
+      {
+        "name": "_num",
+        "line": 394
+      },
+      {
+        "name": "_jsonable",
+        "line": 410
+      },
+      {
+        "name": "_signal_payload",
+        "line": 416
+      },
+      {
+        "name": "_run_summary",
+        "line": 469
+      },
+      {
+        "name": "simulation_to_json",
+        "line": 492
+      },
+      {
+        "name": "metrics_for_run",
+        "line": 500
+      },
+      {
+        "name": "summarize_signals",
+        "line": 505
+      },
+      {
+        "name": "__init__",
+        "line": 101
+      },
+      {
+        "name": "_connect",
+        "line": 109
+      },
+      {
+        "name": "_ensure_schema",
+        "line": 115
+      },
+      {
+        "name": "save_run",
+        "line": 131
+      },
+      {
+        "name": "list_runs",
+        "line": 228
+      },
+      {
+        "name": "get_run",
+        "line": 239
+      },
+      {
+        "name": "get_metrics",
+        "line": 253
+      },
+      {
+        "name": "get_signals",
+        "line": 268
+      },
+      {
+        "name": "delete_run",
+        "line": 317
+      },
+      {
+        "name": "count_runs",
+        "line": 324
+      },
+      {
+        "name": "delta",
+        "line": 355
+      }
+    ]
+  },
+  "betgsn/data.py": {
+    "sha256": "3759af71388e96c31e51286bd842c412005a8031aaebd224dbc2dcb64d628cee",
+    "symbols": [
+      {
+        "name": "_poisson",
+        "line": 66
+      },
+      {
+        "name": "LeagueDataset",
+        "line": 80
+      },
+      {
+        "name": "build_dataset",
+        "line": 88
+      },
+      {
+        "name": "build_fixtures",
+        "line": 142
+      },
+      {
+        "name": "synthesize_odds",
+        "line": 177
+      }
+    ]
+  },
+  "betgsn/engine.py": {
+    "sha256": "23dd67a881aca449c321be94151a92a7e1f0ce2f4c4a81cd8a8271051794ac79",
+    "symbols": [
+      {
+        "name": "implied_prob",
+        "line": 26
+      },
+      {
+        "name": "decimal_from_prob",
+        "line": 33
+      },
+      {
+        "name": "overround",
+        "line": 39
+      },
+      {
+        "name": "vig",
+        "line": 44
+      },
+      {
+        "name": "fair_probs",
+        "line": 49
+      },
+      {
+        "name": "fair_odds",
+        "line": 56
+      },
+      {
+        "name": "expected_value",
+        "line": 61
+      },
+      {
+        "name": "ConsensusLine",
+        "line": 80
+      },
+      {
+        "name": "market_consensus",
+        "line": 95
+      },
+      {
+        "name": "_median",
+        "line": 120
+      },
+      {
+        "name": "evaluate_market",
+        "line": 129
+      },
+      {
+        "name": "kelly_fraction",
+        "line": 179
+      },
+      {
+        "name": "stake",
+        "line": 187
+      },
+      {
+        "name": "StakePlan",
+        "line": 200
+      },
+      {
+        "name": "stake_plan",
+        "line": 223
+      },
+      {
+        "name": "ArbLeg",
+        "line": 268
+      },
+      {
+        "name": "ArbResult",
+        "line": 277
+      },
+      {
+        "name": "scan_arbitrage",
+        "line": 283
+      },
+      {
+        "name": "Leg",
+        "line": 310
+      },
+      {
+        "name": "MultipleResult",
+        "line": 317
+      },
+      {
+        "name": "analyse_multiple",
+        "line": 324
+      }
+    ]
+  },
+  "betgsn/football_data_uk.py": {
+    "sha256": "a957bed860b429144c816dcdc172e232fc143cd8b35ca572c56bbd0db67f863b",
+    "symbols": [
+      {
+        "name": "FootballDataError",
+        "line": 72
+      },
+      {
+        "name": "redact_text",
+        "line": 80
+      },
+      {
+        "name": "_append_manifest",
+        "line": 85
+      },
+      {
+        "name": "read_manifest",
+        "line": 108
+      },
+      {
+        "name": "League",
+        "line": 123
+      },
+      {
+        "name": "league_label",
+        "line": 182
+      },
+      {
+        "name": "season_codes",
+        "line": 188
+      },
+      {
+        "name": "_norm_team",
+        "line": 267
+      },
+      {
+        "name": "_f",
+        "line": 280
+      },
+      {
+        "name": "_line",
+        "line": 299
+      },
+      {
+        "name": "_i",
+        "line": 309
+      },
+      {
+        "name": "parse_date",
+        "line": 323
+      },
+      {
+        "name": "_build_odds_1x2",
+        "line": 336
+      },
+      {
+        "name": "_build_odds_ou",
+        "line": 349
+      },
+      {
+        "name": "_build_odds_ah",
+        "line": 361
+      },
+      {
+        "name": "market_best_odd",
+        "line": 381
+      },
+      {
+        "name": "UpcomingFixture",
+        "line": 408
+      },
+      {
+        "name": "_best_odds",
+        "line": 449
+      },
+      {
+        "name": "_build_fixture_odds",
+        "line": 463
+      },
+      {
+        "name": "parse_fixture_row",
+        "line": 506
+      },
+      {
+        "name": "_extra_code_for",
+        "line": 548
+      },
+      {
+        "name": "parse_extra_fixture_row",
+        "line": 568
+      },
+      {
+        "name": "_clean_reader",
+        "line": 608
+      },
+      {
+        "name": "parse_fixtures_csv",
+        "line": 624
+      },
+      {
+        "name": "CsvMatch",
+        "line": 636
+      },
+      {
+        "name": "parse_main_row",
+        "line": 696
+      },
+      {
+        "name": "parse_extra_row",
+        "line": 761
+      },
+      {
+        "name": "_season_from_row",
+        "line": 795
+      },
+      {
+        "name": "parse_csv",
+        "line": 806
+      },
+      {
+        "name": "DownloadReport",
+        "line": 828
+      },
+      {
+        "name": "FootballDataClient",
+        "line": 849
+      },
+      {
+        "name": "RealOddsStore",
+        "line": 1199
+      },
+      {
+        "name": "CsvRealOddsSource",
+        "line": 1261
+      },
+      {
+        "name": "kickoff",
+        "line": 432
+      },
+      {
+        "name": "match",
+        "line": 436
+      },
+      {
+        "name": "n_books",
+        "line": 440
+      },
+      {
+        "name": "has_odds",
+        "line": 445
+      },
+      {
+        "name": "kickoff",
+        "line": 667
+      },
+      {
+        "name": "match_key",
+        "line": 672
+      },
+      {
+        "name": "to_historical",
+        "line": 676
+      },
+      {
+        "name": "cards",
+        "line": 711
+      },
+      {
+        "name": "to_json",
+        "line": 837
+      },
+      {
+        "name": "__init__",
+        "line": 852
+      },
+      {
+        "name": "_throttle",
+        "line": 868
+      },
+      {
+        "name": "_get",
+        "line": 874
+      },
+      {
+        "name": "_path_main",
+        "line": 901
+      },
+      {
+        "name": "_path_extra",
+        "line": 904
+      },
+      {
+        "name": "fetch_main",
+        "line": 907
+      },
+      {
+        "name": "fetch_extra",
+        "line": 931
+      },
+      {
+        "name": "fetch_all",
+        "line": 953
+      },
+      {
+        "name": "fixtures_dir",
+        "line": 985
+      },
+      {
+        "name": "fetch_fixtures",
+        "line": 989
+      },
+      {
+        "name": "load_fixtures",
+        "line": 1027
+      },
+      {
+        "name": "fixtures_inventory",
+        "line": 1044
+      },
+      {
+        "name": "load_matches",
+        "line": 1066
+      },
+      {
+        "name": "sample_books",
+        "line": 1082
+      },
+      {
+        "name": "inventory",
+        "line": 1112
+      },
+      {
+        "name": "index_path",
+        "line": 1128
+      },
+      {
+        "name": "corpus_signature",
+        "line": 1131
+      },
+      {
+        "name": "cached_summary",
+        "line": 1141
+      },
+      {
+        "name": "write_summary",
+        "line": 1157
+      },
+      {
+        "name": "corpus_summary",
+        "line": 1170
+      },
+      {
+        "name": "__init__",
+        "line": 1211
+      },
+      {
+        "name": "add",
+        "line": 1216
+      },
+      {
+        "name": "__len__",
+        "line": 1228
+      },
+      {
+        "name": "n_matches",
+        "line": 1232
+      },
+      {
+        "name": "books",
+        "line": 1235
+      },
+      {
+        "name": "markets",
+        "line": 1242
+      },
+      {
+        "name": "odds_for",
+        "line": 1248
+      },
+      {
+        "name": "__init__",
+        "line": 1273
+      },
+      {
+        "name": "misses",
+        "line": 1285
+      },
+      {
+        "name": "missing_books",
+        "line": 1289
+      },
+      {
+        "name": "odds_for",
+        "line": 1292
+      }
+    ]
+  },
+  "betgsn/gui.py": {
+    "sha256": "f44053ae94f4a01a66a5af41958a330a98b81d94bd8f655e60239648662dd1b3",
+    "symbols": [
+      {
+        "name": "BetgsnApp",
+        "line": 54
+      },
+      {
+        "name": "_odd_num",
+        "line": 920
+      },
+      {
+        "name": "main",
+        "line": 994
+      },
+      {
+        "name": "__init__",
+        "line": 55
+      },
+      {
+        "name": "_build_header",
+        "line": 93
+      },
+      {
+        "name": "_entry",
+        "line": 139
+      },
+      {
+        "name": "_param_block",
+        "line": 149
+      },
+      {
+        "name": "_separator",
+        "line": 161
+      },
+      {
+        "name": "_build_param_bar",
+        "line": 167
+      },
+      {
+        "name": "_build_tabbar",
+        "line": 221
+      },
+      {
+        "name": "_build_pages",
+        "line": 235
+      },
+      {
+        "name": "_show_page",
+        "line": 247
+      },
+      {
+        "name": "_page_signals",
+        "line": 255
+      },
+      {
+        "name": "_signal_columns",
+        "line": 301
+      },
+      {
+        "name": "_signal_detail",
+        "line": 383
+      },
+      {
+        "name": "_on_chip",
+        "line": 417
+      },
+      {
+        "name": "_page_matches",
+        "line": 422
+      },
+      {
+        "name": "_match_columns",
+        "line": 447
+      },
+      {
+        "name": "_match_detail",
+        "line": 501
+      },
+      {
+        "name": "_page_odds",
+        "line": 523
+      },
+      {
+        "name": "_page_stats",
+        "line": 564
+      },
+      {
+        "name": "_stats_columns",
+        "line": 583
+      },
+      {
+        "name": "_page_model",
+        "line": 619
+      },
+      {
+        "name": "_build_statusbar",
+        "line": 644
+      },
+      {
+        "name": "recalculate",
+        "line": 659
+      },
+      {
+        "name": "_worker",
+        "line": 669
+      },
+      {
+        "name": "_on_error",
+        "line": 684
+      },
+      {
+        "name": "_on_done",
+        "line": 692
+      },
+      {
+        "name": "_filtered_signals",
+        "line": 726
+      },
+      {
+        "name": "_refresh_signals_view",
+        "line": 742
+      },
+      {
+        "name": "_update_kpis",
+        "line": 751
+      },
+      {
+        "name": "_update_insights",
+        "line": 781
+      },
+      {
+        "name": "_insight_click",
+        "line": 798
+      },
+      {
+        "name": "_fill_matches",
+        "line": 812
+      },
+      {
+        "name": "_fill_stats",
+        "line": 816
+      },
+      {
+        "name": "_fill_match_options",
+        "line": 821
+      },
+      {
+        "name": "_refresh_odds",
+        "line": 830
+      },
+      {
+        "name": "conf_cell",
+        "line": 304
+      },
+      {
+        "name": "edge_cell",
+        "line": 311
+      },
+      {
+        "name": "ev_cell",
+        "line": 315
+      },
+      {
+        "name": "profit_cell",
+        "line": 320
+      },
+      {
+        "name": "prob_cell",
+        "line": 450
+      },
+      {
+        "name": "mk_cell",
+        "line": 459
+      },
+      {
+        "name": "num",
+        "line": 586
+      },
+      {
+        "name": "fn",
+        "line": 451
+      },
+      {
+        "name": "fn",
+        "line": 460
+      },
+      {
+        "name": "fn",
+        "line": 587
+      },
+      {
+        "name": "hit",
+        "line": 735
+      }
+    ]
+  },
+  "betgsn/markets.py": {
+    "sha256": "5edec73bffc67689174381bba8388dcc94de07e5f2ddc3b45327e318ab401a5c",
+    "symbols": [
+      {
+        "name": "market_1x2",
+        "line": 28
+      },
+      {
+        "name": "market_double_chance",
+        "line": 32
+      },
+      {
+        "name": "market_totals",
+        "line": 40
+      },
+      {
+        "name": "market_btts",
+        "line": 49
+      },
+      {
+        "name": "market_team_totals",
+        "line": 54
+      },
+      {
+        "name": "market_asian_handicap",
+        "line": 66
+      },
+      {
+        "name": "market_corners",
+        "line": 78
+      },
+      {
+        "name": "market_cards",
+        "line": 97
+      },
+      {
+        "name": "market_shots",
+        "line": 109
+      },
+      {
+        "name": "all_markets",
+        "line": 121
+      },
+      {
+        "name": "validate_market_keys",
+        "line": 171
+      }
+    ]
+  },
+  "betgsn/model.py": {
+    "sha256": "800627821b29fb09487f4a0e7b534b771daedf39b2e1145026abe672cec7d487",
+    "symbols": [
+      {
+        "name": "TeamRating",
+        "line": 31
+      },
+      {
+        "name": "Fixture",
+        "line": 57
+      },
+      {
+        "name": "ScoreMatrix",
+        "line": 68
+      },
+      {
+        "name": "HistoricalMatch",
+        "line": 142
+      },
+      {
+        "name": "fit_ratings",
+        "line": 168
+      },
+      {
+        "name": "_blank_stats",
+        "line": 300
+      },
+      {
+        "name": "_wmean",
+        "line": 305
+      },
+      {
+        "name": "_clip",
+        "line": 310
+      },
+      {
+        "name": "_normalize",
+        "line": 314
+      },
+      {
+        "name": "expected_goals",
+        "line": 328
+      },
+      {
+        "name": "_blend",
+        "line": 359
+      },
+      {
+        "name": "build_score_matrix",
+        "line": 368
+      },
+      {
+        "name": "_poisson",
+        "line": 394
+      },
+      {
+        "name": "_dc_tau",
+        "line": 398
+      },
+      {
+        "name": "expected_corners",
+        "line": 416
+      },
+      {
+        "name": "expected_cards",
+        "line": 423
+      },
+      {
+        "name": "count_prob_over",
+        "line": 430
+      },
+      {
+        "name": "count_prob_team_over",
+        "line": 443
+      },
+      {
+        "name": "strength",
+        "line": 51
+      },
+      {
+        "name": "prob_home_win",
+        "line": 75
+      },
+      {
+        "name": "prob_draw",
+        "line": 79
+      },
+      {
+        "name": "prob_away_win",
+        "line": 82
+      },
+      {
+        "name": "prob_over",
+        "line": 86
+      },
+      {
+        "name": "prob_under",
+        "line": 94
+      },
+      {
+        "name": "prob_btts",
+        "line": 97
+      },
+      {
+        "name": "prob_home_over",
+        "line": 101
+      },
+      {
+        "name": "prob_away_over",
+        "line": 105
+      },
+      {
+        "name": "prob_ah",
+        "line": 109
+      },
+      {
+        "name": "top_scorelines",
+        "line": 128
+      }
+    ]
+  },
+  "betgsn/pipeline.py": {
+    "sha256": "96516106e7a58557d4711367f4ff3f21877a35c8f921647e625ccdee8c89f04f",
+    "symbols": [
+      {
+        "name": "FixtureAnalysis",
+        "line": 22
+      },
+      {
+        "name": "RunResult",
+        "line": 34
+      },
+      {
+        "name": "analyze_fixture",
+        "line": 43
+      },
+      {
+        "name": "run",
+        "line": 85
+      },
+      {
+        "name": "bookmaker_list",
+        "line": 134
+      }
+    ]
+  },
+  "betgsn/providers.py": {
+    "sha256": "f1784fab716d0f82e27071ad1579ea4092cb9f2b3bc30c16a503a23975e59bc1",
+    "symbols": [
+      {
+        "name": "ProviderError",
+        "line": 41
+      },
+      {
+        "name": "load_env_file",
+        "line": 45
+      },
+      {
+        "name": "env_status",
+        "line": 86
+      },
+      {
+        "name": "redact_url",
+        "line": 101
+      },
+      {
+        "name": "_get_with_headers",
+        "line": 124
+      },
+      {
+        "name": "_get",
+        "line": 154
+      },
+      {
+        "name": "OddsApiProvider",
+        "line": 178
+      },
+      {
+        "name": "odds_event_to_internal",
+        "line": 262
+      },
+      {
+        "name": "ApiFootballProvider",
+        "line": 313
+      },
+      {
+        "name": "FootballDataProvider",
+        "line": 373
+      },
+      {
+        "name": "available_providers",
+        "line": 395
+      },
+      {
+        "name": "from_env",
+        "line": 185
+      },
+      {
+        "name": "sports",
+        "line": 189
+      },
+      {
+        "name": "events",
+        "line": 192
+      },
+      {
+        "name": "live_odds_with_meta",
+        "line": 199
+      },
+      {
+        "name": "scores",
+        "line": 221
+      },
+      {
+        "name": "historical_odds",
+        "line": 225
+      },
+      {
+        "name": "historical_events",
+        "line": 252
+      },
+      {
+        "name": "to_odds_by_book",
+        "line": 257
+      },
+      {
+        "name": "from_env",
+        "line": 317
+      },
+      {
+        "name": "_headers",
+        "line": 321
+      },
+      {
+        "name": "fixtures",
+        "line": 324
+      },
+      {
+        "name": "fixtures_by_season",
+        "line": 329
+      },
+      {
+        "name": "fixture_statistics",
+        "line": 340
+      },
+      {
+        "name": "team_statistics",
+        "line": 351
+      },
+      {
+        "name": "account_status",
+        "line": 356
+      },
+      {
+        "name": "from_env",
+        "line": 377
+      },
+      {
+        "name": "_headers",
+        "line": 381
+      },
+      {
+        "name": "matches",
+        "line": 384
+      }
+    ]
+  },
+  "betgsn/real_signals.py": {
+    "sha256": "5afd9b4acb79153bff536f97e76086ceca521051b52ff5046d9466d76f4b59d6",
+    "symbols": [
+      {
+        "name": "calibrate_ev",
+        "line": 81
+      },
+      {
+        "name": "RealDataError",
+        "line": 92
+      },
+      {
+        "name": "RealSnapshot",
+        "line": 97
+      },
+      {
+        "name": "_fit_on_real_history",
+        "line": 121
+      },
+      {
+        "name": "RealSignalsService",
+        "line": 149
+      },
+      {
+        "name": "fixture_of",
+        "line": 114
+      },
+      {
+        "name": "__init__",
+        "line": 152
+      },
+      {
+        "name": "_cache_key",
+        "line": 159
+      },
+      {
+        "name": "invalidate",
+        "line": 169
+      },
+      {
+        "name": "snapshot",
+        "line": 174
+      },
+      {
+        "name": "report",
+        "line": 224
+      }
+    ]
+  },
+  "betgsn/signals.py": {
+    "sha256": "94825a701c07559b6d45a940a80ba88e6912f2be6b8f2bd0d803835d6b39e57a",
+    "symbols": [
+      {
+        "name": "Confidence",
+        "line": 25
+      },
+      {
+        "name": "Signal",
+        "line": 41
+      },
+      {
+        "name": "SignalReport",
+        "line": 95
+      },
+      {
+        "name": "classify",
+        "line": 128
+      },
+      {
+        "name": "_rationale",
+        "line": 143
+      },
+      {
+        "name": "generate_signals",
+        "line": 158
+      },
+      {
+        "name": "build_report",
+        "line": 211
+      },
+      {
+        "name": "scale_stakes_to_cap",
+        "line": 246
+      },
+      {
+        "name": "_cap_total_exposure",
+        "line": 275
+      },
+      {
+        "name": "top_tips",
+        "line": 285
+      },
+      {
+        "name": "fair_odd",
+        "line": 61
+      },
+      {
+        "name": "tip",
+        "line": 64
+      },
+      {
+        "name": "stake_pct",
+        "line": 74
+      },
+      {
+        "name": "expected_profit",
+        "line": 78
+      },
+      {
+        "name": "expected_profit_pct",
+        "line": 82
+      },
+      {
+        "name": "gross_profit_if_win",
+        "line": 86
+      },
+      {
+        "name": "loss_if_lose",
+        "line": 90
+      },
+      {
+        "name": "by_confidence",
+        "line": 101
+      },
+      {
+        "name": "total_exposure",
+        "line": 104
+      },
+      {
+        "name": "total_exposure_pct",
+        "line": 108
+      },
+      {
+        "name": "expected_profit",
+        "line": 112
+      },
+      {
+        "name": "expected_profit_pct",
+        "line": 116
+      },
+      {
+        "name": "worst_case_loss",
+        "line": 120
+      },
+      {
+        "name": "gross_profit_if_all_win",
+        "line": 124
+      }
+    ]
+  },
+  "betgsn/staking.py": {
+    "sha256": "566c5fb2b11b77c3d1856041367e726ea98464dba4481e896ec44d767c96dd20",
+    "symbols": [
+      {
+        "name": "win_prob",
+        "line": 70
+      },
+      {
+        "name": "bet_variance",
+        "line": 78
+      },
+      {
+        "name": "full_kelly",
+        "line": 86
+      },
+      {
+        "name": "growth_rate",
+        "line": 101
+      },
+      {
+        "name": "annual_growth",
+        "line": 117
+      },
+      {
+        "name": "drawdown_probability",
+        "line": 124
+      },
+      {
+        "name": "Phase",
+        "line": 144
+      },
+      {
+        "name": "StakingPlan",
+        "line": 152
+      },
+      {
+        "name": "flat_plan",
+        "line": 182
+      },
+      {
+        "name": "SimulationResult",
+        "line": 224
+      },
+      {
+        "name": "simulate",
+        "line": 240
+      },
+      {
+        "name": "kelly_table",
+        "line": 327
+      },
+      {
+        "name": "recommend",
+        "line": 343
+      },
+      {
+        "name": "fraction_for",
+        "line": 161
+      },
+      {
+        "name": "max_fraction",
+        "line": 169
+      },
+      {
+        "name": "to_json",
+        "line": 172
+      }
+    ]
+  },
+  "betgsn/theme.py": {
+    "sha256": "f6a158cf56bf4b772d8f98c34bf1b7963912b59f818fab3851e75f476d3eedbc",
+    "symbols": [
+      {
+        "name": "_pick_family",
+        "line": 150
+      },
+      {
+        "name": "init",
+        "line": 157
+      },
+      {
+        "name": "_style_ttk",
+        "line": 173
+      },
+      {
+        "name": "confidence_color",
+        "line": 237
+      },
+      {
+        "name": "confidence_wash",
+        "line": 246
+      },
+      {
+        "name": "signed_color",
+        "line": 253
+      },
+      {
+        "name": "mix",
+        "line": 262
+      },
+      {
+        "name": "rounded_rect",
+        "line": 270
+      },
+      {
+        "name": "truncate",
+        "line": 303
+      }
+    ]
+  },
+  "betgsn/timeutil.py": {
+    "sha256": "e2190e521faa373cbd5dcde432218a5ae7f9bb66717bf0c5d59906c13dc2ab62",
+    "symbols": [
+      {
+        "name": "KickoffError",
+        "line": 43
+      },
+      {
+        "name": "_tzinfo",
+        "line": 47
+      },
+      {
+        "name": "_has_tz_database",
+        "line": 81
+      },
+      {
+        "name": "parse_kickoff",
+        "line": 90
+      },
+      {
+        "name": "utc_key",
+        "line": 117
+      },
+      {
+        "name": "is_valid_kickoff",
+        "line": 122
+      },
+      {
+        "name": "day_of",
+        "line": 130
+      },
+      {
+        "name": "to_display",
+        "line": 135
+      }
+    ]
+  },
+  "betgsn/value_strategy.py": {
+    "sha256": "0b4b29d88c82b8804b05b739992f0ac27f6bd6aca77abd9add6120cbc6c449b9",
+    "symbols": [
+      {
+        "name": "StrategyValidation",
+        "line": 80
+      },
+      {
+        "name": "_stats",
+        "line": 121
+      },
+      {
+        "name": "_bootstrap_ci",
+        "line": 132
+      },
+      {
+        "name": "collect_bets",
+        "line": 146
+      },
+      {
+        "name": "validate",
+        "line": 196
+      },
+      {
+        "name": "Opportunity",
+        "line": 278
+      },
+      {
+        "name": "_median",
+        "line": 298
+      },
+      {
+        "name": "scan_events",
+        "line": 307
+      },
+      {
+        "name": "scan_live",
+        "line": 378
+      },
+      {
+        "name": "significant",
+        "line": 104
+      },
+      {
+        "name": "to_json",
+        "line": 108
+      },
+      {
+        "name": "from_json",
+        "line": 112
+      },
+      {
+        "name": "label",
+        "line": 293
+      }
+    ]
+  },
+  "betgsn/widgets.py": {
+    "sha256": "77b3742d2374730e8f04d9bed981015400d53b0124ef410bd2ab1e56ff99043d",
+    "symbols": [
+      {
+        "name": "Tooltip",
+        "line": 34
+      },
+      {
+        "name": "AccentButton",
+        "line": 104
+      },
+      {
+        "name": "ToggleSwitch",
+        "line": 273
+      },
+      {
+        "name": "SelectField",
+        "line": 346
+      },
+      {
+        "name": "SearchField",
+        "line": 430
+      },
+      {
+        "name": "Chip",
+        "line": 512
+      },
+      {
+        "name": "ChipBar",
+        "line": 518
+      },
+      {
+        "name": "KpiItem",
+        "line": 609
+      },
+      {
+        "name": "KpiStrip",
+        "line": 618
+      },
+      {
+        "name": "InsightItem",
+        "line": 714
+      },
+      {
+        "name": "InsightsPanel",
+        "line": 724
+      },
+      {
+        "name": "Toast",
+        "line": 819
+      },
+      {
+        "name": "Cell",
+        "line": 871
+      },
+      {
+        "name": "Column",
+        "line": 883
+      },
+      {
+        "name": "DataGrid",
+        "line": 894
+      },
+      {
+        "name": "TabBar",
+        "line": 1380
+      },
+      {
+        "name": "ttk_scrollbar",
+        "line": 1466
+      },
+      {
+        "name": "__init__",
+        "line": 37
+      },
+      {
+        "name": "set_text",
+        "line": 47
+      },
+      {
+        "name": "_schedule",
+        "line": 50
+      },
+      {
+        "name": "_cancel",
+        "line": 54
+      },
+      {
+        "name": "_show",
+        "line": 62
+      },
+      {
+        "name": "_hide",
+        "line": 92
+      },
+      {
+        "name": "__init__",
+        "line": 113
+      },
+      {
+        "name": "set_text",
+        "line": 149
+      },
+      {
+        "name": "set_state",
+        "line": 154
+      },
+      {
+        "name": "set_loading",
+        "line": 169
+      },
+      {
+        "name": "_bind_events",
+        "line": 174
+      },
+      {
+        "name": "_interactive",
+        "line": 180
+      },
+      {
+        "name": "_on_enter",
+        "line": 183
+      },
+      {
+        "name": "_on_leave",
+        "line": 188
+      },
+      {
+        "name": "_on_press",
+        "line": 193
+      },
+      {
+        "name": "_on_release",
+        "line": 198
+      },
+      {
+        "name": "_start_spinner",
+        "line": 204
+      },
+      {
+        "name": "_stop_spinner",
+        "line": 209
+      },
+      {
+        "name": "_tick",
+        "line": 217
+      },
+      {
+        "name": "_palette",
+        "line": 222
+      },
+      {
+        "name": "_draw",
+        "line": 243
+      },
+      {
+        "name": "__init__",
+        "line": 279
+      },
+      {
+        "name": "_toggle",
+        "line": 297
+      },
+      {
+        "name": "_animate",
+        "line": 303
+      },
+      {
+        "name": "_draw",
+        "line": 326
+      },
+      {
+        "name": "__init__",
+        "line": 349
+      },
+      {
+        "name": "set_options",
+        "line": 375
+      },
+      {
+        "name": "_enter",
+        "line": 379
+      },
+      {
+        "name": "_leave",
+        "line": 383
+      },
+      {
+        "name": "_popup",
+        "line": 387
+      },
+      {
+        "name": "_choose",
+        "line": 404
+      },
+      {
+        "name": "_draw",
+        "line": 409
+      },
+      {
+        "name": "__init__",
+        "line": 433
+      },
+      {
+        "name": "_on_focus_in",
+        "line": 479
+      },
+      {
+        "name": "_on_focus_out",
+        "line": 483
+      },
+      {
+        "name": "_do_clear",
+        "line": 487
+      },
+      {
+        "name": "_sync",
+        "line": 493
+      },
+      {
+        "name": "focus",
+        "line": 502
+      },
+      {
+        "name": "__init__",
+        "line": 521
+      },
+      {
+        "name": "set_selected",
+        "line": 542
+      },
+      {
+        "name": "_layout",
+        "line": 546
+      },
+      {
+        "name": "_hit",
+        "line": 556
+      },
+      {
+        "name": "_click",
+        "line": 562
+      },
+      {
+        "name": "_motion",
+        "line": 569
+      },
+      {
+        "name": "_leave",
+        "line": 577
+      },
+      {
+        "name": "_draw",
+        "line": 581
+      },
+      {
+        "name": "__init__",
+        "line": 621
+      },
+      {
+        "name": "set_items",
+        "line": 630
+      },
+      {
+        "name": "_animate",
+        "line": 640
+      },
+      {
+        "name": "_draw",
+        "line": 664
+      },
+      {
+        "name": "_spark",
+        "line": 690
+      },
+      {
+        "name": "__init__",
+        "line": 727
+      },
+      {
+        "name": "set_items",
+        "line": 741
+      },
+      {
+        "name": "_hit",
+        "line": 745
+      },
+      {
+        "name": "_motion",
+        "line": 751
+      },
+      {
+        "name": "_leave",
+        "line": 758
+      },
+      {
+        "name": "_click",
+        "line": 762
+      },
+      {
+        "name": "_draw",
+        "line": 767
+      },
+      {
+        "name": "__init__",
+        "line": 828
+      },
+      {
+        "name": "show",
+        "line": 844
+      },
+      {
+        "name": "hide",
+        "line": 860
+      },
+      {
+        "name": "__init__",
+        "line": 902
+      },
+      {
+        "name": "_build",
+        "line": 933
+      },
+      {
+        "name": "set_columns",
+        "line": 968
+      },
+      {
+        "name": "set_rows",
+        "line": 974
+      },
+      {
+        "name": "set_empty",
+        "line": 983
+      },
+      {
+        "name": "selected_row",
+        "line": 987
+      },
+      {
+        "name": "expand",
+        "line": 990
+      },
+      {
+        "name": "clear_selection",
+        "line": 999
+      },
+      {
+        "name": "rows",
+        "line": 1004
+      },
+      {
+        "name": "sort_key",
+        "line": 1009
+      },
+      {
+        "name": "is_expanded",
+        "line": 1012
+      },
+      {
+        "name": "select",
+        "line": 1015
+      },
+      {
+        "name": "reapply_sort",
+        "line": 1024
+      },
+      {
+        "name": "_total_width",
+        "line": 1030
+      },
+      {
+        "name": "_col_x",
+        "line": 1033
+      },
+      {
+        "name": "_reflow",
+        "line": 1036
+      },
+      {
+        "name": "_scroll_to",
+        "line": 1051
+      },
+      {
+        "name": "_visible_range",
+        "line": 1058
+      },
+      {
+        "name": "_draw_header",
+        "line": 1066
+      },
+      {
+        "name": "_header_text",
+        "line": 1088
+      },
+      {
+        "name": "_draw_empty",
+        "line": 1098
+      },
+      {
+        "name": "redraw",
+        "line": 1111
+      },
+      {
+        "name": "_draw_row",
+        "line": 1130
+      },
+      {
+        "name": "_draw_cell",
+        "line": 1161
+      },
+      {
+        "name": "_draw_detail",
+        "line": 1182
+      },
+      {
+        "name": "_on_yscroll",
+        "line": 1205
+      },
+      {
+        "name": "_on_xscroll",
+        "line": 1209
+      },
+      {
+        "name": "_wheel",
+        "line": 1214
+      },
+      {
+        "name": "_index_at",
+        "line": 1219
+      },
+      {
+        "name": "_motion",
+        "line": 1224
+      },
+      {
+        "name": "_leave",
+        "line": 1230
+      },
+      {
+        "name": "_click",
+        "line": 1235
+      },
+      {
+        "name": "_double_click",
+        "line": 1251
+      },
+      {
+        "name": "_toggle",
+        "line": 1259
+      },
+      {
+        "name": "_toggle_selected",
+        "line": 1269
+      },
+      {
+        "name": "_move",
+        "line": 1273
+      },
+      {
+        "name": "_header_click",
+        "line": 1290
+      },
+      {
+        "name": "_header_motion",
+        "line": 1304
+      },
+      {
+        "name": "_show_tooltip",
+        "line": 1315
+      },
+      {
+        "name": "_hide_tooltip",
+        "line": 1320
+      },
+      {
+        "name": "_apply_sort",
+        "line": 1324
+      },
+      {
+        "name": "_row_text",
+        "line": 1336
+      },
+      {
+        "name": "_copy_selected",
+        "line": 1342
+      },
+      {
+        "name": "_context",
+        "line": 1348
+      },
+      {
+        "name": "__init__",
+        "line": 1383
+      },
+      {
+        "name": "set_active",
+        "line": 1404
+      },
+      {
+        "name": "_layout",
+        "line": 1408
+      },
+      {
+        "name": "_hit",
+        "line": 1419
+      },
+      {
+        "name": "_click",
+        "line": 1425
+      },
+      {
+        "name": "_motion",
+        "line": 1432
+      },
+      {
+        "name": "_leave",
+        "line": 1439
+      },
+      {
+        "name": "_draw",
+        "line": 1443
+      },
+      {
+        "name": "step",
+        "line": 313
+      },
+      {
+        "name": "step",
+        "line": 650
+      }
+    ]
+  },
+  "betgsn/__init__.py": {
+    "sha256": "2a79bbecb25f2f8f5e77cf8ac173a483b65f2e8419bbf1863d02e81ff21840f6",
+    "symbols": []
+  },
+  "betgsn/api/backtest_schemas.py": {
+    "sha256": "17022a81a40405d7b2f030212e0ff8c52dbdeb75775921ff24cb440d591e2a03",
+    "symbols": [
+      {
+        "name": "BacktestRequest",
+        "line": 25
+      },
+      {
+        "name": "BacktestOptions",
+        "line": 57
+      },
+      {
+        "name": "CorpusOption",
+        "line": 80
+      },
+      {
+        "name": "OddsCacheStatus",
+        "line": 92
+      },
+      {
+        "name": "MarketOption",
+        "line": 99
+      },
+      {
+        "name": "OddsSourceOption",
+        "line": 104
+      },
+      {
+        "name": "MissingDataNote",
+        "line": 111
+      },
+      {
+        "name": "BacktestJobStatus",
+        "line": 123
+      },
+      {
+        "name": "AggregateMetricsOut",
+        "line": 139
+      },
+      {
+        "name": "CalibrationBinOut",
+        "line": 162
+      },
+      {
+        "name": "EvBucketOut",
+        "line": 174
+      },
+      {
+        "name": "TemporalBucketOut",
+        "line": 187
+      },
+      {
+        "name": "SegmentRowOut",
+        "line": 197
+      },
+      {
+        "name": "EquityPointOut",
+        "line": 210
+      },
+      {
+        "name": "SimulationOut",
+        "line": 220
+      },
+      {
+        "name": "BacktestSignalOut",
+        "line": 240
+      },
+      {
+        "name": "SignalPage",
+        "line": 291
+      },
+      {
+        "name": "BacktestRunDetail",
+        "line": 298
+      },
+      {
+        "name": "BacktestRunSummary",
+        "line": 315
+      },
+      {
+        "name": "MetricDelta",
+        "line": 330
+      },
+      {
+        "name": "TemporalComparison",
+        "line": 336
+      },
+      {
+        "name": "RunComparison",
+        "line": 344
+      }
+    ]
+  },
+  "betgsn/api/backtest_service.py": {
+    "sha256": "cb64ad51e8f36bd928593e7c7eb425fd89a5339e93a6583effc58fee8dd565b3",
+    "symbols": [
+      {
+        "name": "default_corpus",
+        "line": 44
+      },
+      {
+        "name": "imported_corpus",
+        "line": 49
+      },
+      {
+        "name": "football_data_corpus",
+        "line": 65
+      },
+      {
+        "name": "corpus_for",
+        "line": 83
+      },
+      {
+        "name": "BacktestService",
+        "line": 91
+      },
+      {
+        "name": "_opt_float",
+        "line": 573
+      },
+      {
+        "name": "corpus_fingerprint_key",
+        "line": 584
+      },
+      {
+        "name": "__init__",
+        "line": 94
+      },
+      {
+        "name": "set_broadcaster",
+        "line": 110
+      },
+      {
+        "name": "corpus",
+        "line": 113
+      },
+      {
+        "name": "invalidate_corpus",
+        "line": 120
+      },
+      {
+        "name": "store",
+        "line": 132
+      },
+      {
+        "name": "_emit",
+        "line": 135
+      },
+      {
+        "name": "_publish_status",
+        "line": 143
+      },
+      {
+        "name": "options",
+        "line": 148
+      },
+      {
+        "name": "_corpus_options",
+        "line": 218
+      },
+      {
+        "name": "_fduk_corpus_option",
+        "line": 276
+      },
+      {
+        "name": "invalidate_corpora",
+        "line": 329
+      },
+      {
+        "name": "status",
+        "line": 337
+      },
+      {
+        "name": "start",
+        "line": 355
+      },
+      {
+        "name": "_execute",
+        "line": 375
+      },
+      {
+        "name": "list_runs",
+        "line": 457
+      },
+      {
+        "name": "run_detail",
+        "line": 479
+      },
+      {
+        "name": "signals",
+        "line": 532
+      },
+      {
+        "name": "delete_run",
+        "line": 559
+      },
+      {
+        "name": "compare",
+        "line": 562
+      },
+      {
+        "name": "on_progress",
+        "line": 397
+      }
+    ]
+  },
+  "betgsn/api/schemas.py": {
+    "sha256": "d557795f823f831c442121378eec92e99d6bbcd6904dd0a99ee5fc4b352418ec",
+    "symbols": [
+      {
+        "name": "ModelConfiguration",
+        "line": 27
+      },
+      {
+        "name": "ModelConstants",
+        "line": 43
+      },
+      {
+        "name": "Signal",
+        "line": 65
+      },
+      {
+        "name": "SignalsKpis",
+        "line": 95
+      },
+      {
+        "name": "ModelCalibrationInfo",
+        "line": 116
+      },
+      {
+        "name": "SignalReport",
+        "line": 127
+      },
+      {
+        "name": "Scoreline",
+        "line": 148
+      },
+      {
+        "name": "MarketProbabilities",
+        "line": 154
+      },
+      {
+        "name": "TeamSnapshot",
+        "line": 161
+      },
+      {
+        "name": "GameAnalysis",
+        "line": 180
+      },
+      {
+        "name": "BookmakerRow",
+        "line": 210
+      },
+      {
+        "name": "ArbLeg",
+        "line": 217
+      },
+      {
+        "name": "ArbitrageCheck",
+        "line": 225
+      },
+      {
+        "name": "MarketComparison",
+        "line": 231
+      },
+      {
+        "name": "BookmakerSnapshot",
+        "line": 245
+      },
+      {
+        "name": "OddsOverview",
+        "line": 256
+      },
+      {
+        "name": "MarketBreakdown",
+        "line": 268
+      },
+      {
+        "name": "ConfidenceBreakdown",
+        "line": 278
+      },
+      {
+        "name": "BookBreakdown",
+        "line": 287
+      },
+      {
+        "name": "StatsOverview",
+        "line": 295
+      },
+      {
+        "name": "EvBucket",
+        "line": 308
+      },
+      {
+        "name": "CalibrationBin",
+        "line": 315
+      },
+      {
+        "name": "ModelPerformance",
+        "line": 321
+      },
+      {
+        "name": "ProbabilityModel",
+        "line": 345
+      },
+      {
+        "name": "DashboardSummary",
+        "line": 371
+      },
+      {
+        "name": "SystemStatus",
+        "line": 383
+      },
+      {
+        "name": "ApiError",
+        "line": 397
+      }
+    ]
+  },
+  "betgsn/api/server.py": {
+    "sha256": "e92e8cd414284ef5a83b8e46d10a3033c04498f527c989dba3e24cf7ce944a07",
+    "symbols": [
+      {
+        "name": "EventHub",
+        "line": 65
+      },
+      {
+        "name": "_svc",
+        "line": 128
+      },
+      {
+        "name": "_snapshot",
+        "line": 132
+      },
+      {
+        "name": "health",
+        "line": 145
+      },
+      {
+        "name": "get_config",
+        "line": 150
+      },
+      {
+        "name": "dashboard",
+        "line": 155
+      },
+      {
+        "name": "signals",
+        "line": 176
+      },
+      {
+        "name": "signals_status",
+        "line": 220
+      },
+      {
+        "name": "games",
+        "line": 236
+      },
+      {
+        "name": "odds",
+        "line": 242
+      },
+      {
+        "name": "odds_comparison",
+        "line": 248
+      },
+      {
+        "name": "stats",
+        "line": 260
+      },
+      {
+        "name": "model",
+        "line": 266
+      },
+      {
+        "name": "backtest_options",
+        "line": 290
+      },
+      {
+        "name": "backtest_status",
+        "line": 296
+      },
+      {
+        "name": "backtest_runs",
+        "line": 314
+      },
+      {
+        "name": "backtest_run_detail",
+        "line": 319
+      },
+      {
+        "name": "backtest_run_signals",
+        "line": 331
+      },
+      {
+        "name": "backtest_delete_run",
+        "line": 354
+      },
+      {
+        "name": "backtest_compare",
+        "line": 361
+      },
+      {
+        "name": "serve",
+        "line": 408
+      },
+      {
+        "name": "__init__",
+        "line": 68
+      },
+      {
+        "name": "schedule",
+        "line": 102
+      }
+    ]
+  },
+  "betgsn/api/service.py": {
+    "sha256": "228f7a3bdd3ad231f26f7d3ebc499a14118a277c64898908b1107a3ee7829e26",
+    "symbols": [
+      {
+        "name": "_model_doc",
+        "line": 34
+      },
+      {
+        "name": "Snapshot",
+        "line": 54
+      },
+      {
+        "name": "BetgsnService",
+        "line": 61
+      },
+      {
+        "name": "_n_groups",
+        "line": 637
+      },
+      {
+        "name": "_overround",
+        "line": 650
+      },
+      {
+        "name": "_team",
+        "line": 658
+      },
+      {
+        "name": "_split_match",
+        "line": 679
+      },
+      {
+        "name": "_ev_buckets",
+        "line": 694
+      },
+      {
+        "name": "__init__",
+        "line": 64
+      },
+      {
+        "name": "computing",
+        "line": 75
+      },
+      {
+        "name": "recalculate",
+        "line": 78
+      },
+      {
+        "name": "snapshot",
+        "line": 112
+      },
+      {
+        "name": "status",
+        "line": 124
+      },
+      {
+        "name": "data_source",
+        "line": 145
+      },
+      {
+        "name": "signal_report",
+        "line": 154
+      },
+      {
+        "name": "real_signal_report",
+        "line": 171
+      },
+      {
+        "name": "_fixture_of",
+        "line": 237
+      },
+      {
+        "name": "_signal",
+        "line": 243
+      },
+      {
+        "name": "kpis",
+        "line": 276
+      },
+      {
+        "name": "games",
+        "line": 307
+      },
+      {
+        "name": "_game",
+        "line": 315
+      },
+      {
+        "name": "odds_overview",
+        "line": 348
+      },
+      {
+        "name": "_bookmaker_snapshots",
+        "line": 361
+      },
+      {
+        "name": "market_comparison",
+        "line": 401
+      },
+      {
+        "name": "stats",
+        "line": 473
+      },
+      {
+        "name": "model",
+        "line": 542
+      },
+      {
+        "name": "constants",
+        "line": 565
+      },
+      {
+        "name": "performance",
+        "line": 581
+      },
+      {
+        "name": "dashboard",
+        "line": 616
+      }
+    ]
+  },
+  "betgsn/api/__init__.py": {
+    "sha256": "ac6e721e20bce3c952afa23cafd5b8b042d90ed940952f7b1fe8fc47d1bb4ff9",
+    "symbols": []
+  },
+  "tests/test_api.py": {
+    "sha256": "b28971d09903539029cf1ba3bc1b2d9ac4c6cfe252a82d54be3034d4dacbd107",
+    "symbols": [
+      {
+        "name": "client",
+        "line": 24
+      },
+      {
+        "name": "svc_snapshot",
+        "line": 30
+      },
+      {
+        "name": "core",
+        "line": 36
+      },
+      {
+        "name": "test_signal_count_matches_pipeline",
+        "line": 52
+      },
+      {
+        "name": "test_signal_numbers_are_untouched",
+        "line": 58
+      },
+      {
+        "name": "test_games_match_pipeline_analyses",
+        "line": 77
+      },
+      {
+        "name": "test_1x2_probabilities_sum_to_one",
+        "line": 90
+      },
+      {
+        "name": "test_kpis_are_consistent_with_signals",
+        "line": 96
+      },
+      {
+        "name": "test_exposure_respects_configured_cap",
+        "line": 110
+      },
+      {
+        "name": "test_stake_cap_respected_per_signal",
+        "line": 116
+      },
+      {
+        "name": "test_min_ev_filter_respected",
+        "line": 122
+      },
+      {
+        "name": "test_recalculate_is_deterministic",
+        "line": 128
+      },
+      {
+        "name": "test_different_bankroll_scales_stakes_not_probabilities",
+        "line": 137
+      },
+      {
+        "name": "test_odds_comparison_probabilities",
+        "line": 149
+      },
+      {
+        "name": "test_bookmaker_margins_are_plausible",
+        "line": 160
+      },
+      {
+        "name": "test_stats_breakdowns",
+        "line": 169
+      },
+      {
+        "name": "test_model_contract",
+        "line": 180
+      },
+      {
+        "name": "test_health",
+        "line": 192
+      },
+      {
+        "name": "test_dashboard_route",
+        "line": 200
+      },
+      {
+        "name": "test_signals_route",
+        "line": 208
+      },
+      {
+        "name": "test_games_route",
+        "line": 221
+      },
+      {
+        "name": "test_odds_routes",
+        "line": 227
+      },
+      {
+        "name": "test_odds_comparison_unknown_match_returns_404",
+        "line": 237
+      },
+      {
+        "name": "test_stats_and_model_routes",
+        "line": 242
+      },
+      {
+        "name": "test_recalculate_route",
+        "line": 247
+      },
+      {
+        "name": "test_recalculate_rejects_invalid_config",
+        "line": 259
+      },
+      {
+        "name": "test_model_performance_route",
+        "line": 264
+      },
+      {
+        "name": "test_websocket_status",
+        "line": 273
+      },
+      {
+        "name": "test_signals_defaults_to_real",
+        "line": 293
+      },
+      {
+        "name": "test_signals_synthetic_still_available",
+        "line": 308
+      },
+      {
+        "name": "test_signals_rejects_unknown_source",
+        "line": 319
+      },
+      {
+        "name": "test_signals_status_endpoint",
+        "line": 324
+      },
+      {
+        "name": "test_real_signals_carry_calibration_warning",
+        "line": 333
+      },
+      {
+        "name": "test_real_signals_use_real_odds",
+        "line": 349
+      }
+    ]
+  },
+  "tests/test_backtest.py": {
+    "sha256": "4e3e103d5b71e5202f47cf284a6d25bd5959d6925390cbb9573bc9216dd4ab16",
+    "symbols": [
+      {
+        "name": "_match",
+        "line": 61
+      },
+      {
+        "name": "abc_corpus",
+        "line": 72
+      },
+      {
+        "name": "local_corpus",
+        "line": 82
+      },
+      {
+        "name": "standard_run",
+        "line": 87
+      },
+      {
+        "name": "test_matches_before_excludes_cutoff_and_future",
+        "line": 97
+      },
+      {
+        "name": "test_matches_before_is_strictly_less_than",
+        "line": 105
+      },
+      {
+        "name": "test_simultaneous_matches_are_excluded",
+        "line": 112
+      },
+      {
+        "name": "test_future_result_change_does_not_affect_earlier_signal",
+        "line": 125
+      },
+      {
+        "name": "test_past_result_change_does_affect_later_signal",
+        "line": 170
+      },
+      {
+        "name": "test_corpus_rejects_matches_without_kickoff",
+        "line": 207
+      },
+      {
+        "name": "test_corpus_rejects_empty_history",
+        "line": 214
+      },
+      {
+        "name": "test_league_goals_uses_only_prior",
+        "line": 219
+      },
+      {
+        "name": "test_context_never_contains_future_information",
+        "line": 229
+      },
+      {
+        "name": "test_frozen_signal_has_no_result_field",
+        "line": 238
+      },
+      {
+        "name": "test_frozen_signals_are_immutable",
+        "line": 250
+      },
+      {
+        "name": "test_settlement_basic_markets",
+        "line": 284
+      },
+      {
+        "name": "test_settlement_asian_handicap_with_push",
+        "line": 303
+      },
+      {
+        "name": "test_settlement_corners_and_cards",
+        "line": 307
+      },
+      {
+        "name": "test_settlement_missing_data_returns_none_not_loss",
+        "line": 317
+      },
+      {
+        "name": "test_settlement_unknown_market_or_outcome_returns_none",
+        "line": 324
+      },
+      {
+        "name": "test_realized_return_and_push",
+        "line": 330
+      },
+      {
+        "name": "test_wilson_interval_bounds",
+        "line": 341
+      },
+      {
+        "name": "test_wilson_interval_shrinks_with_n",
+        "line": 348
+      },
+      {
+        "name": "test_brier_score_known_values",
+        "line": 354
+      },
+      {
+        "name": "test_log_loss_known_values",
+        "line": 361
+      },
+      {
+        "name": "test_calibration_and_metrics_from_run",
+        "line": 367
+      },
+      {
+        "name": "test_calibration_bins_are_ordered_and_bounded",
+        "line": 386
+      },
+      {
+        "name": "test_ev_buckets_partition_all_signals",
+        "line": 395
+      },
+      {
+        "name": "test_segments_cover_all_dimensions",
+        "line": 403
+      },
+      {
+        "name": "test_small_sample_is_flagged",
+        "line": 413
+      },
+      {
+        "name": "test_min_ev_filter_is_respected",
+        "line": 431
+      },
+      {
+        "name": "test_market_selection_limits_signals",
+        "line": 438
+      },
+      {
+        "name": "test_unknown_market_key_raises",
+        "line": 451
+      },
+      {
+        "name": "test_min_confidence_filter",
+        "line": 459
+      },
+      {
+        "name": "test_period_filter_limits_matches",
+        "line": 470
+      },
+      {
+        "name": "test_competition_filter",
+        "line": 477
+      },
+      {
+        "name": "test_min_history_skips_early_matches",
+        "line": 487
+      },
+      {
+        "name": "test_invalid_config_is_rejected",
+        "line": 494
+      },
+      {
+        "name": "test_config_fingerprint_is_stable_and_sensitive",
+        "line": 505
+      },
+      {
+        "name": "test_signals_are_chronological",
+        "line": 518
+      },
+      {
+        "name": "test_prior_matches_grow_monotonically",
+        "line": 523
+      },
+      {
+        "name": "test_backtest_reuses_scanner_engine",
+        "line": 534
+      },
+      {
+        "name": "test_odds_source_is_deterministic",
+        "line": 568
+      },
+      {
+        "name": "test_match_seed_is_stable_and_distinct",
+        "line": 576
+      },
+      {
+        "name": "test_naive_market_ignores_team_strength",
+        "line": 585
+      },
+      {
+        "name": "test_real_odds_source_fails_loudly_without_cache",
+        "line": 599
+      },
+      {
+        "name": "test_simulation_accounting_is_consistent",
+        "line": 621
+      },
+      {
+        "name": "test_simulation_respects_stake_cap",
+        "line": 634
+      },
+      {
+        "name": "test_simulation_is_deterministic",
+        "line": 649
+      },
+      {
+        "name": "store",
+        "line": 663
+      },
+      {
+        "name": "test_store_roundtrip",
+        "line": 667
+      },
+      {
+        "name": "test_store_search_and_filters",
+        "line": 693
+      },
+      {
+        "name": "test_store_delete_run",
+        "line": 707
+      },
+      {
+        "name": "test_compare_runs_detects_difference",
+        "line": 717
+      },
+      {
+        "name": "test_compare_same_config_flags_identical",
+        "line": 733
+      },
+      {
+        "name": "test_run_with_no_matches_in_period",
+        "line": 748
+      },
+      {
+        "name": "test_metrics_on_empty_signal_list",
+        "line": 764
+      },
+      {
+        "name": "test_league_average_rating_handles_empty",
+        "line": 772
+      },
+      {
+        "name": "_fit_ratings_naive",
+        "line": 784
+      },
+      {
+        "name": "test_indexed_fit_matches_naive_bit_for_bit",
+        "line": 829
+      },
+      {
+        "name": "test_indexed_fit_is_fast_on_large_history",
+        "line": 845
+      },
+      {
+        "name": "pick",
+        "line": 192
+      }
+    ]
+  },
+  "tests/test_backtest_api.py": {
+    "sha256": "652b7f4139d8a3ac5918cdd484e46ed4bbaac83e820a059e241623de2de1113b",
+    "symbols": [
+      {
+        "name": "client",
+        "line": 28
+      },
+      {
+        "name": "_wait_for_completion",
+        "line": 33
+      },
+      {
+        "name": "finished_run",
+        "line": 44
+      },
+      {
+        "name": "test_options_endpoint",
+        "line": 58
+      },
+      {
+        "name": "test_status_endpoint_returns_phase",
+        "line": 73
+      },
+      {
+        "name": "test_run_completes_and_returns_run_id",
+        "line": 88
+      },
+      {
+        "name": "test_run_detail_contract",
+        "line": 94
+      },
+      {
+        "name": "test_run_signals_pagination",
+        "line": 133
+      },
+      {
+        "name": "test_signal_detail_exposes_point_in_time_context",
+        "line": 153
+      },
+      {
+        "name": "test_signals_filter_by_market_and_confidence",
+        "line": 173
+      },
+      {
+        "name": "test_signals_search",
+        "line": 183
+      },
+      {
+        "name": "test_runs_list_includes_finished_run",
+        "line": 193
+      },
+      {
+        "name": "test_compare_requires_two_runs",
+        "line": 208
+      },
+      {
+        "name": "test_compare_unknown_run_returns_404",
+        "line": 219
+      },
+      {
+        "name": "test_detail_unknown_run_returns_404",
+        "line": 227
+      },
+      {
+        "name": "test_signals_unknown_run_returns_404",
+        "line": 231
+      },
+      {
+        "name": "test_delete_run",
+        "line": 235
+      },
+      {
+        "name": "test_invalid_market_key_is_rejected",
+        "line": 252
+      },
+      {
+        "name": "test_invalid_config_is_rejected",
+        "line": 265
+      },
+      {
+        "name": "test_real_historical_odds_source_reports_missing_data",
+        "line": 275
+      },
+      {
+        "name": "test_options_exposes_corpora",
+        "line": 292
+      },
+      {
+        "name": "test_options_exposes_football_data_uk_odds_source",
+        "line": 306
+      },
+      {
+        "name": "test_options_exposes_odds_cache_status",
+        "line": 315
+      },
+      {
+        "name": "test_options_default_config_has_corpus_and_sport",
+        "line": 321
+      },
+      {
+        "name": "test_imported_corpus_unavailable_fails_clearly",
+        "line": 328
+      },
+      {
+        "name": "test_local_corpus_fingerprint_is_stable",
+        "line": 347
+      }
+    ]
+  },
+  "tests/test_backtest_sources.py": {
+    "sha256": "6611ca075fe9813bf672ff4dbd7ca2fe41b650e6ac86e54b07eb1bbecf0095fc",
+    "symbols": [
+      {
+        "name": "_match",
+        "line": 45
+      },
+      {
+        "name": "_small_corpus",
+        "line": 58
+      },
+      {
+        "name": "_odds_event",
+        "line": 76
+      },
+      {
+        "name": "FakeOddsProvider",
+        "line": 111
+      },
+      {
+        "name": "FakeFootballProvider",
+        "line": 134
+      },
+      {
+        "name": "test_normalize_team_matches_variants",
+        "line": 164
+      },
+      {
+        "name": "test_normalize_team_keeps_distinct_teams_distinct",
+        "line": 168
+      },
+      {
+        "name": "test_snapshot_json_round_trip",
+        "line": 178
+      },
+      {
+        "name": "test_cache_save_load_and_find_before",
+        "line": 190
+      },
+      {
+        "name": "test_cache_never_returns_snapshot_after_cutoff",
+        "line": 204
+      },
+      {
+        "name": "test_cache_rejects_stale_snapshot",
+        "line": 216
+      },
+      {
+        "name": "test_cache_is_per_sport",
+        "line": 226
+      },
+      {
+        "name": "test_cache_stats",
+        "line": 232
+      },
+      {
+        "name": "test_odds_from_snapshot_matches_normalized_names",
+        "line": 247
+      },
+      {
+        "name": "test_odds_from_snapshot_returns_empty_for_unknown_match",
+        "line": 259
+      },
+      {
+        "name": "test_importer_stores_snapshots",
+        "line": 271
+      },
+      {
+        "name": "test_importer_records_provider_errors",
+        "line": 292
+      },
+      {
+        "name": "test_importer_skips_payload_without_timestamp",
+        "line": 305
+      },
+      {
+        "name": "test_importer_respects_max_requests",
+        "line": 321
+      },
+      {
+        "name": "test_real_source_uses_snapshot_before_kickoff",
+        "line": 336
+      },
+      {
+        "name": "test_backtest_with_real_odds_source_runs_end_to_end",
+        "line": 357
+      },
+      {
+        "name": "test_backtest_with_real_odds_fails_without_cache",
+        "line": 393
+      },
+      {
+        "name": "_fixture_payload",
+        "line": 410
+      },
+      {
+        "name": "test_fixture_to_match_parses_offset_and_fields",
+        "line": 420
+      },
+      {
+        "name": "test_fixture_to_match_skips_unfinished",
+        "line": 436
+      },
+      {
+        "name": "test_fixture_to_match_skips_missing_score",
+        "line": 441
+      },
+      {
+        "name": "test_fixture_to_match_skips_invalid_date",
+        "line": 446
+      },
+      {
+        "name": "test_apply_statistics_reads_corners_cards_and_xg",
+        "line": 451
+      },
+      {
+        "name": "test_apply_statistics_handles_missing_values",
+        "line": 480
+      },
+      {
+        "name": "test_apply_statistics_swaps_when_order_reversed",
+        "line": 493
+      },
+      {
+        "name": "test_fixture_importer_writes_and_reloads",
+        "line": 505
+      },
+      {
+        "name": "test_imported_corpus_runs_backtest",
+        "line": 533
+      },
+      {
+        "name": "test_imported_corpus_mixes_timezones_safely",
+        "line": 573
+      },
+      {
+        "name": "test_corpus_fingerprint_is_stable_and_sensitive",
+        "line": 594
+      },
+      {
+        "name": "test_corpus_fingerprint_ignores_order",
+        "line": 603
+      },
+      {
+        "name": "test_naive_and_real_sources_produce_different_odds",
+        "line": 613
+      },
+      {
+        "name": "test_redact_url_removes_api_key",
+        "line": 643
+      },
+      {
+        "name": "test_redact_url_handles_multiple_credential_names",
+        "line": 654
+      },
+      {
+        "name": "test_redact_url_without_query_is_unchanged",
+        "line": 662
+      },
+      {
+        "name": "test_redact_text_scrubs_free_form_messages",
+        "line": 669
+      },
+      {
+        "name": "test_provider_error_never_contains_key",
+        "line": 678
+      },
+      {
+        "name": "test_capture_report_errors_are_sanitized_on_disk",
+        "line": 697
+      },
+      {
+        "name": "test_env_file_loading",
+        "line": 721
+      },
+      {
+        "name": "FakeLiveProvider",
+        "line": 760
+      },
+      {
+        "name": "test_capture_saves_snapshot_with_current_timestamp",
+        "line": 777
+      },
+      {
+        "name": "test_captured_snapshot_becomes_historical_odds",
+        "line": 800
+      },
+      {
+        "name": "test_capture_removes_unsupported_market_and_retries",
+        "line": 823
+      },
+      {
+        "name": "test_capture_pending_matches_skips_when_none_future",
+        "line": 854
+      },
+      {
+        "name": "test_capture_pending_matches_captures_when_future_exists",
+        "line": 867
+      },
+      {
+        "name": "__init__",
+        "line": 114
+      },
+      {
+        "name": "historical_odds",
+        "line": 120
+      },
+      {
+        "name": "__init__",
+        "line": 137
+      },
+      {
+        "name": "fixtures_by_season",
+        "line": 141
+      },
+      {
+        "name": "fixture_statistics",
+        "line": 144
+      },
+      {
+        "name": "FailingProvider",
+        "line": 293
+      },
+      {
+        "name": "NoTimestampProvider",
+        "line": 307
+      },
+      {
+        "name": "fake_urlopen",
+        "line": 684
+      },
+      {
+        "name": "LeakyProvider",
+        "line": 701
+      },
+      {
+        "name": "__init__",
+        "line": 763
+      },
+      {
+        "name": "live_odds_with_meta",
+        "line": 768
+      },
+      {
+        "name": "PickyProvider",
+        "line": 827
+      },
+      {
+        "name": "historical_odds",
+        "line": 294
+      },
+      {
+        "name": "historical_odds",
+        "line": 308
+      },
+      {
+        "name": "live_odds_with_meta",
+        "line": 702
+      },
+      {
+        "name": "__init__",
+        "line": 828
+      },
+      {
+        "name": "live_odds_with_meta",
+        "line": 831
+      }
+    ]
+  },
+  "tests/test_football_data_uk.py": {
+    "sha256": "a6cdc67aadb1c8c9fe8822b68692f85ad747bf87cdf42593655f2568782453df",
+    "symbols": [
+      {
+        "name": "main_row",
+        "line": 80
+      },
+      {
+        "name": "extra_row",
+        "line": 89
+      },
+      {
+        "name": "test_parse_date_accepts_both_formats",
+        "line": 111
+      },
+      {
+        "name": "test_parse_date_rejects_invalid",
+        "line": 116
+      },
+      {
+        "name": "test_season_codes",
+        "line": 120
+      },
+      {
+        "name": "test_parse_main_row_core_fields",
+        "line": 130
+      },
+      {
+        "name": "test_parse_main_row_statistics",
+        "line": 141
+      },
+      {
+        "name": "test_parse_main_row_counts_red_cards",
+        "line": 150
+      },
+      {
+        "name": "test_parse_main_row_missing_cards_is_none",
+        "line": 157
+      },
+      {
+        "name": "test_parse_main_row_closing_odds",
+        "line": 164
+      },
+      {
+        "name": "test_parse_main_row_opening_odds_differ_from_closing",
+        "line": 173
+      },
+      {
+        "name": "test_pinnacle_uses_different_prefix_per_market",
+        "line": 185
+      },
+      {
+        "name": "test_parse_main_row_over_under",
+        "line": 198
+      },
+      {
+        "name": "test_parse_main_row_asian_handicap_labels_match_engine",
+        "line": 206
+      },
+      {
+        "name": "test_aggregate_columns_are_not_bookmakers",
+        "line": 224
+      },
+      {
+        "name": "test_parse_main_row_rejects_incomplete",
+        "line": 235
+      },
+      {
+        "name": "test_parse_main_row_unknown_division",
+        "line": 243
+      },
+      {
+        "name": "test_odds_below_one_are_treated_as_missing",
+        "line": 247
+      },
+      {
+        "name": "test_incomplete_book_is_dropped",
+        "line": 254
+      },
+      {
+        "name": "test_parse_extra_row_core",
+        "line": 266
+      },
+      {
+        "name": "test_parse_extra_row_only_has_1x2",
+        "line": 276
+      },
+      {
+        "name": "test_parse_extra_row_odds",
+        "line": 285
+      },
+      {
+        "name": "test_parse_extra_row_unknown_code",
+        "line": 293
+      },
+      {
+        "name": "test_parse_csv_full_document",
+        "line": 302
+      },
+      {
+        "name": "test_parse_csv_skips_bad_rows",
+        "line": 309
+      },
+      {
+        "name": "test_parse_csv_empty",
+        "line": 315
+      },
+      {
+        "name": "test_parse_csv_routes_by_league_type",
+        "line": 320
+      },
+      {
+        "name": "test_to_historical_preserves_everything",
+        "line": 330
+      },
+      {
+        "name": "test_season_derived_from_date",
+        "line": 343
+      },
+      {
+        "name": "test_match_key_is_stable_across_name_variants",
+        "line": 351
+      },
+      {
+        "name": "test_store_indexes_and_retrieves",
+        "line": 363
+      },
+      {
+        "name": "test_store_opening_vs_closing",
+        "line": 375
+      },
+      {
+        "name": "test_store_returns_empty_for_unknown_match",
+        "line": 387
+      },
+      {
+        "name": "test_store_reports_books_and_markets",
+        "line": 397
+      },
+      {
+        "name": "test_fixture_covers_every_odds_column",
+        "line": 433
+      },
+      {
+        "name": "test_store_skips_matches_without_odds",
+        "line": 441
+      },
+      {
+        "name": "test_store_keeps_match_with_partial_odds",
+        "line": 453
+      },
+      {
+        "name": "test_league_catalog_is_consistent",
+        "line": 474
+      },
+      {
+        "name": "test_league_label_format",
+        "line": 485
+      },
+      {
+        "name": "test_all_brazilian_and_european_leagues_present",
+        "line": 491
+      },
+      {
+        "name": "test_client_inventory_on_empty_dir",
+        "line": 505
+      },
+      {
+        "name": "test_client_load_matches_from_cache",
+        "line": 513
+      },
+      {
+        "name": "test_client_uses_cache_instead_of_redownloading",
+        "line": 532
+      },
+      {
+        "name": "test_corpus_summary_builds_and_caches_index",
+        "line": 558
+      },
+      {
+        "name": "test_corpus_summary_uses_index_without_reparsing",
+        "line": 577
+      },
+      {
+        "name": "test_index_is_invalidated_when_data_changes",
+        "line": 595
+      },
+      {
+        "name": "test_corpus_summary_refresh_forces_rebuild",
+        "line": 613
+      },
+      {
+        "name": "test_sample_books_is_cheap_and_finds_books",
+        "line": 624
+      },
+      {
+        "name": "fixtures_row",
+        "line": 674
+      },
+      {
+        "name": "test_parse_fixture_row_core",
+        "line": 682
+      },
+      {
+        "name": "test_parse_fixture_row_has_no_score",
+        "line": 694
+      },
+      {
+        "name": "test_parse_fixture_row_odds_and_best",
+        "line": 701
+      },
+      {
+        "name": "test_parse_fixture_row_markets",
+        "line": 721
+      },
+      {
+        "name": "test_parse_fixture_row_rejects_incomplete",
+        "line": 732
+      },
+      {
+        "name": "test_parse_fixture_row_rejects_without_odds",
+        "line": 739
+      },
+      {
+        "name": "test_parse_extra_fixture_row",
+        "line": 745
+      },
+      {
+        "name": "test_parse_extra_fixture_unknown_country",
+        "line": 757
+      },
+      {
+        "name": "test_parse_fixtures_csv_full",
+        "line": 765
+      },
+      {
+        "name": "test_parse_fixtures_csv_handles_bom",
+        "line": 771
+      },
+      {
+        "name": "test_parse_csv_historical_handles_bom",
+        "line": 783
+      },
+      {
+        "name": "test_fixture_best_odds_are_the_maximum",
+        "line": 790
+      },
+      {
+        "name": "test_fixture_n_books_counts_1x2_only",
+        "line": 801
+      },
+      {
+        "name": "explode",
+        "line": 540
+      },
+      {
+        "name": "explode",
+        "line": 587
+      }
+    ]
+  },
+  "tests/test_real_signals.py": {
+    "sha256": "b983584fc9b84de6e2419d3a31554ffc32e52b66f4826a6372ec0b040c997105",
+    "symbols": [
+      {
+        "name": "_rating",
+        "line": 26
+      },
+      {
+        "name": "_fixture",
+        "line": 36
+      },
+      {
+        "name": "test_model_calibration_documents_the_measured_bias",
+        "line": 68
+      },
+      {
+        "name": "test_calibrate_ev_discounts_the_measured_gap",
+        "line": 77
+      },
+      {
+        "name": "test_calibrate_ev_does_not_make_the_model_good",
+        "line": 85
+      },
+      {
+        "name": "test_snapshot_raises_without_fixtures",
+        "line": 96
+      },
+      {
+        "name": "test_snapshot_raises_when_fixtures_have_no_odds",
+        "line": 110
+      },
+      {
+        "name": "test_error_messages_say_how_to_fix",
+        "line": 127
+      },
+      {
+        "name": "test_service_reuses_the_same_engine",
+        "line": 141
+      },
+      {
+        "name": "test_min_history_is_meaningful",
+        "line": 154
+      },
+      {
+        "name": "test_fixture_helper_is_consistent",
+        "line": 163
+      }
+    ]
+  },
+  "tests/test_staking.py": {
+    "sha256": "db75e8e3bab4c648de4c146657f432a7222de9b2d9e8538587a89fd8ae38579c",
+    "symbols": [
+      {
+        "name": "test_win_prob_from_roi",
+        "line": 44
+      },
+      {
+        "name": "test_win_prob_is_clamped",
+        "line": 51
+      },
+      {
+        "name": "test_bet_variance_positive",
+        "line": 56
+      },
+      {
+        "name": "test_full_kelly_matches_classic_formula",
+        "line": 61
+      },
+      {
+        "name": "test_full_kelly_is_plausible",
+        "line": 69
+      },
+      {
+        "name": "test_full_kelly_zero_without_edge",
+        "line": 75
+      },
+      {
+        "name": "test_growth_is_maximized_at_full_kelly",
+        "line": 85
+      },
+      {
+        "name": "test_growth_is_positive_below_kelly",
+        "line": 95
+      },
+      {
+        "name": "test_growth_goes_negative_above_double_kelly",
+        "line": 101
+      },
+      {
+        "name": "test_growth_is_monotonic_after_the_peak",
+        "line": 108
+      },
+      {
+        "name": "test_annual_growth_scales_with_bets",
+        "line": 115
+      },
+      {
+        "name": "test_growth_never_exceeds_kelly_ceiling",
+        "line": 122
+      },
+      {
+        "name": "test_growth_handles_total_loss_fraction",
+        "line": 130
+      },
+      {
+        "name": "test_drawdown_probability_known_values",
+        "line": 141
+      },
+      {
+        "name": "test_drawdown_probability_increases_with_aggression",
+        "line": 151
+      },
+      {
+        "name": "test_drawdown_probability_deep_loss",
+        "line": 156
+      },
+      {
+        "name": "test_drawdown_probability_bounds",
+        "line": 162
+      },
+      {
+        "name": "test_kelly_table_is_ordered_and_sane",
+        "line": 168
+      },
+      {
+        "name": "test_flat_plan_applies_everywhere",
+        "line": 187
+      },
+      {
+        "name": "test_phased_plan_respects_thresholds",
+        "line": 194
+      },
+      {
+        "name": "test_phased_plan_decreases_fraction",
+        "line": 209
+      },
+      {
+        "name": "test_recommended_plan_has_protections",
+        "line": 215
+      },
+      {
+        "name": "test_simulation_is_deterministic",
+        "line": 229
+      },
+      {
+        "name": "test_more_aggression_means_more_ruin",
+        "line": 236
+      },
+      {
+        "name": "test_overkelly_is_worse_than_moderate",
+        "line": 244
+      },
+      {
+        "name": "test_full_kelly_has_high_drawdown_risk",
+        "line": 255
+      },
+      {
+        "name": "test_stop_loss_bounds_the_loss",
+        "line": 262
+      },
+      {
+        "name": "test_drawdown_cut_reduces_variance",
+        "line": 272
+      },
+      {
+        "name": "test_edge_uncertainty_increases_risk",
+        "line": 280
+      },
+      {
+        "name": "test_simulation_without_edge_loses",
+        "line": 306
+      },
+      {
+        "name": "test_simulation_metrics_are_consistent",
+        "line": 313
+      },
+      {
+        "name": "test_simulation_years_affect_growth",
+        "line": 322
+      },
+      {
+        "name": "test_bets_per_year_default_is_realistic",
+        "line": 328
+      }
+    ]
+  },
+  "tests/test_timeutil.py": {
+    "sha256": "004e9fb72aab98cfc3ec135a6450fcb316c9466d5a9dd00bde335618ac77e2f6",
+    "symbols": [
+      {
+        "name": "test_utc_key_normalizes_all_supported_formats",
+        "line": 46
+      },
+      {
+        "name": "test_parse_returns_aware_datetime_in_utc",
+        "line": 50
+      },
+      {
+        "name": "test_utc_keys_sort_chronologically_across_timezones",
+        "line": 62
+      },
+      {
+        "name": "test_utc_key_round_trip_is_stable",
+        "line": 84
+      },
+      {
+        "name": "test_day_of_uses_utc",
+        "line": 90
+      },
+      {
+        "name": "test_invalid_kickoff_raises",
+        "line": 102
+      },
+      {
+        "name": "test_invalid_kickoff_never_returns_approximate_time",
+        "line": 107
+      },
+      {
+        "name": "test_unknown_timezone_raises_with_clear_message",
+        "line": 113
+      },
+      {
+        "name": "test_is_valid_kickoff",
+        "line": 118
+      },
+      {
+        "name": "test_to_display_uses_local_timezone",
+        "line": 130
+      },
+      {
+        "name": "test_dst_is_respected",
+        "line": 136
+      }
+    ]
+  },
+  "web/src/App.tsx": {
+    "sha256": "cc7852cef52014bd2f0aff473ef059580494ecd07f41ede800dbcbc2905ced2b"
+  },
+  "web/src/index.css": {
+    "sha256": "c99d3540a716e73cd35ed194e837e384059014239166abade5c3cb785e2c1b22"
+  },
+  "web/src/main.tsx": {
+    "sha256": "d0d34e612d7cae03824ff06b55f3e2acb472cf0244069353bf903e4121c30750"
+  },
+  "web/src/api/backtest.ts": {
+    "sha256": "4086b4e102ece4cf96f572030752abb328602c0aaef322d722390b64528eb8b6"
+  },
+  "web/src/api/client.test.ts": {
+    "sha256": "b8e1dc4ed79527c23a5eef53e5083b92b1a8c15e4ce1ecb76f28e97e47aec852"
+  },
+  "web/src/api/client.ts": {
+    "sha256": "701ddd4ae8ff83da50e2e004363b2314a659f16501c6a2f4bfca389d6f7f1d38"
+  },
+  "web/src/api/games.ts": {
+    "sha256": "96e3e797aac87855ed7659db77d43c412491a8c417006a97063c76285985973e"
+  },
+  "web/src/api/model.ts": {
+    "sha256": "37db8a251082ab5499a3c5bf375f10fa536abbfd8e335fea3dc9f3d543d7cc4a"
+  },
+  "web/src/api/odds.ts": {
+    "sha256": "17462ca6246f41fe32dba9ade42d70d88d48a37068f06d3a8ec00310dcfc9602"
+  },
+  "web/src/api/signals.ts": {
+    "sha256": "64ad8f5c02cfc1d2410262cff55490f34afdc1aca157d531c5f9c5f3d3845319"
+  },
+  "web/src/api/stats.ts": {
+    "sha256": "7abe9a50223be28c337099319980e3513a597ee6270ddb4d695ff3c46f6fee7d"
+  },
+  "web/src/api/system.ts": {
+    "sha256": "4e836579b5fcaadd743ab7c5fe3c799e7fe7c8d305f907a4d8ac35442e1d8af4"
+  },
+  "web/src/components/backtest/BacktestConfigPanel.test.tsx": {
+    "sha256": "98c3a859b0cb67a8b7ff51c83f3804d84d68d1ecb4376ec9dba83da6a8e7620a"
+  },
+  "web/src/components/backtest/BacktestConfigPanel.tsx": {
+    "sha256": "0d1a4dc0cdf1d51210c1a21e6254146dc0ee315441328fd761c61dc66debc38d"
+  },
+  "web/src/components/backtest/BacktestKpis.tsx": {
+    "sha256": "e6765a3af9361b19ec77ca8ea4af06315b93c760dbaaa874c4158e6a3b854ea0"
+  },
+  "web/src/components/backtest/BacktestMeta.test.tsx": {
+    "sha256": "44912ee6c5bb51453082e94978f2c5548884a97e9b47b75a697da35a8c5bbc99"
+  },
+  "web/src/components/backtest/BacktestMeta.tsx": {
+    "sha256": "15cfb6b08bff0dc426d45a0ced9b7930c6e12faeb823ca6710c84fc493c9da4e"
+  },
+  "web/src/components/backtest/BacktestRunsPanel.tsx": {
+    "sha256": "b8ed9d18e7962278a1aff76fe2530c965b8cd930c604e2c940abc5d166fb6df1"
+  },
+  "web/src/components/backtest/BacktestSignalsTable.tsx": {
+    "sha256": "0489d0883739a98480e8c3b830681a680e3cb7517af83d200a9da1a4e731bd28"
+  },
+  "web/src/components/backtest/CalibrationSection.tsx": {
+    "sha256": "ddee224cc253c6f596a704cb7e92daa17426f1778cdcc349ec7072bbc8ead077"
+  },
+  "web/src/components/backtest/EvAnalysisSection.tsx": {
+    "sha256": "dc28e2472c1aea3f8d4dc76eb5fa4b2eb4c9515ecc72236226dde14b0859124e"
+  },
+  "web/src/components/backtest/SegmentsTable.tsx": {
+    "sha256": "52461e3bfcb310de42624ba5070e019025ee9425c0976701053a717275d78e13"
+  },
+  "web/src/components/backtest/TemporalSection.tsx": {
+    "sha256": "a12377fb1422b8c2fc11b686fc9c8c935d03af85b4a12502e6c959c4a526b1cc"
+  },
+  "web/src/components/signals/SignalsKpiStrip.tsx": {
+    "sha256": "30ccf259d6352c305fdb231548b4d6b227d11dffb55246f401f9cab9f2ae718b"
+  },
+  "web/src/components/signals/SignalsSourceBanner.test.tsx": {
+    "sha256": "a05d728067e1f248f633e7b52083a649d38875a851884a34e789ad7d0a40014e"
+  },
+  "web/src/components/signals/SignalsSourceBanner.tsx": {
+    "sha256": "2673ac87a624afa7413eb17e0f1b6d506622f3fbda01725f030fa5ef5262ce24"
+  },
+  "web/src/components/signals/SignalsTable.tsx": {
+    "sha256": "aeb0bde88007b87ddb1cf1788a88ffe4007ef7dd5352e575380b9623d097e22b"
+  },
+  "web/src/components/signals/TopSignalCards.tsx": {
+    "sha256": "a48217d1ca5d7f7479d6445824d2daf57d81d831909882521e26b522ddb92b82"
+  },
+  "web/src/components/ui/Badge.tsx": {
+    "sha256": "0008c423824a836a462fcd6fa87099a0d30bba5194114cf093461d716ec57a6a"
+  },
+  "web/src/components/ui/badgeTone.ts": {
+    "sha256": "c5a3ef98ae572924b8d38bbb961466b46312617a8fa98157859e6965dad2d73e"
+  },
+  "web/src/components/ui/Button.tsx": {
+    "sha256": "648319b9b4fd354dac7c4b899ecde9d770460fedb6ef0f23b7a69d5e89b5444e"
+  },
+  "web/src/components/ui/Card.tsx": {
+    "sha256": "0c8645accc9bbd56f4e034a0f80897fde56e3539ee5312e196cab4742d21875d"
+  },
+  "web/src/components/ui/Charts.tsx": {
+    "sha256": "6b30bcc9403252a6b274cb19964774def3f3a65b4efe388d6b85009160e54f8b"
+  },
+  "web/src/components/ui/icons.tsx": {
+    "sha256": "47f99033c4063b6c3c23a1309b98ceadfaacd1d2e0975bcc101093b46567ecc9"
+  },
+  "web/src/components/ui/index.ts": {
+    "sha256": "d7bf9a03927b2ebda981583d88c8bcfb62c2d020a709f7035301446594307c61"
+  },
+  "web/src/components/ui/Input.tsx": {
+    "sha256": "60ba1aec4f7dc6dddbb8ed293f7e2541f24f50a2f5256bda9b051d242f9a964d"
+  },
+  "web/src/components/ui/KpiCard.tsx": {
+    "sha256": "c5c677bd544d1eaf0889ea4b8bae90cfdd2b6778eef10f667649bfde7ce1ea6f"
+  },
+  "web/src/components/ui/primitives.test.tsx": {
+    "sha256": "ed05d020d9ddd0d2ff58f7d36f8cf2fe5338141ff1b8a394753c44d732532424"
+  },
+  "web/src/components/ui/ProbBar.tsx": {
+    "sha256": "ebba7508721addd7b3086e7325c47576f1a83a0cdf18cd3ecc04eaf2c1f0cc67"
+  },
+  "web/src/components/ui/SegmentedControl.tsx": {
+    "sha256": "fbe7d2254057e2cc4798a5c9ea57e209435163fe575caf1fe055977a5740aaca"
+  },
+  "web/src/components/ui/States.tsx": {
+    "sha256": "09d0e239909236864b5b02dba2db068a0404b5e039dcd1661736848c31707939"
+  },
+  "web/src/components/ui/Table.tsx": {
+    "sha256": "3400dcc6e7afd03042d6f559d43df1504583e73f78056b35bdfeb8776f9ee9e7"
+  },
+  "web/src/hooks/useApiResource.test.tsx": {
+    "sha256": "f12abeac57b45b7534fca1b8029624638efd4485202579fe57c19bf636bff3e8"
+  },
+  "web/src/hooks/useApiResource.ts": {
+    "sha256": "b5f3b22cbf81af0fbe58e2a51e9bf1ad1c53d39b39d4af815bae37e2da7f77b6"
+  },
+  "web/src/hooks/useBacktestJob.test.tsx": {
+    "sha256": "d31b44567d1a9cf5e2c1596861e5bbdce28d737f75b10ca15b392c9adbb814b8"
+  },
+  "web/src/hooks/useBacktestJob.ts": {
+    "sha256": "f4f4185d18075337a43a2055cc3b3e03a90f86689c98a3a96cd31be97e5e19c8"
+  },
+  "web/src/hooks/useBetgsnSocket.ts": {
+    "sha256": "60808382be4219f6cafa230dcdd772c6797b8effb943d3ef1432c0b4c5bf88a2"
+  },
+  "web/src/layout/AppHeader.tsx": {
+    "sha256": "e27c7c8792e09d84bec21831f3650dcad022c149aa1c6be6eab502e0c64627e9"
+  },
+  "web/src/layout/ControlBar.tsx": {
+    "sha256": "4c3b27a7e98f10570b5e74978f48c76e71d54c266aece2d3b9407c0046827013"
+  },
+  "web/src/layout/StatusBar.tsx": {
+    "sha256": "7b30bedc9d97ec66379671ddf8dc46119335dbb89471bfac9c340602b450a239"
+  },
+  "web/src/layout/TabBar.tsx": {
+    "sha256": "122c8c5e6c637d4a8cfd11d6f3534591aca8e15a437fbc881945f27bbf773143"
+  },
+  "web/src/pages/BacktestPage.tsx": {
+    "sha256": "9cdfa82a3358e4a22ad0ec0b063e7fb2a17be00f74f9fa031ab47496367cc923"
+  },
+  "web/src/pages/GamesPage.tsx": {
+    "sha256": "dd58309747bcc90435e42a8e5c3ca6f7a855b6a2411f09878314625c1df08513"
+  },
+  "web/src/pages/ModelPage.tsx": {
+    "sha256": "2949ef8da1409d6e320a3cbb9ddc34859a1f6014a6da3d6682d4c7525e5401a7"
+  },
+  "web/src/pages/OddsPage.tsx": {
+    "sha256": "958674284dd12ab664d04f89ce434cc99eb106511a7ee709a5d323d87ef83b5d"
+  },
+  "web/src/pages/SignalsPage.tsx": {
+    "sha256": "c4521b778e10d0b32f04ce92f6ac453fbf19fefc6b4476dd2586db6ece99f223"
+  },
+  "web/src/pages/StatsPage.tsx": {
+    "sha256": "67799b579e700a16e8a4832497aec5439bde03a6b67c52d3a0d0301a091bcd17"
+  },
+  "web/src/store/AppStore.tsx": {
+    "sha256": "8d3406151d8171e2a7412dd0dddb8b2d6c8d735fde63a7b1160d0fbfa5f1161c"
+  },
+  "web/src/store/context.ts": {
+    "sha256": "753514499bb1b75b66bbf0c6dc9babd671a8d246567299805345de3d819d90d4"
+  },
+  "web/src/test/fixtures.ts": {
+    "sha256": "c4016b837fd14d66016736e15d2972c143315ab3933d7182aaec52a2e92391ba"
+  },
+  "web/src/test/setup.ts": {
+    "sha256": "30f8fda9080220168dfc9d46708c4f658b7339c9513e708af14709b07a5160d9"
+  },
+  "web/src/types/api.ts": {
+    "sha256": "5c3f7757dc1c650a29463778979f1c61612a197441b0a0f4a48fb8461db3e629"
+  },
+  "web/src/types/backtest.ts": {
+    "sha256": "8f9e5d9066f4851456ce400e647ad550e494387f440b1773ba5c1d7972f9c6d8"
+  },
+  "web/src/utils/cn.ts": {
+    "sha256": "2c7894f2006c709c632a2ebee4a4a8d8c031eb7531c0c47bdeecbd98a9d8f787"
+  },
+  "web/src/utils/format.test.ts": {
+    "sha256": "aab20a8e43a058092603b0d0e8202ef04a2ee55e2cac90aca1b4f85bfd99a2a2"
+  },
+  "web/src/utils/format.ts": {
+    "sha256": "ad52ea60155baa9e825dedc73fd42dd2cb1b1d5ae54d0f10a74e28bfb2630871"
+  },
+  "web/src/utils/table.test.ts": {
+    "sha256": "b0c9cf0807809f4eb86ae11a32e9afdce73dfb58501bb841007968484e1c5427"
+  },
+  "web/src/utils/table.ts": {
+    "sha256": "c0e835468e2d696706eaade0b6f13998d52f997c63b09694ab8f6ef8929b381b"
+  },
+  "betgsn.py": {
+    "sha256": "9bb1ebc350f78cefc1fe6d7ba3047a0f29f8b1eb532613ddda65f055228ebaac",
+    "symbols": [
+      {
+        "name": "run_cli",
+        "line": 29
+      },
+      {
+        "name": "selftest",
+        "line": 57
+      },
+      {
+        "name": "show_providers",
+        "line": 157
+      },
+      {
+        "name": "run_backtest_cli",
+        "line": 169
+      },
+      {
+        "name": "run_api",
+        "line": 192
+      },
+      {
+        "name": "_arg",
+        "line": 213
+      },
+      {
+        "name": "_flag",
+        "line": 221
+      },
+      {
+        "name": "import_odds_cli",
+        "line": 225
+      },
+      {
+        "name": "import_fixtures_cli",
+        "line": 286
+      },
+      {
+        "name": "capture_odds_cli",
+        "line": 330
+      },
+      {
+        "name": "import_fduk_cli",
+        "line": 377
+      },
+      {
+        "name": "validate_strategy_cli",
+        "line": 471
+      },
+      {
+        "name": "scan_value_cli",
+        "line": 535
+      },
+      {
+        "name": "staking_plan_cli",
+        "line": 616
+      },
+      {
+        "name": "import_live_fixtures_cli",
+        "line": 749
+      },
+      {
+        "name": "show_sources_cli",
+        "line": 804
+      },
+      {
+        "name": "run_walkforward_cli",
+        "line": 850
+      },
+      {
+        "name": "main",
+        "line": 930
+      },
+      {
+        "name": "check",
+        "line": 68
+      },
+      {
+        "name": "progress",
+        "line": 253
+      },
+      {
+        "name": "progress",
+        "line": 305
+      },
+      {
+        "name": "progress",
+        "line": 435
+      },
+      {
+        "name": "progress",
+        "line": 490
+      },
+      {
+        "name": "band_of",
+        "line": 587
+      },
+      {
+        "name": "progress",
+        "line": 877
+      }
+    ]
+  },
+  "README.md": {
+    "sha256": "978f43ad61a558ca310012d9f2c23edd750d632e91433d3e37acf395a49c1e96"
+  },
+  "requirements.txt": {
+    "sha256": "98c300d44e6c4796a1492a54aa3f3e02da5788ac4bfb43e580e644ac7e0ff077"
+  },
+  "requirements-api.txt": {
+    "sha256": "1d025998c8fcccc52820d5bd672f429d65c49f84ce09a314b99bb1d73e792a3c"
+  },
+  "web/package.json": {
+    "sha256": "27d6c33a6b240342861a178d9f58efdc2bfa6956bc6de56c4ae51d7dbcd03ce9"
+  }
+}

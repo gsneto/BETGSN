@@ -1,0 +1,19 @@
+# BETGSN — dependencias da camada API (interface React).
+# O nucleo estatistico continua sem dependencias externas.
+#
+#   python -m venv .venv
+#   .venv\Scripts\pip install -r requirements-api.txt
+#   .venv\Scripts\python betgsn.py --api
+
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.8
+
+# Banco de fusos horarios IANA. Necessario no Windows para interpretar
+# kickoff com nome de fuso (ex.: "America/Sao_Paulo"). Horarios com offset
+# explicito (o que The Odds API e API-Football entregam) nao precisam dele.
+tzdata>=2024.1
+
+# testes da API
+pytest>=8
+httpx>=0.27

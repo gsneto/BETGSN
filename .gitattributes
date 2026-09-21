@@ -1,0 +1,9 @@
+# Normaliza fim de linha: LF no repositorio, CRLF no checkout Windows.
+* text=auto
+
+# Arquivos explicitamente binarios.
+*.png binary
+*.jpg binary
+*.zip binary
+*.db binary
+*.jsonl text

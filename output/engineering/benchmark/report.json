@@ -1,0 +1,2506 @@
+{
+  "division": "E0",
+  "test_year": 2025,
+  "data_version": "ffb3be1c39ea3adaef00f74df80d8c21a84d14fc4ffe0d03507a3b6e7f4e4386",
+  "windows": [
+    {
+      "n": 2341,
+      "start": "2015-11-07T00:00:00Z",
+      "end": "2021-12-29T20:15:00Z"
+    },
+    {
+      "n": 352,
+      "start": "2022-01-01T12:30:00Z",
+      "end": "2022-12-28T20:00:00Z"
+    },
+    {
+      "n": 403,
+      "start": "2023-01-01T14:00:00Z",
+      "end": "2023-12-28T20:15:00Z"
+    },
+    {
+      "n": 368,
+      "start": "2024-01-01T20:00:00Z",
+      "end": "2024-12-29T17:15:00Z"
+    },
+    {
+      "n": 371,
+      "start": "2025-01-01T17:30:00Z",
+      "end": "2025-12-28T16:30:00Z"
+    }
+  ],
+  "window_roles": [
+    "train",
+    "early_stopping",
+    "ensemble_train",
+    "calibration_train",
+    "test"
+  ],
+  "refit": "baseline di\u00e1rio/rolling 1095d; ML congelado antes do ensemble/calibra\u00e7\u00e3o/teste",
+  "financial_limitation": "Odds CSV reais sem timestamps: ROI/Yield apenas explorat\u00f3rios; CLV null",
+  "production_model": "BASELINE_V1",
+  "results": {
+    "1x2": {
+      "models": {
+        "BASELINE_V1": {
+          "ece": 0.01855934222004453,
+          "mce": 0.0852838895996032,
+          "reliability_curve": [
+            {
+              "predicted": 0.07280403873882839,
+              "observed": 0.1,
+              "n": 30
+            },
+            {
+              "predicted": 0.15866580856798154,
+              "observed": 0.09615384615384616,
+              "n": 156
+            },
+            {
+              "predicted": 0.2517590663900596,
+              "observed": 0.25287356321839083,
+              "n": 435
+            },
+            {
+              "predicted": 0.34779825933467445,
+              "observed": 0.37362637362637363,
+              "n": 182
+            },
+            {
+              "predicted": 0.4450385563128183,
+              "observed": 0.4596774193548387,
+              "n": 124
+            },
+            {
+              "predicted": 0.5459149175426118,
+              "observed": 0.5476190476190477,
+              "n": 84
+            },
+            {
+              "predicted": 0.6475116972147145,
+              "observed": 0.6521739130434783,
+              "n": 69
+            },
+            {
+              "predicted": 0.7480494437337302,
+              "observed": 0.8333333333333334,
+              "n": 24
+            },
+            {
+              "predicted": 0.8418230898721831,
+              "observed": 0.7777777777777778,
+              "n": 9
+            }
+          ],
+          "n": 371,
+          "brier": 0.5765622613755957,
+          "logloss": 0.9703668853791133,
+          "rps": 0.204339884861543,
+          "n_bets": 400,
+          "profit": 1003.7889999999998,
+          "roi": 1.0037889999999998,
+          "yield": 0.22455325983857388,
+          "drawdown": 0.13847774661931167,
+          "hit_rate": 0.36,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.941600703332142,
+            1.008283169702776
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "BASELINE_V1_platt": {
+          "ece": 0.015126813338107482,
+          "mce": 0.24639981122132215,
+          "reliability_curve": [
+            {
+              "predicted": 0.0686585915775335,
+              "observed": 0.09259259259259259,
+              "n": 54
+            },
+            {
+              "predicted": 0.15277023987002303,
+              "observed": 0.1317365269461078,
+              "n": 167
+            },
+            {
+              "predicted": 0.25690948997517193,
+              "observed": 0.2608695652173913,
+              "n": 345
+            },
+            {
+              "predicted": 0.3414803583747335,
+              "observed": 0.3346153846153846,
+              "n": 260
+            },
+            {
+              "predicted": 0.44663816528236633,
+              "observed": 0.4854368932038835,
+              "n": 103
+            },
+            {
+              "predicted": 0.5475965801638879,
+              "observed": 0.5526315789473685,
+              "n": 76
+            },
+            {
+              "predicted": 0.6490194588963553,
+              "observed": 0.6071428571428571,
+              "n": 56
+            },
+            {
+              "predicted": 0.7363605663256585,
+              "observed": 0.7352941176470589,
+              "n": 34
+            },
+            {
+              "predicted": 0.8413012849455233,
+              "observed": 0.9333333333333333,
+              "n": 15
+            },
+            {
+              "predicted": 0.9130664778879888,
+              "observed": 0.6666666666666666,
+              "n": 3
+            }
+          ],
+          "n": 371,
+          "brier": 0.5802063792950385,
+          "logloss": 0.976788408224282,
+          "rps": 0.20501079918624665,
+          "n_bets": 481,
+          "profit": 83.88340000000062,
+          "roi": 0.08388340000000062,
+          "yield": 0.021019826195034563,
+          "drawdown": 0.17868422777013304,
+          "hit_rate": 0.3305613305613306,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9425462762233724,
+            1.0198544123977271
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "BASELINE_V1_isotonic": {
+          "ece": 0.03719696602115523,
+          "mce": 0.18181612727515994,
+          "reliability_curve": [
+            {
+              "predicted": 0.06174326646407837,
+              "observed": 0.08333333333333333,
+              "n": 84
+            },
+            {
+              "predicted": 0.15147475718454212,
+              "observed": 0.225531914893617,
+              "n": 235
+            },
+            {
+              "predicted": 0.272485792850569,
+              "observed": 0.2612244897959184,
+              "n": 245
+            },
+            {
+              "predicted": 0.3350741898166787,
+              "observed": 0.3050847457627119,
+              "n": 236
+            },
+            {
+              "predicted": 0.43977996967331007,
+              "observed": 0.4520547945205479,
+              "n": 73
+            },
+            {
+              "predicted": 0.5414704741672407,
+              "observed": 0.5118110236220472,
+              "n": 127
+            },
+            {
+              "predicted": 0.6310804869268904,
+              "observed": 0.5714285714285714,
+              "n": 42
+            },
+            {
+              "predicted": 0.7467648056214609,
+              "observed": 0.6938775510204082,
+              "n": 49
+            },
+            {
+              "predicted": 0.8557225728841359,
+              "observed": 0.9090909090909091,
+              "n": 11
+            },
+            {
+              "predicted": 0.9999979454569782,
+              "observed": 0.8181818181818182,
+              "n": 11
+            }
+          ],
+          "n": 371,
+          "brier": 0.5938891889460516,
+          "logloss": 1.0542127733590891,
+          "rps": 0.2092468157474262,
+          "n_bets": 505,
+          "profit": -229.9264000000004,
+          "roi": -0.2299264000000004,
+          "yield": -0.05873560517038775,
+          "drawdown": 0.338275151215301,
+          "hit_rate": 0.33861386138613864,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9640015120512273,
+            1.1723646316858858
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "XGBoost": {
+          "ece": 0.029621455818727258,
+          "mce": 0.1813605607245462,
+          "reliability_curve": [
+            {
+              "predicted": 0.08874899244441332,
+              "observed": 0.06666666666666667,
+              "n": 15
+            },
+            {
+              "predicted": 0.16114262052105974,
+              "observed": 0.1881918819188192,
+              "n": 271
+            },
+            {
+              "predicted": 0.2451258045815438,
+              "observed": 0.22941176470588234,
+              "n": 340
+            },
+            {
+              "predicted": 0.34577713864475607,
+              "observed": 0.37012987012987014,
+              "n": 154
+            },
+            {
+              "predicted": 0.44651649044592545,
+              "observed": 0.4368932038834951,
+              "n": 103
+            },
+            {
+              "predicted": 0.5523613820830583,
+              "observed": 0.5742574257425742,
+              "n": 101
+            },
+            {
+              "predicted": 0.6449309788564742,
+              "observed": 0.5294117647058824,
+              "n": 85
+            },
+            {
+              "predicted": 0.7421559965580682,
+              "observed": 0.8095238095238095,
+              "n": 42
+            },
+            {
+              "predicted": 0.8186394392754538,
+              "observed": 1,
+              "n": 2
+            }
+          ],
+          "n": 371,
+          "brier": 0.5833185552970456,
+          "logloss": 0.981555262594752,
+          "rps": 0.20708017652200392,
+          "n_bets": 363,
+          "profit": 165.5092000000002,
+          "roi": 0.1655092000000002,
+          "yield": 0.046931928383873375,
+          "drawdown": 0.17111482465808017,
+          "hit_rate": 0.3608815426997245,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9538828871803147,
+            1.017185064079545
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "XGBoost_platt": {
+          "ece": 0.02257427573094515,
+          "mce": 0.10070846510959619,
+          "reliability_curve": [
+            {
+              "predicted": 0.08428473494714422,
+              "observed": 0.125,
+              "n": 32
+            },
+            {
+              "predicted": 0.15213297406802226,
+              "observed": 0.16666666666666666,
+              "n": 162
+            },
+            {
+              "predicted": 0.2540952659947095,
+              "observed": 0.23908045977011494,
+              "n": 435
+            },
+            {
+              "predicted": 0.3392591191045745,
+              "observed": 0.3493975903614458,
+              "n": 166
+            },
+            {
+              "predicted": 0.4498114370090218,
+              "observed": 0.42424242424242425,
+              "n": 99
+            },
+            {
+              "predicted": 0.5508314108694867,
+              "observed": 0.6018518518518519,
+              "n": 108
+            },
+            {
+              "predicted": 0.6436150156667998,
+              "observed": 0.6063829787234043,
+              "n": 94
+            },
+            {
+              "predicted": 0.7228209466551097,
+              "observed": 0.8235294117647058,
+              "n": 17
+            }
+          ],
+          "n": 371,
+          "brier": 0.586879007335625,
+          "logloss": 0.9888958698207738,
+          "rps": 0.20796434887040446,
+          "n_bets": 446,
+          "profit": 161.03349999999955,
+          "roi": 0.16103349999999955,
+          "yield": 0.03927493073441025,
+          "drawdown": 0.22814499651697506,
+          "hit_rate": 0.32286995515695066,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9612277517290782,
+            1.022584710990889
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "XGBoost_isotonic": {
+          "ece": 0.0478153038644459,
+          "mce": 0.228700696893971,
+          "reliability_curve": [
+            {
+              "predicted": 0.0557514860222935,
+              "observed": 0.14473684210526316,
+              "n": 76
+            },
+            {
+              "predicted": 0.155555866438729,
+              "observed": 0.17733990147783252,
+              "n": 203
+            },
+            {
+              "predicted": 0.2555817957322064,
+              "observed": 0.2845528455284553,
+              "n": 246
+            },
+            {
+              "predicted": 0.3428484568294673,
+              "observed": 0.2939297124600639,
+              "n": 313
+            },
+            {
+              "predicted": 0.45373267538471485,
+              "observed": 0.5633802816901409,
+              "n": 71
+            },
+            {
+              "predicted": 0.5499584263815549,
+              "observed": 0.52,
+              "n": 75
+            },
+            {
+              "predicted": 0.6597659742528706,
+              "observed": 0.5694444444444444,
+              "n": 72
+            },
+            {
+              "predicted": 0.7423136445255051,
+              "observed": 0.7111111111111111,
+              "n": 45
+            },
+            {
+              "predicted": 0.828700696893971,
+              "observed": 0.6,
+              "n": 5
+            },
+            {
+              "predicted": 0.9268125531774339,
+              "observed": 1,
+              "n": 7
+            }
+          ],
+          "n": 371,
+          "brier": 0.5949000632123153,
+          "logloss": 1.061964350750307,
+          "rps": 0.21102154924402694,
+          "n_bets": 483,
+          "profit": 75.9082000000003,
+          "roi": 0.0759082000000003,
+          "yield": 0.01729793905584885,
+          "drawdown": 0.18352428707791812,
+          "hit_rate": 0.3416149068322981,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9931740702010243,
+            1.1412687330427003
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "LightGBM": {
+          "ece": 0.027031916580346194,
+          "mce": 0.18616101328699797,
+          "reliability_curve": [
+            {
+              "predicted": 0.08812449455161163,
+              "observed": 0.045454545454545456,
+              "n": 22
+            },
+            {
+              "predicted": 0.16175108191048473,
+              "observed": 0.1956521739130435,
+              "n": 276
+            },
+            {
+              "predicted": 0.24560497242279966,
+              "observed": 0.22796352583586627,
+              "n": 329
+            },
+            {
+              "predicted": 0.3457418498842763,
+              "observed": 0.37662337662337664,
+              "n": 154
+            },
+            {
+              "predicted": 0.4470241217884065,
+              "observed": 0.44,
+              "n": 100
+            },
+            {
+              "predicted": 0.5538567326300541,
+              "observed": 0.5483870967741935,
+              "n": 93
+            },
+            {
+              "predicted": 0.6445955326958714,
+              "observed": 0.5698924731182796,
+              "n": 93
+            },
+            {
+              "predicted": 0.7351710711115705,
+              "observed": 0.7317073170731707,
+              "n": 41
+            },
+            {
+              "predicted": 0.813838986713002,
+              "observed": 1,
+              "n": 5
+            }
+          ],
+          "n": 371,
+          "brier": 0.5865433851077069,
+          "logloss": 0.9850371537265008,
+          "rps": 0.20826629001010602,
+          "n_bets": 368,
+          "profit": 105.9389000000001,
+          "roi": 0.1059389000000001,
+          "yield": 0.031227475983717033,
+          "drawdown": 0.23740402949452438,
+          "hit_rate": 0.34782608695652173,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9567150239367433,
+            1.0222131078797145
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "LightGBM_platt": {
+          "ece": 0.02152856192372196,
+          "mce": 0.1588386211827728,
+          "reliability_curve": [
+            {
+              "predicted": 0.08342410255611143,
+              "observed": 0.10526315789473684,
+              "n": 38
+            },
+            {
+              "predicted": 0.15501713919299887,
+              "observed": 0.17105263157894737,
+              "n": 152
+            },
+            {
+              "predicted": 0.25751703268856485,
+              "observed": 0.23542116630669546,
+              "n": 463
+            },
+            {
+              "predicted": 0.34225110061715924,
+              "observed": 0.362962962962963,
+              "n": 135
+            },
+            {
+              "predicted": 0.4460880407720622,
+              "observed": 0.46464646464646464,
+              "n": 99
+            },
+            {
+              "predicted": 0.5535258286775376,
+              "observed": 0.576,
+              "n": 125
+            },
+            {
+              "predicted": 0.6424758986639328,
+              "observed": 0.6236559139784946,
+              "n": 93
+            },
+            {
+              "predicted": 0.7161613788172272,
+              "observed": 0.875,
+              "n": 8
+            }
+          ],
+          "n": 371,
+          "brier": 0.5895594588700956,
+          "logloss": 0.9917691154791333,
+          "rps": 0.2092167614257599,
+          "n_bets": 453,
+          "profit": 302.60760000000005,
+          "roi": 0.30260760000000003,
+          "yield": 0.0689790401075917,
+          "drawdown": 0.2359140739261258,
+          "hit_rate": 0.32229580573951433,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9647928466508965,
+            1.0252640707358558
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "LightGBM_isotonic": {
+          "ece": 0.028618022410988472,
+          "mce": 0.4927527971014493,
+          "reliability_curve": [
+            {
+              "predicted": 0.06874603042797224,
+              "observed": 0.17204301075268819,
+              "n": 93
+            },
+            {
+              "predicted": 0.16784328018271816,
+              "observed": 0.1509433962264151,
+              "n": 159
+            },
+            {
+              "predicted": 0.24817289967085734,
+              "observed": 0.25984251968503935,
+              "n": 254
+            },
+            {
+              "predicted": 0.33679394234129123,
+              "observed": 0.3213213213213213,
+              "n": 333
+            },
+            {
+              "predicted": 0.43391736698629446,
+              "observed": 0.43103448275862066,
+              "n": 58
+            },
+            {
+              "predicted": 0.5495770551350427,
+              "observed": 0.5824175824175825,
+              "n": 91
+            },
+            {
+              "predicted": 0.6630896268360557,
+              "observed": 0.5844155844155844,
+              "n": 77
+            },
+            {
+              "predicted": 0.7345774545031801,
+              "observed": 0.725,
+              "n": 40
+            },
+            {
+              "predicted": 0.8260861304347826,
+              "observed": 0.3333333333333333,
+              "n": 3
+            },
+            {
+              "predicted": 0.9266522329593704,
+              "observed": 1,
+              "n": 5
+            }
+          ],
+          "n": 371,
+          "brier": 0.5945616838161081,
+          "logloss": 1.059580343727479,
+          "rps": 0.2106173544120207,
+          "n_bets": 463,
+          "profit": 36.6225000000004,
+          "roi": 0.0366225000000004,
+          "yield": 0.008960202973155565,
+          "drawdown": 0.20947458380687436,
+          "hit_rate": 0.3326133909287257,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9855132081978053,
+            1.1607609743689895
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Elo": {
+          "ece": 0.012932472885641701,
+          "mce": 0.05387436773148979,
+          "reliability_curve": [
+            {
+              "predicted": 0.07156836652235805,
+              "observed": 0.09803921568627451,
+              "n": 51
+            },
+            {
+              "predicted": 0.16095570146641724,
+              "observed": 0.16748768472906403,
+              "n": 203
+            },
+            {
+              "predicted": 0.24496568474991484,
+              "observed": 0.2475,
+              "n": 400
+            },
+            {
+              "predicted": 0.3485341792808034,
+              "observed": 0.34710743801652894,
+              "n": 121
+            },
+            {
+              "predicted": 0.44945731301154357,
+              "observed": 0.47368421052631576,
+              "n": 114
+            },
+            {
+              "predicted": 0.549269312212875,
+              "observed": 0.5287356321839081,
+              "n": 87
+            },
+            {
+              "predicted": 0.6405410343981565,
+              "observed": 0.5866666666666667,
+              "n": 75
+            },
+            {
+              "predicted": 0.7434190809891423,
+              "observed": 0.717391304347826,
+              "n": 46
+            },
+            {
+              "predicted": 0.8284173228459706,
+              "observed": 0.875,
+              "n": 16
+            }
+          ],
+          "n": 371,
+          "brier": 0.577841051605425,
+          "logloss": 0.9704244724881103,
+          "rps": 0.2039655851666926,
+          "n_bets": 349,
+          "profit": 323.4308000000001,
+          "roi": 0.3234308000000001,
+          "yield": 0.10437426583536659,
+          "drawdown": 0.1523591297892561,
+          "hit_rate": 0.38968481375358166,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9372613695769233,
+            1.0091788475919912
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Elo_platt": {
+          "ece": 0.02445055883915666,
+          "mce": 0.08321680375627549,
+          "reliability_curve": [
+            {
+              "predicted": 0.06831597083639945,
+              "observed": 0.09836065573770492,
+              "n": 61
+            },
+            {
+              "predicted": 0.15578808593225177,
+              "observed": 0.15760869565217392,
+              "n": 184
+            },
+            {
+              "predicted": 0.25511515434414517,
+              "observed": 0.2692307692307692,
+              "n": 312
+            },
+            {
+              "predicted": 0.3321190993408791,
+              "observed": 0.31225296442687744,
+              "n": 253
+            },
+            {
+              "predicted": 0.4480350019369814,
+              "observed": 0.5048543689320388,
+              "n": 103
+            },
+            {
+              "predicted": 0.5508243910168056,
+              "observed": 0.4939759036144578,
+              "n": 83
+            },
+            {
+              "predicted": 0.6452282604808003,
+              "observed": 0.6166666666666667,
+              "n": 60
+            },
+            {
+              "predicted": 0.7407495730922473,
+              "observed": 0.6842105263157895,
+              "n": 38
+            },
+            {
+              "predicted": 0.827814745684918,
+              "observed": 0.8888888888888888,
+              "n": 18
+            },
+            {
+              "predicted": 0.9167831962437245,
+              "observed": 1,
+              "n": 1
+            }
+          ],
+          "n": 371,
+          "brier": 0.5829161915392662,
+          "logloss": 0.9789733215008669,
+          "rps": 0.20476906582872248,
+          "n_bets": 466,
+          "profit": -89.56529999999975,
+          "roi": -0.08956529999999975,
+          "yield": -0.02670020390641762,
+          "drawdown": 0.2883870758727163,
+          "hit_rate": 0.3261802575107296,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9457897674003827,
+            1.0191088427704562
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Elo_isotonic": {
+          "ece": 0.031549023575377644,
+          "mce": 0.16161741540269503,
+          "reliability_curve": [
+            {
+              "predicted": 0.06308464396567519,
+              "observed": 0.13008130081300814,
+              "n": 123
+            },
+            {
+              "predicted": 0.15908019307313898,
+              "observed": 0.1834319526627219,
+              "n": 169
+            },
+            {
+              "predicted": 0.25600322709277107,
+              "observed": 0.2548076923076923,
+              "n": 208
+            },
+            {
+              "predicted": 0.3362722173181632,
+              "observed": 0.347953216374269,
+              "n": 342
+            },
+            {
+              "predicted": 0.45150276502977565,
+              "observed": 0.3939393939393939,
+              "n": 66
+            },
+            {
+              "predicted": 0.5364112098468571,
+              "observed": 0.5555555555555556,
+              "n": 63
+            },
+            {
+              "predicted": 0.660890579694338,
+              "observed": 0.5454545454545454,
+              "n": 55
+            },
+            {
+              "predicted": 0.727849908238979,
+              "observed": 0.65625,
+              "n": 64
+            },
+            {
+              "predicted": 0.861617415402695,
+              "observed": 0.7,
+              "n": 10
+            },
+            {
+              "predicted": 0.99704828676353,
+              "observed": 0.9230769230769231,
+              "n": 13
+            }
+          ],
+          "n": 371,
+          "brier": 0.5920163087833907,
+          "logloss": 1.047077519336797,
+          "rps": 0.2086134262232116,
+          "n_bets": 474,
+          "profit": 30.705099999999902,
+          "roi": 0.030705099999999902,
+          "yield": 0.008645768219267536,
+          "drawdown": 0.3207421425520205,
+          "hit_rate": 0.3438818565400844,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.968838693443005,
+            1.149758050133892
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Poisson": {
+          "ece": 0.018483166329911087,
+          "mce": 0.09029628133948564,
+          "reliability_curve": [
+            {
+              "predicted": 0.0743950102906251,
+              "observed": 0.10344827586206896,
+              "n": 29
+            },
+            {
+              "predicted": 0.16139984280957992,
+              "observed": 0.11834319526627218,
+              "n": 169
+            },
+            {
+              "predicted": 0.24715034571345437,
+              "observed": 0.24644549763033174,
+              "n": 422
+            },
+            {
+              "predicted": 0.3490269041277232,
+              "observed": 0.3699421965317919,
+              "n": 173
+            },
+            {
+              "predicted": 0.4452125213826929,
+              "observed": 0.4728682170542636,
+              "n": 129
+            },
+            {
+              "predicted": 0.5472471394960348,
+              "observed": 0.5402298850574713,
+              "n": 87
+            },
+            {
+              "predicted": 0.6500311318568173,
+              "observed": 0.6285714285714286,
+              "n": 70
+            },
+            {
+              "predicted": 0.7497037186605143,
+              "observed": 0.84,
+              "n": 25
+            },
+            {
+              "predicted": 0.844353596729615,
+              "observed": 0.7777777777777778,
+              "n": 9
+            }
+          ],
+          "n": 371,
+          "brier": 0.5758610486292163,
+          "logloss": 0.969116491451249,
+          "rps": 0.20422301607047974,
+          "n_bets": 355,
+          "profit": 1021.9981999999993,
+          "roi": 1.0219981999999994,
+          "yield": 0.23701476822605022,
+          "drawdown": 0.13072243152179674,
+          "hit_rate": 0.39154929577464787,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9399067430223559,
+            1.0068767943316017
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Poisson_platt": {
+          "ece": 0.016246527880455677,
+          "mce": 0.24616573772519235,
+          "reliability_curve": [
+            {
+              "predicted": 0.06888096322439573,
+              "observed": 0.09259259259259259,
+              "n": 54
+            },
+            {
+              "predicted": 0.15287539008250128,
+              "observed": 0.1317365269461078,
+              "n": 167
+            },
+            {
+              "predicted": 0.2571053158248573,
+              "observed": 0.2608695652173913,
+              "n": 345
+            },
+            {
+              "predicted": 0.34131522204625125,
+              "observed": 0.3346153846153846,
+              "n": 260
+            },
+            {
+              "predicted": 0.44705686138828293,
+              "observed": 0.4807692307692308,
+              "n": 104
+            },
+            {
+              "predicted": 0.5480524701960736,
+              "observed": 0.56,
+              "n": 75
+            },
+            {
+              "predicted": 0.6496587311665782,
+              "observed": 0.5964912280701754,
+              "n": 57
+            },
+            {
+              "predicted": 0.7371257132808375,
+              "observed": 0.7575757575757576,
+              "n": 33
+            },
+            {
+              "predicted": 0.8409935915652464,
+              "observed": 0.9333333333333333,
+              "n": 15
+            },
+            {
+              "predicted": 0.912832404391859,
+              "observed": 0.6666666666666666,
+              "n": 3
+            }
+          ],
+          "n": 371,
+          "brier": 0.5802026529819033,
+          "logloss": 0.976773534934115,
+          "rps": 0.20500882830672498,
+          "n_bets": 480,
+          "profit": 78.83369999999991,
+          "roi": 0.07883369999999991,
+          "yield": 0.019770008576716454,
+          "drawdown": 0.18012116590640487,
+          "hit_rate": 0.32916666666666666,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9425661335062504,
+            1.01976727892103
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Poisson_isotonic": {
+          "ece": 0.03985771049434168,
+          "mce": 0.18181612727515994,
+          "reliability_curve": [
+            {
+              "predicted": 0.05967197606064664,
+              "observed": 0.08974358974358974,
+              "n": 78
+            },
+            {
+              "predicted": 0.15127250199397269,
+              "observed": 0.22580645161290322,
+              "n": 248
+            },
+            {
+              "predicted": 0.27444074029069154,
+              "observed": 0.2631578947368421,
+              "n": 228
+            },
+            {
+              "predicted": 0.3335199729866008,
+              "observed": 0.29554655870445345,
+              "n": 247
+            },
+            {
+              "predicted": 0.44005967435894433,
+              "observed": 0.4507042253521127,
+              "n": 71
+            },
+            {
+              "predicted": 0.5408339967016429,
+              "observed": 0.5196850393700787,
+              "n": 127
+            },
+            {
+              "predicted": 0.6269339409864705,
+              "observed": 0.5476190476190477,
+              "n": 42
+            },
+            {
+              "predicted": 0.7442354654713181,
+              "observed": 0.7,
+              "n": 50
+            },
+            {
+              "predicted": 0.8549956911980133,
+              "observed": 0.9090909090909091,
+              "n": 11
+            },
+            {
+              "predicted": 0.9999979454569782,
+              "observed": 0.8181818181818182,
+              "n": 11
+            }
+          ],
+          "n": 371,
+          "brier": 0.5943258660101266,
+          "logloss": 1.0554154802365203,
+          "rps": 0.20952454552001817,
+          "n_bets": 508,
+          "profit": -205.98239999999976,
+          "roi": -0.20598239999999976,
+          "yield": -0.051179947672728286,
+          "drawdown": 0.3209383150132139,
+          "hit_rate": 0.33858267716535434,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9658879850341916,
+            1.1738889877500251
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Ensemble": {
+          "ece": 0.010165431805099571,
+          "mce": 0.17282049254252552,
+          "reliability_curve": [
+            {
+              "predicted": 0.07664054386849907,
+              "observed": 0.06896551724137931,
+              "n": 29
+            },
+            {
+              "predicted": 0.16044784955416588,
+              "observed": 0.15458937198067632,
+              "n": 207
+            },
+            {
+              "predicted": 0.24433929635998755,
+              "observed": 0.25061425061425063,
+              "n": 407
+            },
+            {
+              "predicted": 0.35006099152455133,
+              "observed": 0.35036496350364965,
+              "n": 137
+            },
+            {
+              "predicted": 0.44718847592669947,
+              "observed": 0.46153846153846156,
+              "n": 117
+            },
+            {
+              "predicted": 0.5487130431251692,
+              "observed": 0.5268817204301075,
+              "n": 93
+            },
+            {
+              "predicted": 0.6447096819837266,
+              "observed": 0.625,
+              "n": 72
+            },
+            {
+              "predicted": 0.7388923733993032,
+              "observed": 0.7209302325581395,
+              "n": 43
+            },
+            {
+              "predicted": 0.8271795074574745,
+              "observed": 1,
+              "n": 8
+            }
+          ],
+          "n": 371,
+          "brier": 0.5743544500281775,
+          "logloss": 0.9648542703352511,
+          "rps": 0.20272141189682805,
+          "n_bets": 337,
+          "profit": 558.5087000000005,
+          "roi": 0.5585087000000005,
+          "yield": 0.16870112727448489,
+          "drawdown": 0.10537277643943867,
+          "hit_rate": 0.3887240356083086,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9368750309460351,
+            0.9979005906521807
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Ensemble_platt": {
+          "ece": 0.012438216522059993,
+          "mce": 0.07593373277364779,
+          "reliability_curve": [
+            {
+              "predicted": 0.07458931264946798,
+              "observed": 0.06557377049180328,
+              "n": 61
+            },
+            {
+              "predicted": 0.15690005968922324,
+              "observed": 0.15254237288135594,
+              "n": 177
+            },
+            {
+              "predicted": 0.2566318378714419,
+              "observed": 0.26409495548961426,
+              "n": 337
+            },
+            {
+              "predicted": 0.3354643472990908,
+              "observed": 0.32916666666666666,
+              "n": 240
+            },
+            {
+              "predicted": 0.45063695893277383,
+              "observed": 0.48484848484848486,
+              "n": 99
+            },
+            {
+              "predicted": 0.5511379154303298,
+              "observed": 0.525,
+              "n": 80
+            },
+            {
+              "predicted": 0.646125111872433,
+              "observed": 0.6153846153846154,
+              "n": 65
+            },
+            {
+              "predicted": 0.7398933783479816,
+              "observed": 0.7441860465116279,
+              "n": 43
+            },
+            {
+              "predicted": 0.8331571763172613,
+              "observed": 0.9090909090909091,
+              "n": 11
+            }
+          ],
+          "n": 371,
+          "brier": 0.5791734341687199,
+          "logloss": 0.9725717720583263,
+          "rps": 0.20365571459254603,
+          "n_bets": 460,
+          "profit": -65.28830000000016,
+          "roi": -0.06528830000000016,
+          "yield": -0.019874007263075,
+          "drawdown": 0.30647488651237914,
+          "hit_rate": 0.3173913043478261,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.942408246021984,
+            1.0089525424206465
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Ensemble_isotonic": {
+          "ece": 0.03838395064476257,
+          "mce": 0.17029885772768005,
+          "reliability_curve": [
+            {
+              "predicted": 0.06464230148516165,
+              "observed": 0.1188118811881188,
+              "n": 101
+            },
+            {
+              "predicted": 0.14139739794744646,
+              "observed": 0.19095477386934673,
+              "n": 199
+            },
+            {
+              "predicted": 0.27407601979906177,
+              "observed": 0.30985915492957744,
+              "n": 142
+            },
+            {
+              "predicted": 0.3333163263831318,
+              "observed": 0.3111111111111111,
+              "n": 405
+            },
+            {
+              "predicted": 0.4357091527629897,
+              "observed": 0.4225352112676056,
+              "n": 71
+            },
+            {
+              "predicted": 0.5568668927570568,
+              "observed": 0.5,
+              "n": 52
+            },
+            {
+              "predicted": 0.6415010900259727,
+              "observed": 0.6428571428571429,
+              "n": 70
+            },
+            {
+              "predicted": 0.7399459117292996,
+              "observed": 0.6111111111111112,
+              "n": 54
+            },
+            {
+              "predicted": 0.82970114227232,
+              "observed": 1,
+              "n": 5
+            },
+            {
+              "predicted": 0.9655749175514712,
+              "observed": 0.8571428571428571,
+              "n": 14
+            }
+          ],
+          "n": 371,
+          "brier": 0.5913590556450958,
+          "logloss": 1.021039630595229,
+          "rps": 0.20820047970942154,
+          "n_bets": 493,
+          "profit": -139.02199999999925,
+          "roi": -0.13902199999999926,
+          "yield": -0.03732805632153949,
+          "drawdown": 0.35959547532224895,
+          "hit_rate": 0.332657200811359,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.9569399127005215,
+            1.112390746211052
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        }
+      },
+      "ensemble_weights": {
+        "BASELINE_V1": 1.117524355591832e-17,
+        "Elo": 0.601657213142148,
+        "LightGBM": 0.170975363606922,
+        "Poisson": 0.22736742325092998,
+        "XGBoost": 0.0
+      }
+    },
+    "ou": {
+      "models": {
+        "BASELINE_V1": {
+          "ece": 0.020444968118998368,
+          "mce": 0.07804789645976362,
+          "reliability_curve": [
+            {
+              "predicted": 0.27909496068309353,
+              "observed": 0.35714285714285715,
+              "n": 14
+            },
+            {
+              "predicted": 0.36199308332282293,
+              "observed": 0.3557692307692308,
+              "n": 104
+            },
+            {
+              "predicted": 0.453933327889874,
+              "observed": 0.4308300395256917,
+              "n": 253
+            },
+            {
+              "predicted": 0.546066672110126,
+              "observed": 0.5691699604743083,
+              "n": 253
+            },
+            {
+              "predicted": 0.6380069166771771,
+              "observed": 0.6442307692307693,
+              "n": 104
+            },
+            {
+              "predicted": 0.7209050393169065,
+              "observed": 0.6428571428571429,
+              "n": 14
+            }
+          ],
+          "n": 371,
+          "brier": 0.48022807277142804,
+          "logloss": 0.6732441112811528,
+          "rps": 0.24011403638571402,
+          "n_bets": 321,
+          "profit": 297.3977,
+          "roi": 0.2973977,
+          "yield": 0.08803019808427752,
+          "drawdown": 0.10650829999999996,
+          "hit_rate": 0.48909657320872274,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6500726779856213,
+            0.6994859317103731
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "BASELINE_V1_platt": {
+          "ece": 0.07619165341722627,
+          "mce": 0.12791675131096797,
+          "reliability_curve": [
+            {
+              "predicted": 0.2723894283165962,
+              "observed": 0.35294117647058826,
+              "n": 51
+            },
+            {
+              "predicted": 0.35304899714656535,
+              "observed": 0.40540540540540543,
+              "n": 222
+            },
+            {
+              "predicted": 0.44351182011760354,
+              "observed": 0.5714285714285714,
+              "n": 98
+            },
+            {
+              "predicted": 0.5564881798823965,
+              "observed": 0.42857142857142855,
+              "n": 98
+            },
+            {
+              "predicted": 0.6469510028534347,
+              "observed": 0.5945945945945946,
+              "n": 222
+            },
+            {
+              "predicted": 0.7276105716834038,
+              "observed": 0.6470588235294118,
+              "n": 51
+            }
+          ],
+          "n": 371,
+          "brier": 0.49087845743345404,
+          "logloss": 0.6844687413260997,
+          "rps": 0.24543922871672702,
+          "n_bets": 312,
+          "profit": 152.3900000000001,
+          "roi": 0.1523900000000001,
+          "yield": 0.04710751976852734,
+          "drawdown": 0.06934815974426076,
+          "hit_rate": 0.5512820512820513,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6480144626520725,
+            0.7272753283391177
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "BASELINE_V1_isotonic": {
+          "ece": 0.06285480629692225,
+          "mce": 0.8156514921835384,
+          "reliability_curve": [
+            {
+              "predicted": 0.004294325418158183,
+              "observed": 0,
+              "n": 2
+            },
+            {
+              "predicted": 0.18434850781646162,
+              "observed": 1,
+              "n": 2
+            },
+            {
+              "predicted": 0.2668077703101202,
+              "observed": 0.3790322580645161,
+              "n": 124
+            },
+            {
+              "predicted": 0.36757322567001843,
+              "observed": 0.3969465648854962,
+              "n": 131
+            },
+            {
+              "predicted": 0.4070217741712741,
+              "observed": 0.463768115942029,
+              "n": 69
+            },
+            {
+              "predicted": 0.5413903069818199,
+              "observed": 0.5161290322580645,
+              "n": 155
+            },
+            {
+              "predicted": 0.6324267743299815,
+              "observed": 0.6030534351145038,
+              "n": 131
+            },
+            {
+              "predicted": 0.7331922296898798,
+              "observed": 0.6209677419354839,
+              "n": 124
+            },
+            {
+              "predicted": 0.8156514921835384,
+              "observed": 0,
+              "n": 2
+            },
+            {
+              "predicted": 0.9957056745818419,
+              "observed": 1,
+              "n": 2
+            }
+          ],
+          "n": 371,
+          "brier": 0.49367841158890496,
+          "logloss": 0.6880447890114881,
+          "rps": 0.24683920579445248,
+          "n_bets": 327,
+          "profit": 93.18959999999925,
+          "roi": 0.09318959999999925,
+          "yield": 0.029351794690889665,
+          "drawdown": 0.15606359187574959,
+          "hit_rate": 0.5504587155963303,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6447128878553608,
+            0.7360981055808548
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "XGBoost": {
+          "ece": 0.020464270280409515,
+          "mce": 0.14601553723452776,
+          "reliability_curve": [
+            {
+              "predicted": 0.3924460012270107,
+              "observed": 0.5384615384615384,
+              "n": 13
+            },
+            {
+              "predicted": 0.45895518913412553,
+              "observed": 0.4748603351955307,
+              "n": 358
+            },
+            {
+              "predicted": 0.5410448108658745,
+              "observed": 0.5251396648044693,
+              "n": 358
+            },
+            {
+              "predicted": 0.6075539987729893,
+              "observed": 0.46153846153846156,
+              "n": 13
+            }
+          ],
+          "n": 371,
+          "brier": 0.4918021956427545,
+          "logloss": 0.6849233420048401,
+          "rps": 0.24590109782137726,
+          "n_bets": 319,
+          "profit": 195.92670000000044,
+          "roi": 0.19592670000000043,
+          "yield": 0.05859384953092432,
+          "drawdown": 0.18652134350880523,
+          "hit_rate": 0.45768025078369906,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6753190261513912,
+            0.692805675453165
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "XGBoost_platt": {
+          "ece": 0.07142360172632986,
+          "mce": 0.07142360172632989,
+          "reliability_curve": [
+            {
+              "predicted": 0.3733203335836432,
+              "observed": 0.444743935309973,
+              "n": 371
+            },
+            {
+              "predicted": 0.6266796664163569,
+              "observed": 0.555256064690027,
+              "n": 371
+            }
+          ],
+          "n": 371,
+          "brier": 0.5036334214101738,
+          "logloss": 0.697203765537497,
+          "rps": 0.2518167107050869,
+          "n_bets": 320,
+          "profit": 51.24070000000029,
+          "roi": 0.05124070000000029,
+          "yield": 0.016491858784755946,
+          "drawdown": 0.13417160000000025,
+          "hit_rate": 0.503125,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6721814456321199,
+            0.728188398679385
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "XGBoost_isotonic": {
+          "ece": 0.06050891425908778,
+          "mce": 0.22499999999999998,
+          "reliability_curve": [
+            {
+              "predicted": 0.275,
+              "observed": 0.5,
+              "n": 18
+            },
+            {
+              "predicted": 0.381623629110699,
+              "observed": 0.43389830508474575,
+              "n": 295
+            },
+            {
+              "predicted": 0.4314176245210728,
+              "observed": 0.4827586206896552,
+              "n": 58
+            },
+            {
+              "predicted": 0.5555555555555556,
+              "observed": 0.4634146341463415,
+              "n": 41
+            },
+            {
+              "predicted": 0.6173750942703327,
+              "observed": 0.5705128205128205,
+              "n": 312
+            },
+            {
+              "predicted": 0.725,
+              "observed": 0.5,
+              "n": 18
+            }
+          ],
+          "n": 371,
+          "brier": 0.4997620052214521,
+          "logloss": 0.6934928120645005,
+          "rps": 0.24988100261072604,
+          "n_bets": 313,
+          "profit": 102.61390000000051,
+          "roi": 0.10261390000000051,
+          "yield": 0.034038864065335364,
+          "drawdown": 0.12343870000000004,
+          "hit_rate": 0.5111821086261981,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6665183228434414,
+            0.7216208224514902
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "LightGBM": {
+          "ece": 0.034790017429922014,
+          "mce": 0.035030149383364795,
+          "reliability_curve": [
+            {
+              "predicted": 0.39071137454964894,
+              "observed": 0.42105263157894735,
+              "n": 19
+            },
+            {
+              "predicted": 0.4611665130197284,
+              "observed": 0.42613636363636365,
+              "n": 352
+            },
+            {
+              "predicted": 0.5388334869802716,
+              "observed": 0.5738636363636364,
+              "n": 352
+            },
+            {
+              "predicted": 0.6092886254503511,
+              "observed": 0.5789473684210527,
+              "n": 19
+            }
+          ],
+          "n": 371,
+          "brier": 0.4883484975393917,
+          "logloss": 0.6814322757825897,
+          "rps": 0.24417424876969585,
+          "n_bets": 314,
+          "profit": 328.2649000000006,
+          "roi": 0.3282649000000006,
+          "yield": 0.09589080191159471,
+          "drawdown": 0.15610055344741675,
+          "hit_rate": 0.4713375796178344,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6745380685241331,
+            0.6874957266301343
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "LightGBM_platt": {
+          "ece": 0.07080329240140562,
+          "mce": 0.07080329240140565,
+          "reliability_curve": [
+            {
+              "predicted": 0.3739406429085674,
+              "observed": 0.444743935309973,
+              "n": 371
+            },
+            {
+              "predicted": 0.6260593570914326,
+              "observed": 0.555256064690027,
+              "n": 371
+            }
+          ],
+          "n": 371,
+          "brier": 0.5029370911116584,
+          "logloss": 0.6964617599511991,
+          "rps": 0.2514685455558292,
+          "n_bets": 320,
+          "profit": 32.0663999999997,
+          "roi": 0.032066399999999703,
+          "yield": 0.010470216774471535,
+          "drawdown": 0.14353779999999994,
+          "hit_rate": 0.5,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6717263318794341,
+            0.7269738562469661
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "LightGBM_isotonic": {
+          "ece": 0.06075603723799081,
+          "mce": 0.4846725759555303,
+          "reliability_curve": [
+            {
+              "predicted": 0.01532742404446971,
+              "observed": 0.5,
+              "n": 4
+            },
+            {
+              "predicted": 0.2872176803042557,
+              "observed": 0.3181818181818182,
+              "n": 44
+            },
+            {
+              "predicted": 0.39075690512151995,
+              "observed": 0.4448669201520912,
+              "n": 263
+            },
+            {
+              "predicted": 0.43319260846967556,
+              "observed": 0.5166666666666667,
+              "n": 60
+            },
+            {
+              "predicted": 0.5668073915303244,
+              "observed": 0.48333333333333334,
+              "n": 60
+            },
+            {
+              "predicted": 0.60924309487848,
+              "observed": 0.5551330798479087,
+              "n": 263
+            },
+            {
+              "predicted": 0.7127823196957443,
+              "observed": 0.6818181818181818,
+              "n": 44
+            },
+            {
+              "predicted": 0.9846725759555303,
+              "observed": 0.5,
+              "n": 4
+            }
+          ],
+          "n": 371,
+          "brier": 0.5010469837673108,
+          "logloss": 0.7561445477661859,
+          "rps": 0.2505234918836554,
+          "n_bets": 335,
+          "profit": 123.77970000000028,
+          "roi": 0.12377970000000027,
+          "yield": 0.03852596883179945,
+          "drawdown": 0.13474270000000002,
+          "hit_rate": 0.5074626865671642,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6719628882936893,
+            0.914500112439809
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Ensemble": {
+          "ece": 0.031868715125766625,
+          "mce": 0.10318327468426775,
+          "reliability_curve": [
+            {
+              "predicted": 0.38889756039855344,
+              "observed": 0.2857142857142857,
+              "n": 14
+            },
+            {
+              "predicted": 0.45764349430274415,
+              "observed": 0.42857142857142855,
+              "n": 357
+            },
+            {
+              "predicted": 0.5423565056972558,
+              "observed": 0.5714285714285714,
+              "n": 357
+            },
+            {
+              "predicted": 0.6111024396014466,
+              "observed": 0.7142857142857143,
+              "n": 14
+            }
+          ],
+          "n": 371,
+          "brier": 0.4853945679566602,
+          "logloss": 0.6784364679958643,
+          "rps": 0.2426972839783301,
+          "n_bets": 308,
+          "profit": 336.6662000000001,
+          "roi": 0.33666620000000014,
+          "yield": 0.10138929628703848,
+          "drawdown": 0.1772703871905462,
+          "hit_rate": 0.474025974025974,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6673917405148815,
+            0.6903773436768851
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Ensemble_platt": {
+          "ece": 0.06593205704593928,
+          "mce": 0.12443300819221265,
+          "reliability_curve": [
+            {
+              "predicted": 0.3676492431018129,
+              "observed": 0.41724137931034483,
+              "n": 290
+            },
+            {
+              "predicted": 0.41877686835099726,
+              "observed": 0.5432098765432098,
+              "n": 81
+            },
+            {
+              "predicted": 0.5812231316490027,
+              "observed": 0.4567901234567901,
+              "n": 81
+            },
+            {
+              "predicted": 0.6323507568981871,
+              "observed": 0.5827586206896552,
+              "n": 290
+            }
+          ],
+          "n": 371,
+          "brier": 0.4955828889672836,
+          "logloss": 0.6887740501598041,
+          "rps": 0.2477914444836418,
+          "n_bets": 319,
+          "profit": 31.600500000000466,
+          "roi": 0.03160050000000047,
+          "yield": 0.01031186367670877,
+          "drawdown": 0.12965309999999988,
+          "hit_rate": 0.5015673981191222,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6620548530821704,
+            0.7189883982147259
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Ensemble_isotonic": {
+          "ece": 0.06548381188914966,
+          "mce": 0.47644727831512695,
+          "reliability_curve": [
+            {
+              "predicted": 0.02355272168487307,
+              "observed": 0.5,
+              "n": 4
+            },
+            {
+              "predicted": 0.2698468687377901,
+              "observed": 0.35185185185185186,
+              "n": 54
+            },
+            {
+              "predicted": 0.3406829560465456,
+              "observed": 0.3854166666666667,
+              "n": 96
+            },
+            {
+              "predicted": 0.4347188949773131,
+              "observed": 0.4976958525345622,
+              "n": 217
+            },
+            {
+              "predicted": 0.5652811050226869,
+              "observed": 0.5023041474654378,
+              "n": 217
+            },
+            {
+              "predicted": 0.6593170439534545,
+              "observed": 0.6145833333333334,
+              "n": 96
+            },
+            {
+              "predicted": 0.7301531312622098,
+              "observed": 0.6481481481481481,
+              "n": 54
+            },
+            {
+              "predicted": 0.9764472783151269,
+              "observed": 0.5,
+              "n": 4
+            }
+          ],
+          "n": 371,
+          "brier": 0.4983050673193768,
+          "logloss": 0.7234880067392565,
+          "rps": 0.2491525336596884,
+          "n_bets": 308,
+          "profit": 110.72239999999874,
+          "roi": 0.11072239999999875,
+          "yield": 0.03444745880830266,
+          "drawdown": 0.18715619103950093,
+          "hit_rate": 0.5194805194805194,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6610570314318319,
+            0.8159571001616405
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        }
+      },
+      "ensemble_weights": {
+        "BASELINE_V1": 0.2592642040118617,
+        "LightGBM": 0.08945864286814274,
+        "XGBoost": 0.6512771531199956
+      }
+    },
+    "btts": {
+      "models": {
+        "BASELINE_V1": {
+          "ece": 0.016175838524149003,
+          "mce": 0.21197809434775972,
+          "reliability_curve": [
+            {
+              "predicted": 0.2880219056522403,
+              "observed": 0.5,
+              "n": 2
+            },
+            {
+              "predicted": 0.3697873376911025,
+              "observed": 0.45161290322580644,
+              "n": 62
+            },
+            {
+              "predicted": 0.45438405589377157,
+              "observed": 0.4560260586319218,
+              "n": 307
+            },
+            {
+              "predicted": 0.5456159441062284,
+              "observed": 0.5439739413680782,
+              "n": 307
+            },
+            {
+              "predicted": 0.6302126623088975,
+              "observed": 0.5483870967741935,
+              "n": 62
+            },
+            {
+              "predicted": 0.7119780943477596,
+              "observed": 0.5,
+              "n": 2
+            }
+          ],
+          "n": 371,
+          "brier": 0.5001372971915481,
+          "logloss": 0.6934361383417182,
+          "rps": 0.25006864859577405,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6739516692491196,
+            0.7156665124213969
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "BASELINE_V1_platt": {
+          "ece": 0.08590955523814875,
+          "mce": 0.12731022663630304,
+          "reliability_curve": [
+            {
+              "predicted": 0.28935644003036365,
+              "observed": 0.4166666666666667,
+              "n": 12
+            },
+            {
+              "predicted": 0.358679041803977,
+              "observed": 0.4528985507246377,
+              "n": 276
+            },
+            {
+              "predicted": 0.42963689383596143,
+              "observed": 0.4819277108433735,
+              "n": 83
+            },
+            {
+              "predicted": 0.5703631061640386,
+              "observed": 0.5180722891566265,
+              "n": 83
+            },
+            {
+              "predicted": 0.641320958196023,
+              "observed": 0.5471014492753623,
+              "n": 276
+            },
+            {
+              "predicted": 0.7106435599696364,
+              "observed": 0.5833333333333334,
+              "n": 12
+            }
+          ],
+          "n": 371,
+          "brier": 0.5110092785888252,
+          "logloss": 0.7049820330898859,
+          "rps": 0.2555046392944126,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6736970336530357,
+            0.7365813769634475
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "BASELINE_V1_isotonic": {
+          "ece": 0.1002691271122898,
+          "mce": 0.4166656666666667,
+          "reliability_curve": [
+            {
+              "predicted": 1e-06,
+              "observed": 0.4166666666666667,
+              "n": 12
+            },
+            {
+              "predicted": 0.14930506333197074,
+              "observed": 0.25,
+              "n": 4
+            },
+            {
+              "predicted": 0.2668122004022775,
+              "observed": 0.4,
+              "n": 25
+            },
+            {
+              "predicted": 0.35938175493951596,
+              "observed": 0.4591439688715953,
+              "n": 257
+            },
+            {
+              "predicted": 0.48180144600685004,
+              "observed": 0.5205479452054794,
+              "n": 73
+            },
+            {
+              "predicted": 0.51819855399315,
+              "observed": 0.4794520547945205,
+              "n": 73
+            },
+            {
+              "predicted": 0.640618245060484,
+              "observed": 0.5408560311284046,
+              "n": 257
+            },
+            {
+              "predicted": 0.724077044997412,
+              "observed": 0.6363636363636364,
+              "n": 22
+            },
+            {
+              "predicted": 0.8289685352388738,
+              "observed": 0.5714285714285714,
+              "n": 7
+            },
+            {
+              "predicted": 0.999999,
+              "observed": 0.5833333333333334,
+              "n": 12
+            }
+          ],
+          "n": 371,
+          "brier": 0.5237069947515955,
+          "logloss": 0.8716892640988404,
+          "rps": 0.2618534973757978,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.7360720419740637,
+            1.041925022598166
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "XGBoost": {
+          "ece": 5.948168964922673e-05,
+          "mce": 5.948168964925449e-05,
+          "reliability_curve": [
+            {
+              "predicted": 0.47714843047671124,
+              "observed": 0.477088948787062,
+              "n": 371
+            },
+            {
+              "predicted": 0.5228515695232888,
+              "observed": 0.522911051212938,
+              "n": 371
+            }
+          ],
+          "n": 371,
+          "brier": 0.49880148185373835,
+          "logloss": 0.6919544181745986,
+          "rps": 0.24940074092686917,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6879206923111256,
+            0.6958382431815677
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "XGBoost_platt": {
+          "ece": 0.08202225497626978,
+          "mce": 0.0820222549762698,
+          "reliability_curve": [
+            {
+              "predicted": 0.37619876928249035,
+              "observed": 0.4582210242587601,
+              "n": 371
+            },
+            {
+              "predicted": 0.6238012307175097,
+              "observed": 0.5417789757412399,
+              "n": 371
+            }
+          ],
+          "n": 371,
+          "brier": 0.5102622507757009,
+          "logloss": 0.7039730419580214,
+          "rps": 0.25513112538785043,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6819008139608191,
+            0.7249785519368801
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "XGBoost_isotonic": {
+          "ece": 0.09231410337486733,
+          "mce": 0.7272727272727273,
+          "reliability_curve": [
+            {
+              "predicted": 1e-06,
+              "observed": 0.5,
+              "n": 14
+            },
+            {
+              "predicted": 0.2727272727272727,
+              "observed": 1,
+              "n": 1
+            },
+            {
+              "predicted": 0.38055822015504764,
+              "observed": 0.4550561797752809,
+              "n": 356
+            },
+            {
+              "predicted": 0.6194417798449524,
+              "observed": 0.5449438202247191,
+              "n": 356
+            },
+            {
+              "predicted": 0.7272727272727273,
+              "observed": 0,
+              "n": 1
+            },
+            {
+              "predicted": 0.999999,
+              "observed": 0.5,
+              "n": 14
+            }
+          ],
+          "n": 371,
+          "brier": 0.5270534120704216,
+          "logloss": 0.936405412430116,
+          "rps": 0.2635267060352107,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.7758502074497563,
+            1.1009845892970327
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "LightGBM": {
+          "ece": 0.03427634757236864,
+          "mce": 0.03427634757236864,
+          "reliability_curve": [
+            {
+              "predicted": 0.46823861172331205,
+              "observed": 0.4339622641509434,
+              "n": 371
+            },
+            {
+              "predicted": 0.531761388276688,
+              "observed": 0.5660377358490566,
+              "n": 371
+            }
+          ],
+          "n": 371,
+          "brier": 0.49676176439432185,
+          "logloss": 0.689917185957842,
+          "rps": 0.24838088219716092,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6836208680023971,
+            0.6981777649083322
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "LightGBM_platt": {
+          "ece": 0.08220444532956894,
+          "mce": 0.08220444532956894,
+          "reliability_curve": [
+            {
+              "predicted": 0.37601657892919116,
+              "observed": 0.4582210242587601,
+              "n": 371
+            },
+            {
+              "predicted": 0.6239834210708088,
+              "observed": 0.5417789757412399,
+              "n": 371
+            }
+          ],
+          "n": 371,
+          "brier": 0.5113078191296406,
+          "logloss": 0.705099019253207,
+          "rps": 0.2556539095648203,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6825394132054149,
+            0.7257543227396742
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "LightGBM_isotonic": {
+          "ece": 0.08284286283029674,
+          "mce": 0.6481169901991901,
+          "reliability_curve": [
+            {
+              "predicted": 0.01854967646747661,
+              "observed": 0.6666666666666666,
+              "n": 6
+            },
+            {
+              "predicted": 0.18538310895383184,
+              "observed": 0,
+              "n": 1
+            },
+            {
+              "predicted": 0.380053249835464,
+              "observed": 0.4532967032967033,
+              "n": 364
+            },
+            {
+              "predicted": 0.619946750164536,
+              "observed": 0.5467032967032966,
+              "n": 364
+            },
+            {
+              "predicted": 0.8146168910461682,
+              "observed": 1,
+              "n": 1
+            },
+            {
+              "predicted": 0.9814503235325234,
+              "observed": 0.3333333333333333,
+              "n": 6
+            }
+          ],
+          "n": 371,
+          "brier": 0.5163476082963665,
+          "logloss": 0.8054347326026288,
+          "rps": 0.25817380414818325,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.7143629674276791,
+            0.9334262340221384
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Ensemble": {
+          "ece": 0.00558091377574224,
+          "mce": 0.005580913775742269,
+          "reliability_curve": [
+            {
+              "predicted": 0.4768988705908346,
+              "observed": 0.48247978436657685,
+              "n": 371
+            },
+            {
+              "predicted": 0.5231011294091654,
+              "observed": 0.5175202156334232,
+              "n": 371
+            }
+          ],
+          "n": 371,
+          "brier": 0.4986362304459322,
+          "logloss": 0.6917885543228354,
+          "rps": 0.2493181152229661,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6877351909788512,
+            0.6959597436913776
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Ensemble_platt": {
+          "ece": 0.08168868098004911,
+          "mce": 0.08168868098004911,
+          "reliability_curve": [
+            {
+              "predicted": 0.376532343278711,
+              "observed": 0.4582210242587601,
+              "n": 371
+            },
+            {
+              "predicted": 0.623467656721289,
+              "observed": 0.5417789757412399,
+              "n": 371
+            }
+          ],
+          "n": 371,
+          "brier": 0.5101055562323309,
+          "logloss": 0.7038048233051051,
+          "rps": 0.25505277811616545,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.6818378053963341,
+            0.7247341854787535
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        },
+        "Ensemble_isotonic": {
+          "ece": 0.09579428070882674,
+          "mce": 0.7236003317767908,
+          "reliability_curve": [
+            {
+              "predicted": 0.0005125252153010208,
+              "observed": 0.5,
+              "n": 14
+            },
+            {
+              "predicted": 0.2763996682232092,
+              "observed": 1,
+              "n": 4
+            },
+            {
+              "predicted": 0.3805879541958023,
+              "observed": 0.45325779036827196,
+              "n": 353
+            },
+            {
+              "predicted": 0.6194120458041976,
+              "observed": 0.546742209631728,
+              "n": 353
+            },
+            {
+              "predicted": 0.7236003317767908,
+              "observed": 0,
+              "n": 4
+            },
+            {
+              "predicted": 0.9994874747846989,
+              "observed": 0.5,
+              "n": 14
+            }
+          ],
+          "n": 371,
+          "brier": 0.5299739582720975,
+          "logloss": 0.939627877481935,
+          "rps": 0.26498697913604874,
+          "n_bets": 0,
+          "profit": 0.0,
+          "roi": 0.0,
+          "yield": null,
+          "drawdown": 0.0,
+          "hit_rate": null,
+          "clv": null,
+          "odds_timestamp": null,
+          "execution_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+          "logloss_ci95_month_block": [
+            0.7791514748200002,
+            1.1035461600582894
+          ],
+          "promotion": "EXPERIMENTAL_NOT_PROMOTED"
+        }
+      },
+      "ensemble_weights": {
+        "BASELINE_V1": 0.015335177777324922,
+        "LightGBM": 0.016040021151604994,
+        "XGBoost": 0.9686248010710701
+      }
+    }
+  }
+}

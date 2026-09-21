@@ -1,0 +1,730 @@
+"""BETGSN :: api.service — camada de servico entre o pipeline e a API.
+
+Responsabilidade unica: EXECUTAR o pipeline existente e TRADUZIR o
+RunResult para os contratos de `schemas.py`. Nenhuma regra estatistica
+nova mora aqui: tudo que e numero vem de engine/model/markets/signals.
+
+Mantem um snapshot em memoria (ultimo calculo) com lock, para que varias
+requisicoes HTTP leiam o mesmo estado sem recalcular.
+"""
+
+from __future__ import annotations
+
+import platform
+import sys
+import threading
+import time
+from dataclasses import dataclass
+from datetime import datetime
+from statistics import mean
+
+from .. import __version__
+from ..backtest import run_backtest
+from ..data import BOOKMAKERS, LEAGUE_AVG_GOALS, LEAGUE_HOME_ADVANTAGE, SEED, build_dataset
+from ..engine import implied_prob, scan_arbitrage, consensus_fair_probs
+from ..model import RHO_DEFAULT, TeamRating
+from ..pipeline import FixtureAnalysis, RunResult, run
+from ..providers import available_providers
+from ..signals import EV_FORTE, EV_FRACA, EV_MEDIA, MAX_SPREAD, MIN_BOOKS, Signal as CoreSignal
+from . import schemas as S
+
+MODEL_DOC_FALLBACK = "Documentacao do modelo indisponivel."
+
+
+def _model_doc() -> str:
+    """Le a documentacao do modelo da GUI legada sem importar Tkinter."""
+    try:
+        from pathlib import Path
+
+        src = Path(__file__).resolve().parent.parent / "gui.py"
+        text = src.read_text(encoding="utf-8")
+        start = text.index('MODEL_DOC = """') + len('MODEL_DOC = """')
+        end = text.index('"""', start)
+        return text[start:end].strip()
+    except Exception:
+        return MODEL_DOC_FALLBACK
+
+
+# --------------------------------------------------------------------------
+# Snapshot em memoria
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class Snapshot:
+    result: RunResult
+    config: S.ModelConfiguration
+    generated_at: str
+    computed_in_ms: float
+    source: str = "synthetic"
+
+
+class BetgsnService:
+    """Executa o pipeline e serve o ultimo snapshot calculado."""
+
+    def __init__(self, source: str = "synthetic") -> None:
+        self._lock = threading.RLock()
+        self._snapshot: Snapshot | None = None
+        self._computing = False
+        self._last_error: str | None = None
+        self._doc = _model_doc()
+        self._backtest_cache: dict[tuple, S.ModelPerformance] = {}
+        self.source = source
+
+    # ------------------------------------------------------------- calculo
+
+    @property
+    def computing(self) -> bool:
+        return self._computing
+
+    def recalculate(self, config: S.ModelConfiguration) -> Snapshot:
+        """Roda o pipeline com os parametros informados e guarda o snapshot."""
+        with self._lock:
+            self._computing = True
+            self._last_error = None
+        started = time.perf_counter()
+        try:
+            result = self._run_real(config) if self.source == "real" else run(
+                bankroll=config.bankroll,
+                kelly_frac=config.kelly_fraction,
+                stake_cap=config.stake_cap,
+                min_ev=config.min_ev,
+                use_xg=config.use_xg,
+                rounds=config.rounds,
+                max_exposure_frac=config.max_exposure,
+            )
+        except Exception as exc:
+            with self._lock:
+                self._computing = False
+                self._last_error = f"{type(exc).__name__}: {exc}"
+            raise
+        elapsed = (time.perf_counter() - started) * 1000.0
+        snap = Snapshot(
+            result=result,
+            config=config,
+            generated_at=result.report.generated_at if result.report
+            else datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            computed_in_ms=round(elapsed, 2),
+            source=self.source,
+        )
+        with self._lock:
+            self._snapshot = snap
+            self._computing = False
+        return snap
+
+    def _run_real(self, config):
+        from ..real_signals import real_signals_service
+        from ..data import LeagueDataset
+        from ..signals import top_tips
+        report, snap = real_signals_service.report(
+            bankroll=config.bankroll, kelly_frac=config.kelly_fraction,
+            stake_cap=config.stake_cap, min_ev=config.min_ev,
+            max_exposure=config.max_exposure, use_xg=config.use_xg)
+        ds = LeagueDataset(snap.teams, snap.history, [a.fixture for a in snap.analyses],
+                           snap.league_goals, LEAGUE_HOME_ADVANTAGE)
+        return RunResult(ds, snap.ratings, list(snap.analyses), report, top_tips(report), snap.league_goals)
+
+    def snapshot(self, *, auto: bool = True) -> Snapshot:
+        """Devolve o snapshot atual; calcula com o default se ainda nao existir."""
+        with self._lock:
+            snap = self._snapshot
+        if snap is None and auto:
+            snap = self.recalculate(S.ModelConfiguration())
+        if snap is None:
+            raise RuntimeError("nenhum snapshot disponivel")
+        return snap
+
+    # -------------------------------------------------------------- status
+
+    def status(self) -> S.SystemStatus:
+        with self._lock:
+            snap = self._snapshot
+            computing = self._computing
+            err = self._last_error
+        n_sig = len(snap.result.report.signals) if snap and snap.result.report else 0
+        return S.SystemStatus(
+            status="computing" if computing else ("error" if err else "ok"),
+            version=__version__,
+            python_version=platform.python_version(),
+            generated_at=snap.generated_at if snap else None,
+            computed_in_ms=snap.computed_in_ms if snap else None,
+            has_snapshot=snap is not None,
+            n_signals=n_sig,
+            n_games=len(snap.result.analyses) if snap else 0,
+            data_source=self.data_source(),
+            providers=available_providers(),
+            message=err,
+        )
+
+    def data_source(self) -> str:
+        return "football-data.co.uk — dados reais em cache; timestamp das odds indisponível" if self.source == "real" else "Demonstração: dataset sintético"
+
+    def provenance(self, snap):
+        from .prediction_schemas import Provenance
+        from ..football_data_uk import FootballDataClient
+        return Provenance(source=snap.source, prediction_timestamp=snap.generated_at,
+                          data_version=FootballDataClient().corpus_signature() if snap.source == "real" else f"demo-{SEED}",
+                          xg_status="ESTIMATED" if snap.source == "synthetic" else "UNAVAILABLE")
+
+    # ------------------------------------------------------------- sinais
+
+    def signal_report(self, snap: Snapshot) -> S.SignalReport:
+        rep = snap.result.report
+        signals = [self._signal(s, i, snap) for i, s in enumerate(rep.signals)] if rep else []
+        return S.SignalReport(
+            provenance=self.provenance(snap),
+            generated_at=snap.generated_at,
+            bankroll=snap.config.bankroll,
+            kpis=self.kpis(snap),
+            signals=signals,
+            top_tips=list(snap.result.tips),
+            source=snap.source,
+            source_detail=(
+                "Dataset local gerado em memoria: datas fixas no codigo e "
+                "odds sintetizadas a partir do proprio modelo. Serve para "
+                "testar o pipeline — NAO para decidir aposta."
+            ),
+        )
+
+    def real_signal_report(
+        self,
+        bankroll: float = 1000.0,
+        kelly_frac: float = 0.25,
+        stake_cap: float = 0.01,
+        min_ev: float = 0.02,
+        max_exposure: float = 0.25,
+        use_xg: bool = True,
+        market_keys: list[str] | None = None,
+    ) -> S.SignalReport:
+        """Sinais a partir de jogos FUTUROS REAIS com odds reais.
+
+        Reusa `_signal` e `kpis` (o mesmo tradutor dos sinais sinteticos),
+        montando um `RunResult` a partir do relatorio real. Assim existe
+        UMA traducao de sinal no projeto, nao duas que divergem.
+        """
+        from ..real_signals import MODEL_CALIBRATION, real_signals_service
+        from ..pipeline import RunResult
+        from ..data import LeagueDataset
+
+        report, snap = real_signals_service.report(
+            bankroll=bankroll,
+            kelly_frac=kelly_frac,
+            stake_cap=stake_cap,
+            min_ev=min_ev,
+            max_exposure=max_exposure,
+            use_xg=use_xg,
+            market_keys=market_keys,
+        )
+
+        # adapter minimo: o tradutor precisa de um RunResult. O dataset nao
+        # e usado por _signal/kpis, entao vai vazio e explicito.
+        empty_dataset = LeagueDataset(
+            teams=snap.teams, history=[], fixtures=[],
+            league_goals=snap.league_goals, home_advantage=0.0,
+        )
+        proxy = Snapshot(
+            result=RunResult(
+                dataset=empty_dataset,
+                ratings=snap.ratings,
+                analyses=[],
+                report=report,
+                tips=[],
+                league_goals=snap.league_goals,
+            ),
+            config=S.ModelConfiguration(
+                bankroll=bankroll, kelly_fraction=kelly_frac,
+                min_ev=min_ev, stake_cap=stake_cap,
+                max_exposure=max_exposure, use_xg=use_xg,
+            ),
+            generated_at=snap.generated_at,
+            computed_in_ms=snap.computed_in_ms,
+        )
+
+        base = self.signal_report(proxy)
+        return base.model_copy(update={
+            "source": "real",
+            "source_detail": (
+                f"Jogos futuros reais com odds reais ({', '.join(snap.sources)}). "
+                f"Ratings ajustados em {snap.n_history} partidas "
+                f"({snap.history_window[0]} a {snap.history_window[1]})."
+            ),
+            "skipped_no_rating": snap.skipped_no_rating,
+            "skipped_insufficient_books": snap.skipped_insufficient_books,
+            "calibration": S.ModelCalibrationInfo(**MODEL_CALIBRATION),
+        })
+
+    def _fixture_of(self, snap: Snapshot, match: str) -> FixtureAnalysis | None:
+        for a in snap.result.analyses:
+            if f"{a.fixture.home} vs {a.fixture.away}" == match:
+                return a
+        return None
+
+    def _signal(self, s: CoreSignal, index: int, snap: Snapshot) -> S.Signal:
+        a = self._fixture_of(snap, s.match)
+        home, away = (a.fixture.home, a.fixture.away) if a else _split_match(s.match)
+        return S.Signal(
+            id=f"{index}|{s.match}|{s.market}|{s.outcome}",
+            match=s.match,
+            home=home,
+            away=away,
+            kickoff=s.kickoff,
+            league=a.fixture.league if a else "",
+            round_label=a.fixture.round_label if a else "",
+            market=s.market,
+            outcome=s.outcome,
+            best_odd=s.best_odd,
+            best_book=s.best_book,
+            median_odd=s.median_odd,
+            fair_odd=s.fair_odd,
+            n_books=s.n_books,
+            model_prob=s.model_prob,
+            market_prob=s.market_prob,
+            edge=s.edge,
+            ev=s.ev,
+            kelly=s.kelly,
+            stake=s.stake,
+            stake_pct=s.stake_pct,
+            expected_profit=s.expected_profit,
+            expected_profit_pct=s.expected_profit_pct,
+            gross_profit_if_win=s.gross_profit_if_win,
+            loss_if_lose=s.loss_if_lose,
+            confidence=s.confidence.value,  # type: ignore[arg-type]
+            rationale=s.rationale,
+        )
+
+    def kpis(self, snap: Snapshot) -> S.SignalsKpis:
+        rep = snap.result.report
+        rows = rep.signals if rep else []
+        total = len(rows)
+        denom = total or 1
+        strong = sum(1 for s in rows if s.confidence.value == "FORTE")
+        medium = sum(1 for s in rows if s.confidence.value == "MEDIA")
+        weak = sum(1 for s in rows if s.confidence.value == "FRACA")
+        bankroll = rep.bankroll if rep else snap.config.bankroll
+        profit = rep.expected_profit if rep else 0.0
+        return S.SignalsKpis(
+            total=total,
+            strong=strong,
+            medium=medium,
+            weak=weak,
+            strong_pct=strong / denom,
+            medium_pct=medium / denom,
+            weak_pct=weak / denom,
+            expected_profit=round(profit, 2),
+            expected_profit_pct=rep.expected_profit_pct if rep else 0.0,
+            avg_stake_pct=mean([s.stake_pct for s in rows]) if rows else 0.0,
+            total_exposure=round(rep.total_exposure(), 2) if rep else 0.0,
+            total_exposure_pct=rep.total_exposure_pct if rep else 0.0,
+            worst_case_loss=round(rep.worst_case_loss, 2) if rep else 0.0,
+            gross_profit_if_all_win=round(rep.gross_profit_if_all_win, 2) if rep else 0.0,
+            exposure_scaled_by=rep.exposure_scaled_by if rep else 1.0,
+            max_ev=max((s.ev for s in rows), default=0.0),
+        )
+
+    # -------------------------------------------------------------- jogos
+
+    def games(self, snap: Snapshot) -> list[S.GameAnalysis]:
+        rep = snap.result.report
+        by_match: dict[str, int] = {}
+        if rep:
+            for s in rep.signals:
+                by_match[s.match] = by_match.get(s.match, 0) + 1
+        return [self._game(a, by_match) for a in snap.result.analyses]
+
+    def _game(self, a: FixtureAnalysis, sig_count: dict[str, int]) -> S.GameAnalysis:
+        key = f"{a.fixture.home} vs {a.fixture.away}"
+        m1 = a.markets.get("Resultado Final (1X2)", {})
+        return S.GameAnalysis(
+            id=key,
+            match=key,
+            home=a.fixture.home,
+            away=a.fixture.away,
+            league=a.fixture.league,
+            kickoff=a.fixture.kickoff,
+            round_label=a.fixture.round_label,
+            lambda_home=a.lambdas[0],
+            lambda_away=a.lambdas[1],
+            prob_home=m1.get("1", 0.0),
+            prob_draw=m1.get("X", 0.0),
+            prob_away=m1.get("2", 0.0),
+            prob_over_25=a.markets.get("Total de Gols", {}).get("Over 2.5", 0.0),
+            prob_btts=a.markets.get("Ambas Marcam", {}).get("BTTS Sim", 0.0),
+            prob_home_corners_over_55=a.markets.get("Escanteios", {}).get(
+                "Casa Cantos Over 5.5", 0.0),
+            prob_cards_over_35=a.markets.get("Cartoes", {}).get("Cartoes Over 3.5", 0.0),
+            top_scorelines=[S.Scoreline(home_goals=h, away_goals=aw, prob=p)
+                            for h, aw, p in a.top_scorelines],
+            markets=[S.MarketProbabilities(market=name, outcomes=dict(out))
+                     for name, out in a.markets.items()],
+            ratings_home=_team(a.ratings_home),
+            ratings_away=_team(a.ratings_away),
+            n_markets_with_odds=len(a.odds),
+            signal_count=sig_count.get(key, 0),
+        )
+
+    # -------------------------------------------------------- casas / odds
+
+    def odds_overview(self, snap: Snapshot) -> S.OddsOverview:
+        matches = [f"{a.fixture.home} vs {a.fixture.away}" for a in snap.result.analyses]
+        markets_by_match = {
+            f"{a.fixture.home} vs {a.fixture.away}": list(a.odds.keys())
+            for a in snap.result.analyses
+        }
+        return S.OddsOverview(
+            provenance=self.provenance(snap),
+            generated_at=snap.generated_at,
+            matches=matches,
+            markets_by_match=markets_by_match,
+            bookmakers=self._bookmaker_snapshots(snap),
+        )
+
+    def _bookmaker_snapshots(self, snap: Snapshot) -> list[S.BookmakerSnapshot]:
+        n_markets: dict[str, int] = {b: 0 for b in BOOKMAKERS}
+        n_best: dict[str, int] = {b: 0 for b in BOOKMAKERS}
+        margins: dict[str, list[float]] = {b: [] for b in BOOKMAKERS}
+        total_outcomes = 0
+        for a in snap.result.analyses:
+            for market, books in a.odds.items():
+                groups = _n_groups(a.markets.get(market, {}))
+                best_by_outcome: dict[str, tuple[float, str]] = {}
+                for book, outcomes in books.items():
+                    n_markets[book] = n_markets.get(book, 0) + 1
+                    if outcomes:
+                        margins.setdefault(book, []).append(
+                            _overround(outcomes.values(), groups))
+                    for oc, odd in outcomes.items():
+                        if odd and (oc not in best_by_outcome or odd > best_by_outcome[oc][0]):
+                            best_by_outcome[oc] = (odd, book)
+                total_outcomes += len(best_by_outcome)
+                for _oc, (_odd, book) in best_by_outcome.items():
+                    n_best[book] = n_best.get(book, 0) + 1
+
+        signals_won: dict[str, int] = {b: 0 for b in BOOKMAKERS}
+        if snap.result.report:
+            for s in snap.result.report.signals:
+                signals_won[s.best_book] = signals_won.get(s.best_book, 0) + 1
+
+        out: list[S.BookmakerSnapshot] = []
+        for book in sorted(n_markets):
+            ms = margins.get(book) or [0.0]
+            out.append(S.BookmakerSnapshot(
+                book=book,
+                n_markets=n_markets.get(book, 0),
+                n_best_odds=n_best.get(book, 0),
+                avg_margin=sum(ms) / len(ms),
+                best_odd_share=(n_best.get(book, 0) / total_outcomes) if total_outcomes else 0.0,
+                signals_won=signals_won.get(book, 0),
+            ))
+        out.sort(key=lambda b: b.n_best_odds, reverse=True)
+        return out
+
+    def market_comparison(self, snap: Snapshot, match: str,
+                          market: str | None) -> S.MarketComparison:
+        a = self._fixture_of(snap, match)
+        if a is None:
+            raise KeyError(f"jogo desconhecido: {match}")
+        available = list(a.odds.keys())
+        if not available:
+            raise KeyError(f"sem odds para {match}")
+        chosen = market if market in available else available[0]
+        books = a.odds[chosen]
+        model_probs = a.markets.get(chosen, {})
+
+        outcomes: list[str] = []
+        for book_map in books.values():
+            for oc in book_map:
+                if oc not in outcomes:
+                    outcomes.append(oc)
+        # ordem do modelo (1/X/2, Over antes de Under...) em vez de alfabetica
+        model_order = {oc: i for i, oc in enumerate(model_probs)}
+        outcomes.sort(key=lambda oc: (model_order.get(oc, 10_000), oc))
+
+        best_odds: dict[str, float] = {}
+        best_books: dict[str, str] = {}
+        for book, book_map in books.items():
+            for oc, odd in book_map.items():
+                if odd and (oc not in best_odds or odd > best_odds[oc]):
+                    best_odds[oc] = odd
+                    best_books[oc] = book
+
+        groups = _n_groups(model_probs)
+        rows: list[S.BookmakerRow] = []
+        for book, book_map in books.items():
+            rows.append(S.BookmakerRow(
+                book=book,
+                odds={oc: book_map.get(oc, 0.0) for oc in outcomes},
+                best_outcomes=[oc for oc in outcomes if best_books.get(oc) == book],
+                margin=_overround(book_map.values(), groups),
+            ))
+        rows.sort(key=lambda r: r.margin)
+
+        # probabilidade justa de mercado pela mediana das casas, igual ao engine
+        market_probs = consensus_fair_probs(books)
+
+        arb = scan_arbitrage(books, total_stake=snap.config.bankroll)
+        return S.MarketComparison(
+            match=match,
+            market=chosen,
+            outcomes=outcomes,
+            rows=rows,
+            best_odds=best_odds,
+            best_books=best_books,
+            model_probs={oc: model_probs.get(oc, 0.0) for oc in outcomes},
+            market_probs=market_probs,
+            arbitrage=S.ArbitrageCheck(
+                arbitrage=arb.arbitrage,
+                margin=arb.margin,
+                legs=[S.ArbLeg(outcome=l.outcome, book=l.book, odd=l.odd,
+                               stake=l.stake, payout=l.payout) for l in arb.legs],
+            ),
+        )
+
+    # ------------------------------------------------------- estatisticas
+
+    def stats(self, snap: Snapshot) -> S.StatsOverview:
+        res = snap.result
+        rep = res.report
+        rows = rep.signals if rep else []
+
+        by_market: dict[str, list[CoreSignal]] = {}
+        by_conf: dict[str, list[CoreSignal]] = {}
+        by_book: dict[str, list[CoreSignal]] = {}
+        for s in rows:
+            by_market.setdefault(s.market, []).append(s)
+            by_conf.setdefault(s.confidence.value, []).append(s)
+            by_book.setdefault(s.best_book, []).append(s)
+
+        markets = [
+            S.MarketBreakdown(
+                market=name,
+                signals=len(items),
+                avg_ev=mean([i.ev for i in items]),
+                avg_edge=mean([i.edge for i in items]),
+                best_ev=max(i.ev for i in items),
+                total_stake=round(sum(i.stake for i in items), 2),
+                expected_profit=round(sum(i.expected_profit for i in items), 2),
+            )
+            for name, items in by_market.items()
+        ]
+        markets.sort(key=lambda m: m.signals, reverse=True)
+
+        confs = [
+            S.ConfidenceBreakdown(
+                confidence=name,  # type: ignore[arg-type]
+                signals=len(items),
+                avg_ev=mean([i.ev for i in items]),
+                avg_odd=mean([i.best_odd for i in items]),
+                total_stake=round(sum(i.stake for i in items), 2),
+                expected_profit=round(sum(i.expected_profit for i in items), 2),
+            )
+            for name, items in by_conf.items()
+        ]
+        order = {"FORTE": 0, "MEDIA": 1, "FRACA": 2, "DESCARTE": 3}
+        confs.sort(key=lambda c: order.get(c.confidence, 9))
+
+        books = [
+            S.BookBreakdown(
+                book=name,
+                signals=len(items),
+                avg_ev=mean([i.ev for i in items]),
+                avg_odd=mean([i.best_odd for i in items]),
+                total_stake=round(sum(i.stake for i in items), 2),
+            )
+            for name, items in by_book.items()
+        ]
+        books.sort(key=lambda b: b.signals, reverse=True)
+
+        return S.StatsOverview(
+            provenance=self.provenance(snap),
+            generated_at=snap.generated_at,
+            league_goals=res.league_goals,
+            home_advantage=res.dataset.home_advantage,
+            teams=sorted((_team(r) for r in res.ratings.values()),
+                         key=lambda t: t.strength, reverse=True),
+            n_history_matches=len(res.dataset.history),
+            n_fixtures=len(res.dataset.fixtures),
+            by_market=markets,
+            by_confidence=confs,
+            by_book=books,
+            ev_distribution=_ev_buckets(rows),
+        )
+
+    # -------------------------------------------------------------- modelo
+
+    def model(self, snap: Snapshot) -> S.ProbabilityModel:
+        res = snap.result
+        markets = list(res.analyses[0].markets.keys()) if res.analyses else []
+        return S.ProbabilityModel(
+            provenance=self.provenance(snap),
+            version=__version__,
+            engine="Poisson bivariado + Dixon-Coles + consenso multi-casa",
+            generated_at=snap.generated_at,
+            constants=self.constants(),
+            configuration=snap.config,
+            league_goals=res.league_goals,
+            home_advantage=res.dataset.home_advantage,
+            attack_blend=0.5 if snap.config.use_xg and any(r.xg_status == "REAL" for r in res.ratings.values()) else 0.0,
+            n_teams=len(res.ratings),
+            n_history_matches=len(res.dataset.history),
+            n_fixtures=len(res.dataset.fixtures),
+            n_markets=len(markets),
+            markets=markets,
+            data_source=self.data_source(),
+            providers=available_providers(),
+            documentation=self._doc,
+        )
+
+    @staticmethod
+    def constants() -> S.ModelConstants:
+        return S.ModelConstants(
+            rho_dixon_coles=RHO_DEFAULT,
+            ev_forte=EV_FORTE,
+            ev_media=EV_MEDIA,
+            ev_fraca=EV_FRACA,
+            min_books=MIN_BOOKS,
+            max_spread=MAX_SPREAD,
+            max_goals_grid=8,
+            league_avg_goals=LEAGUE_AVG_GOALS,
+            home_advantage=LEAGUE_HOME_ADVANTAGE,
+            attack_blend=0.5,
+            dataset_seed=SEED,
+            bookmakers=list(BOOKMAKERS),
+        )
+
+    def performance(self, split: float = 0.7, bankroll: float = 1000.0,
+                    min_ev: float = 0.03) -> S.ModelPerformance:
+        key = (round(split, 3), round(bankroll, 2), round(min_ev, 4))
+        cached = self._backtest_cache.get(key)
+        if cached is not None:
+            return cached
+        if self.source == "real":
+            from ..football_data_uk import FootballDataClient
+            from ..data import LeagueDataset
+            history = [m.to_historical() for m in FootballDataClient().load_matches(["E0"])]
+            history = sorted(history, key=lambda m: m.kickoff)[-1140:]
+            if len(history) < 100:
+                raise ValueError("histórico real insuficiente para performance")
+            ds = LeagueDataset(sorted({m.home for m in history}|{m.away for m in history}), history, [], 0, LEAGUE_HOME_ADVANTAGE)
+        else:
+            ds = build_dataset()
+        res = run_backtest(ds, split=split, bankroll=bankroll, min_ev=min_ev,
+                           odds_source="football_data_uk" if self.source == "real" else "naive_synthetic")
+        perf = S.ModelPerformance(
+            source=self.source,
+            split=res.split,
+            n_train=res.n_train,
+            n_test=res.n_test,
+            logloss=res.calibration.logloss,
+            brier=res.calibration.brier,
+            accuracy=res.calibration.accuracy,
+            calibration_bins=[S.CalibrationBin(predicted=p, empirical=e, n=n)
+                              for p, e, n in res.calibration.bins],
+            bankroll_start=res.betting.bankroll_start,
+            bankroll_end=res.betting.bankroll_end,
+            n_bets=res.betting.n_bets,
+            n_wins=res.betting.n_wins,
+            hit_rate=res.betting.hit_rate,
+            total_staked=res.betting.total_staked,
+            profit=res.betting.profit,
+            roi=res.betting.roi,
+            ev_mean_pred=res.betting.ev_mean_pred,
+            return_mean_real=res.betting.return_mean_real,
+            max_drawdown=res.betting.max_drawdown,
+            summary=res.summary,
+        )
+        self._backtest_cache[key] = perf
+        return perf
+
+    # ----------------------------------------------------------- dashboard
+
+    def dashboard(self, snap: Snapshot) -> S.DashboardSummary:
+        res = snap.result
+        n_markets = len(res.analyses[0].markets) if res.analyses else 0
+        return S.DashboardSummary(
+            provenance=self.provenance(snap),
+            generated_at=snap.generated_at,
+            computed_in_ms=snap.computed_in_ms,
+            configuration=snap.config,
+            kpis=self.kpis(snap),
+            n_games=len(res.analyses),
+            n_teams=len(res.ratings),
+            n_bookmakers=len(BOOKMAKERS),
+            n_markets=n_markets,
+            data_source=self.data_source(),
+        )
+
+
+# --------------------------------------------------------------------------
+# helpers
+# --------------------------------------------------------------------------
+
+
+def _n_groups(model_probs: dict[str, float]) -> int:
+    """Quantos grupos complementares existem num mercado.
+
+    Cada grupo de resultados mutuamente exclusivos soma 1.0 nas
+    probabilidades do modelo. 'Resultado Final (1X2)' soma 1 (1 grupo);
+    'Total de Gols' com 3 linhas soma 3 (3 grupos over/under). Isso
+    permite normalizar o overround por grupo, em vez de somar as
+    implicitas de linhas independentes e reportar margem inflada.
+    """
+    total = sum(model_probs.values())
+    return max(1, round(total))
+
+
+def _overround(odds, groups: int = 1) -> float:
+    """Margem media por grupo: soma das implicitas / n_grupos - 1."""
+    valid = [o for o in odds if o and o > 1.0]
+    if not valid:
+        return 0.0
+    return sum(implied_prob(o) for o in valid) / max(1, groups) - 1.0
+
+
+def _team(r: TeamRating) -> S.TeamSnapshot:
+    return S.TeamSnapshot(
+        name=r.name,
+        attack=r.attack,
+        defense=r.defense,
+        strength=r.strength,
+        goals_for=r.goals_for,
+        goals_against=r.goals_against,
+        xg_for=r.xg_for,
+        xg_against=r.xg_against,
+        xg_status=r.xg_status,
+        xg_source=r.xg_source,
+        corners_for=r.corners_for,
+        corners_against=r.corners_against,
+        cards_for=r.cards_for,
+        cards_against=r.cards_against,
+        shots_for=r.shots_for,
+        shots_on_target_for=r.shots_on_target_for,
+        form_points=r.form_points,
+        matches_played=r.matches_played,
+    )
+
+
+def _split_match(match: str) -> tuple[str, str]:
+    parts = match.split(" vs ")
+    return (parts[0], parts[1]) if len(parts) == 2 else (match, "")
+
+
+_EV_EDGES: list[tuple[str, float, float]] = [
+    ("2-3%", 0.02, 0.03),
+    ("3-4.5%", 0.03, 0.045),
+    ("4.5-6%", 0.045, 0.06),
+    ("6-8%", 0.06, 0.08),
+    ("8-12%", 0.08, 0.12),
+    ("12%+", 0.12, float("inf")),
+]
+
+
+def _ev_buckets(rows: list[CoreSignal]) -> list[S.EvBucket]:
+    out: list[S.EvBucket] = []
+    for label, lo, hi in _EV_EDGES:
+        n = sum(1 for s in rows if lo <= s.ev < hi)
+        out.append(S.EvBucket(label=label, lower=lo,
+                              upper=(hi if hi != float("inf") else 1.0), count=n))
+    return out
+
+
+service = BetgsnService(source="real")

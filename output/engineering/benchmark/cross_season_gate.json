@@ -1,0 +1,3016 @@
+{
+  "kind": "cross_season_promotion_gate",
+  "seasons": [
+    "2024",
+    "2025"
+  ],
+  "divisions": [
+    "D1",
+    "E0",
+    "F1",
+    "I1",
+    "SP1"
+  ],
+  "primary_metric": "logloss",
+  "n_models_evaluated": 39,
+  "n_promoted": 2,
+  "decisions": [
+    {
+      "model": "1x2|Ensemble",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.005568538948732724,
+      "consistency": 0.9,
+      "recommended_status": "VALIDATED",
+      "blocking_failures": [],
+      "decision": {
+        "model": "1x2|Ensemble",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "VALIDATED",
+        "promoted": true,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.9,
+        "blocking_failures": [],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora media de 0.5569% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 90% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0276 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|Ensemble",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.0054446656942840335,
+      "consistency": 0.8,
+      "recommended_status": "VALIDATED",
+      "blocking_failures": [],
+      "decision": {
+        "model": "btts|Ensemble",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "VALIDATED",
+        "promoted": true,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.8,
+        "blocking_failures": [],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora media de 0.5445% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 80% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0252 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|BASELINE_V1_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.003189321371873892,
+      "consistency": 0.7,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss"
+      ],
+      "decision": {
+        "model": "btts|BASELINE_V1_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.7,
+        "blocking_failures": [
+          "melhora_logloss"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de 0.3189% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 70% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0388 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|Elo",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.00286848616767816,
+      "consistency": 0.4,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|Elo",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.4,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de 0.2868% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 40% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0309 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|LightGBM",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.0025523932415696315,
+      "consistency": 0.7,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss"
+      ],
+      "decision": {
+        "model": "btts|LightGBM",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.7,
+        "blocking_failures": [
+          "melhora_logloss"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de 0.2552% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 70% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0342 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|Ensemble_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.0024583324779563357,
+      "consistency": 0.7,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss"
+      ],
+      "decision": {
+        "model": "btts|Ensemble_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.7,
+        "blocking_failures": [
+          "melhora_logloss"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de 0.2458% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 70% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0484 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|Ensemble_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.0016039815094842339,
+      "consistency": 0.6,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss"
+      ],
+      "decision": {
+        "model": "1x2|Ensemble_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.6,
+        "blocking_failures": [
+          "melhora_logloss"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de 0.1604% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 60% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0279 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|XGBoost",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.0012836818485680327,
+      "consistency": 0.6,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss"
+      ],
+      "decision": {
+        "model": "btts|XGBoost",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.6,
+        "blocking_failures": [
+          "melhora_logloss"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de 0.1284% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 60% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0251 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|XGBoost_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.0007771982665029535,
+      "consistency": 0.6,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss"
+      ],
+      "decision": {
+        "model": "btts|XGBoost_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.6,
+        "blocking_failures": [
+          "melhora_logloss"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de 0.0777% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 60% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0426 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|LightGBM_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.00070481997008713,
+      "consistency": 0.7,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss"
+      ],
+      "decision": {
+        "model": "btts|LightGBM_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.7,
+        "blocking_failures": [
+          "melhora_logloss"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de 0.0705% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 70% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0444 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|Ensemble",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": 0.00024901993860990606,
+      "consistency": 0.6,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss"
+      ],
+      "decision": {
+        "model": "ou|Ensemble",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.6,
+        "blocking_failures": [
+          "melhora_logloss"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de 0.0249% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 60% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0367 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|Poisson",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.00034055342662905983,
+      "consistency": 0.5,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|Poisson",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.5,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.0341% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 50% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0268 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|BASELINE_V1_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.0014637612923772798,
+      "consistency": 0.6,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "calibracao_aceitavel"
+      ],
+      "decision": {
+        "model": "ou|BASELINE_V1_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.6,
+        "blocking_failures": [
+          "melhora_logloss",
+          "calibracao_aceitavel"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.1464% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 60% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": false,
+            "blocking": true,
+            "detail": "ECE medio 0.0542 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|Elo_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.0017832758513208473,
+      "consistency": 0.4,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|Elo_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.4,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.1783% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 40% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0302 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|XGBoost_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.0028202637838493114,
+      "consistency": 0.6,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss"
+      ],
+      "decision": {
+        "model": "1x2|XGBoost_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.6,
+        "blocking_failures": [
+          "melhora_logloss"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.2820% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": true,
+            "blocking": true,
+            "detail": "melhora em 60% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0225 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|XGBoost",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.0037328405482433156,
+      "consistency": 0.3,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|XGBoost",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.3,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.3733% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 30% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0242 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|LightGBM_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.004172150925704379,
+      "consistency": 0.5,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|LightGBM_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.5,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.4172% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 50% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0198 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|Ensemble_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.004374574884705797,
+      "consistency": 0.5,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "ou|Ensemble_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.5,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.4375% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 50% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0493 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|LightGBM",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.004781558369348056,
+      "consistency": 0.2,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|LightGBM",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.2,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.4782% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 20% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0235 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|Poisson_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.005078255182890898,
+      "consistency": 0.2,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|Poisson_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.2,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.5078% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 20% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0254 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|BASELINE_V1_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.00509661651928897,
+      "consistency": 0.2,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|BASELINE_V1_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.2,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.5097% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 20% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0253 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|XGBoost",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.006435252175274906,
+      "consistency": 0.4,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "ou|XGBoost",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.4,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.6435% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 40% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0360 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|LightGBM",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.006476277890282616,
+      "consistency": 0.4,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "ou|LightGBM",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.4,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.6476% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 40% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0416 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|LightGBM_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.008730002143510784,
+      "consistency": 0.3,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "ou|LightGBM_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.3,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.8730% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 30% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0496 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|XGBoost_platt",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.008891968955576667,
+      "consistency": 0.3,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia",
+        "calibracao_aceitavel"
+      ],
+      "decision": {
+        "model": "ou|XGBoost_platt",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.3,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia",
+          "calibracao_aceitavel"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -0.8892% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 30% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": false,
+            "blocking": true,
+            "detail": "ECE medio 0.0503 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|XGBoost_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.048225508248377395,
+      "consistency": 0.3,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia",
+        "calibracao_aceitavel"
+      ],
+      "decision": {
+        "model": "ou|XGBoost_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.3,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia",
+          "calibracao_aceitavel"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -4.8226% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 30% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": false,
+            "blocking": true,
+            "detail": "ECE medio 0.0510 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|BASELINE_V1_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.05326160071409776,
+      "consistency": 0.0,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|BASELINE_V1_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.0,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -5.3262% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 0% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0336 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|Poisson_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.05357577284665478,
+      "consistency": 0.0,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|Poisson_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.0,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -5.3576% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 0% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0346 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|BASELINE_V1_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.06428069035212002,
+      "consistency": 0.1,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia",
+        "sem_degradacao_secundaria",
+        "calibracao_aceitavel"
+      ],
+      "decision": {
+        "model": "ou|BASELINE_V1_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.1,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia",
+          "sem_degradacao_secundaria",
+          "calibracao_aceitavel"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -6.4281% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 10% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": false,
+            "blocking": true,
+            "detail": "degradacao: brier -2.38%, rps -2.38%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": false,
+            "blocking": true,
+            "detail": "ECE medio 0.0679 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|Ensemble_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.06483003849133165,
+      "consistency": 0.0,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|Ensemble_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.0,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -6.4830% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 0% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0388 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|LightGBM_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.06539112474394757,
+      "consistency": 0.3,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia",
+        "calibracao_aceitavel"
+      ],
+      "decision": {
+        "model": "btts|LightGBM_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.3,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia",
+          "calibracao_aceitavel"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -6.5391% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 30% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": false,
+            "blocking": true,
+            "detail": "ECE medio 0.0563 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|XGBoost_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.0667875793641985,
+      "consistency": 0.1,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|XGBoost_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.1,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -6.6788% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 10% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0349 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|LightGBM_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.07190622404437766,
+      "consistency": 0.2,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia",
+        "sem_degradacao_secundaria",
+        "calibracao_aceitavel"
+      ],
+      "decision": {
+        "model": "ou|LightGBM_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.2,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia",
+          "sem_degradacao_secundaria",
+          "calibracao_aceitavel"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -7.1906% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 20% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": false,
+            "blocking": true,
+            "detail": "degradacao: brier -2.48%, rps -2.48%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": false,
+            "blocking": true,
+            "detail": "ECE medio 0.0598 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ou|Ensemble_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.0734422408312905,
+      "consistency": 0.0,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia",
+        "sem_degradacao_secundaria",
+        "calibracao_aceitavel"
+      ],
+      "decision": {
+        "model": "ou|Ensemble_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.0,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia",
+          "sem_degradacao_secundaria",
+          "calibracao_aceitavel"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -7.3442% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 0% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": false,
+            "blocking": true,
+            "detail": "degradacao: brier -2.41%, rps -2.41%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": false,
+            "blocking": true,
+            "detail": "ECE medio 0.0741 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|Ensemble_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.0787824595980539,
+      "consistency": 0.2,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia",
+        "calibracao_aceitavel"
+      ],
+      "decision": {
+        "model": "btts|Ensemble_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.2,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia",
+          "calibracao_aceitavel"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -7.8782% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 20% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": false,
+            "blocking": true,
+            "detail": "ECE medio 0.0679 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|LightGBM_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.08263089537646252,
+      "consistency": 0.0,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|LightGBM_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.0,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -8.2631% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 0% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0331 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "1x2|Elo_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.10148858933393093,
+      "consistency": 0.0,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia"
+      ],
+      "decision": {
+        "model": "1x2|Elo_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.0,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -10.1489% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 0% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0322 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|BASELINE_V1_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.10652030866470583,
+      "consistency": 0.1,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia",
+        "calibracao_aceitavel"
+      ],
+      "decision": {
+        "model": "btts|BASELINE_V1_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.1,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia",
+          "calibracao_aceitavel"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -10.6520% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 10% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhuma metrica secundaria degradada alem de 2%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": false,
+            "blocking": true,
+            "detail": "ECE medio 0.0720 (maximo 0.05)"
+          }
+        ]
+      }
+    },
+    {
+      "model": "btts|XGBoost_isotonic",
+      "n_segments": 10,
+      "n_seasons": 2,
+      "n_leagues": 5,
+      "mean_improvement": -0.10738644697366184,
+      "consistency": 0.3,
+      "recommended_status": "EXPERIMENTAL",
+      "blocking_failures": [
+        "melhora_logloss",
+        "consistencia",
+        "sem_degradacao_secundaria"
+      ],
+      "decision": {
+        "model": "btts|XGBoost_isotonic",
+        "current_status": "EXPERIMENTAL",
+        "recommended_status": "EXPERIMENTAL",
+        "promoted": false,
+        "primary_metric": "logloss",
+        "n_segments": 10,
+        "total_matches": 3431,
+        "consistency": 0.3,
+        "blocking_failures": [
+          "melhora_logloss",
+          "consistencia",
+          "sem_degradacao_secundaria"
+        ],
+        "criteria": [
+          {
+            "name": "amostra_minima",
+            "passed": true,
+            "blocking": true,
+            "detail": "10 de 10 segmentos com >= 200 partidas (3431 partidas uteis)"
+          },
+          {
+            "name": "multiplas_temporadas",
+            "passed": true,
+            "blocking": true,
+            "detail": "2 temporada(s): ['2024', '2025'] (minimo 2)"
+          },
+          {
+            "name": "multiplas_ligas",
+            "passed": true,
+            "blocking": true,
+            "detail": "5 liga(s): ['D1', 'E0', 'F1', 'I1', 'SP1'] (minimo 2)"
+          },
+          {
+            "name": "sem_leakage_conhecido",
+            "passed": true,
+            "blocking": true,
+            "detail": "nenhum leakage declarado"
+          },
+          {
+            "name": "melhora_logloss",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora media de -10.7386% (minimo 0.50%)"
+          },
+          {
+            "name": "consistencia",
+            "passed": false,
+            "blocking": true,
+            "detail": "melhora em 30% dos segmentos (minimo 60%)"
+          },
+          {
+            "name": "sem_degradacao_secundaria",
+            "passed": false,
+            "blocking": true,
+            "detail": "degradacao: brier -2.09%, rps -2.09%"
+          },
+          {
+            "name": "calibracao_aceitavel",
+            "passed": true,
+            "blocking": true,
+            "detail": "ECE medio 0.0495 (maximo 0.05)"
+          }
+        ]
+      }
+    }
+  ]
+}

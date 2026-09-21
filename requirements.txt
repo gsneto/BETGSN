@@ -1,0 +1,9 @@
+# BETGSN nao tem dependencias externas obrigatorias.
+# Usa apenas a biblioteca padrao do Python 3.10+ (inclui Tkinter).
+#
+# Dependencias OPCIONAIS para integracoes reais / exportacao:
+
+# pandas>=2.0        # analise de datasets CSV/Parquet maiores
+# requests>=2.31     # cliente HTTP mais conveniente que urllib (providers)
+# matplotlib>=3.7    # graficos de banca e distribuicao de placares
+# openpyxl>=3.1      # exportar relatorios de sinais para .xlsx

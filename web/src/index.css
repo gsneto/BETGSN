@@ -1,0 +1,406 @@
+/* ==========================================================================
+   BETGSN — design system do terminal de analise
+   --------------------------------------------------------------------------
+   Identidade: DARK + NAVY/CHARCOAL + AMBER.
+   O ambar e a assinatura e aparece com parcimonia: acento ativo, sinal
+   forte e a acao primaria (RECALCULAR). Nada de neon, nada de cassino.
+
+   Tailwind v4: todo o tema vive aqui, em @theme. Nao existe
+   tailwind.config.js neste projeto.
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@import "tailwindcss";
+
+@theme {
+  /* ---------------------------------------------------------- tipografia */
+  --font-*: initial;
+  --font-sans:
+    Inter, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* escala do terminal: densa, sem texto minusculo ilegivel */
+  --text-label: 11px;
+  --text-label--line-height: 14px;
+  --text-label--letter-spacing: 0.06em;
+  --text-table: 12.5px;
+  --text-table--line-height: 16px;
+  --text-body: 13.5px;
+  --text-body--line-height: 20px;
+  --text-body-lg: 15px;
+  --text-body-lg--line-height: 22px;
+  --text-page: 19px;
+  --text-page--line-height: 26px;
+  --text-kpi: 27px;
+  --text-kpi--line-height: 32px;
+  --text-kpi-lg: 32px;
+  --text-kpi-lg--line-height: 38px;
+
+  /* ------------------------------------------------------------- cores */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* superficies (navy/charcoal) */
+  --color-app: #0b0f17;
+  --color-header: #0e131d;
+  --color-surface-1: #111722;
+  --color-surface-2: #161e2b;
+  --color-surface-3: #1b2534;
+  --color-surface-hover: #1a2331;
+  --color-surface-active: #202b3c;
+
+  /* bordas */
+  --color-line: rgba(148, 163, 184, 0.1);
+  --color-line-strong: rgba(148, 163, 184, 0.18);
+  --color-line-active: rgba(245, 184, 46, 0.42);
+
+  /* texto */
+  --color-ink: #f1f5f9;
+  --color-ink-2: #94a3b8;
+  --color-ink-3: #64748b;
+  --color-ink-4: #475569;
+
+  /* acento ambar — assinatura BETGSN */
+  --color-accent-50: #fef8e7;
+  --color-accent-100: #fdeec0;
+  --color-accent-200: #fbdd85;
+  --color-accent-300: #f8ca4f;
+  --color-accent-400: #f5b82e;
+  --color-accent-500: #e0a318;
+  --color-accent-600: #b87f10;
+  --color-accent-700: #8a5d0d;
+  --color-accent-800: #573a09;
+  --color-accent-900: #2e1f06;
+
+  /* semanticas quantitativas */
+  --color-pos-300: #6ee7c4;
+  --color-pos-400: #22d3a6;
+  --color-pos-500: #10b686;
+  --color-pos-700: #0b6a50;
+  --color-pos-900: #0a2e26;
+
+  --color-neg-300: #fca5a5;
+  --color-neg-400: #f87171;
+  --color-neg-500: #ef4444;
+  --color-neg-700: #8f2626;
+  --color-neg-900: #331616;
+
+  --color-info-300: #93c5fd;
+  --color-info-400: #60a5fa;
+  --color-info-500: #3b82f6;
+  --color-info-700: #1d4ed8;
+  --color-info-900: #16244a;
+
+  --color-warn-300: #fdba74;
+  --color-warn-400: #fb923c;
+  --color-warn-500: #f97316;
+  --color-warn-900: #3a1f0c;
+
+  /* --------------------------------------------------------- geometria */
+  --radius-*: initial;
+  --radius-none: 0px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-full: 9999px;
+
+  /* ----------------------------------------------------------- sombras */
+  --shadow-sm: 0 1px 2px 0 rgba(2, 6, 12, 0.4);
+  --shadow-md:
+    0 4px 12px -2px rgba(2, 6, 12, 0.55), 0 2px 4px -2px rgba(2, 6, 12, 0.4);
+  --shadow-lg: 0 16px 40px -12px rgba(2, 6, 12, 0.7);
+  --shadow-accent: 0 0 0 1px rgba(245, 184, 46, 0.22);
+  --shadow-ring: 0 0 0 3px rgba(245, 184, 46, 0.16);
+
+  /* ------------------------------------------------------ breakpoints */
+  --breakpoint-3xl: 1920px;
+}
+
+/* ==========================================================================
+   Tokens em CSS custom properties — usados por transicoes e casos onde
+   uma utility Tailwind nao se aplica (ex.: gradientes calculados).
+   ========================================================================== */
+
+:root {
+  --bg-app: var(--color-app);
+  --bg-header: var(--color-header);
+
+  --surface-1: var(--color-surface-1);
+  --surface-2: var(--color-surface-2);
+  --surface-elevated: var(--color-surface-3);
+  --surface-hover: var(--color-surface-hover);
+  --surface-active: var(--color-surface-active);
+
+  --border-subtle: var(--color-line);
+  --border-active: var(--color-line-active);
+
+  --text-primary: var(--color-ink);
+  --text-secondary: var(--color-ink-2);
+  --text-muted: var(--color-ink-3);
+
+  --accent: var(--color-accent-400);
+  --positive: var(--color-pos-400);
+  --negative: var(--color-neg-400);
+  --warning: var(--color-warn-400);
+  --info: var(--color-info-400);
+
+  --radius-token-sm: var(--radius-sm);
+  --radius-token-md: var(--radius-md);
+  --radius-token-lg: var(--radius-lg);
+
+  --shadow-token-sm: var(--shadow-sm);
+  --shadow-token-md: var(--shadow-md);
+
+  --ease-terminal: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --transition-fast: 140ms var(--ease-terminal);
+  --transition-normal: 200ms var(--ease-terminal);
+
+  /* alturas da estrutura densa */
+  --h-header: 60px;
+  --h-controls: 62px;
+  --h-tabs: 42px;
+  --h-row: 44px;
+  --h-row-head: 34px;
+  --h-status: 28px;
+}
+
+/* ============================================================== base */
+
+@layer base {
+  * {
+    border-color: var(--border-subtle);
+  }
+
+  html {
+    background-color: var(--bg-app);
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* numeros alinhados verticalmente em toda a aplicacao */
+  table,
+  input,
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-ring);
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background: rgba(245, 184, 46, 0.24);
+    color: var(--text-primary);
+  }
+
+  /* respeita quem pediu menos movimento */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ========================================================== utilities */
+
+/* numeros tabulares em fonte mono — dados quantitativos */
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+}
+
+/* rotulo de secao/coluna: maiusculo, discreto, espacado */
+@utility label-caps {
+  font-size: var(--text-label);
+  line-height: 14px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* superficie padrao de card */
+@utility panel {
+  background-color: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+/* card interativo: eleva discretamente no hover */
+@utility panel-interactive {
+  background-color: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: var(--color-line-strong);
+    background-color: var(--surface-2);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* brilho radial extremamente discreto no topo do header */
+@utility header-glow {
+  background-image: radial-gradient(
+    120% 180% at 12% -60%,
+    rgba(245, 184, 46, 0.07) 0%,
+    rgba(245, 184, 46, 0) 55%
+  );
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* scrollbar fina, coerente com o terminal */
+@utility thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-3) transparent;
+
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--color-surface-3);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: var(--radius-full);
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--surface-active);
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* cabecalho de tabela fixo sobre rolagem vertical */
+@utility sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--surface-2);
+  backdrop-filter: blur(6px);
+}
+
+/* linha de tabela densa com hover e selecao */
+@utility data-row {
+  transition:
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+
+  &:hover {
+    background-color: var(--surface-hover);
+  }
+}
+
+/* skeleton de carregamento */
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--surface-2);
+  border-radius: var(--radius-sm);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(148, 163, 184, 0.08) 50%,
+      transparent 100%
+    );
+    animation: betgsn-shimmer 1.4s infinite;
+  }
+}
+
+@keyframes betgsn-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes betgsn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@utility spin-slow {
+  animation: betgsn-spin 900ms linear infinite;
+}
+
+@keyframes betgsn-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility fade-up {
+  animation: betgsn-fade-up var(--transition-normal) both;
+}
+
+@keyframes betgsn-pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@utility pulse-dot {
+  animation: betgsn-pulse-dot 1.6s ease-in-out infinite;
+}

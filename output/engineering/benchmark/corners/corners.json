@@ -1,0 +1,888 @@
+{
+  "kind": "side_markets_benchmark",
+  "side": "corners",
+  "divisions": [
+    "E0",
+    "SP1",
+    "I1",
+    "D1",
+    "F1"
+  ],
+  "test_year": 2025,
+  "lines": [
+    8.5,
+    9.5,
+    10.5
+  ],
+  "n_matches": 19786,
+  "windows": {
+    "train": 16333,
+    "validation": 1717,
+    "test": 1736
+  },
+  "overdispersion": [
+    {
+      "division": "D1",
+      "season": "2014/15",
+      "n": 153,
+      "mean": 9.614,
+      "variance": 12.825,
+      "dispersion_ratio": 1.334
+    },
+    {
+      "division": "D1",
+      "season": "2015/16",
+      "n": 306,
+      "mean": 9.507,
+      "variance": 11.152,
+      "dispersion_ratio": 1.173
+    },
+    {
+      "division": "D1",
+      "season": "2016/17",
+      "n": 306,
+      "mean": 9.124,
+      "variance": 10.174,
+      "dispersion_ratio": 1.115
+    },
+    {
+      "division": "D1",
+      "season": "2017/18",
+      "n": 306,
+      "mean": 9.431,
+      "variance": 11.84,
+      "dispersion_ratio": 1.255
+    },
+    {
+      "division": "D1",
+      "season": "2018/19",
+      "n": 306,
+      "mean": 10.065,
+      "variance": 10.577,
+      "dispersion_ratio": 1.051
+    },
+    {
+      "division": "D1",
+      "season": "2019/20",
+      "n": 306,
+      "mean": 10.095,
+      "variance": 12.602,
+      "dispersion_ratio": 1.248
+    },
+    {
+      "division": "D1",
+      "season": "2020/21",
+      "n": 306,
+      "mean": 9.17,
+      "variance": 10.749,
+      "dispersion_ratio": 1.172
+    },
+    {
+      "division": "D1",
+      "season": "2021/22",
+      "n": 306,
+      "mean": 9.686,
+      "variance": 10.719,
+      "dispersion_ratio": 1.107
+    },
+    {
+      "division": "D1",
+      "season": "2022/23",
+      "n": 306,
+      "mean": 9.706,
+      "variance": 10.959,
+      "dispersion_ratio": 1.129
+    },
+    {
+      "division": "D1",
+      "season": "2023/24",
+      "n": 306,
+      "mean": 9.892,
+      "variance": 10.469,
+      "dispersion_ratio": 1.058
+    },
+    {
+      "division": "D1",
+      "season": "2024/25",
+      "n": 305,
+      "mean": 9.639,
+      "variance": 10.591,
+      "dispersion_ratio": 1.099
+    },
+    {
+      "division": "D1",
+      "season": "2025/26",
+      "n": 135,
+      "mean": 9.778,
+      "variance": 13.002,
+      "dispersion_ratio": 1.33
+    },
+    {
+      "division": "E0",
+      "season": "2014/15",
+      "n": 190,
+      "mean": 10.584,
+      "variance": 11.664,
+      "dispersion_ratio": 1.102
+    },
+    {
+      "division": "E0",
+      "season": "2015/16",
+      "n": 380,
+      "mean": 10.834,
+      "variance": 13.217,
+      "dispersion_ratio": 1.22
+    },
+    {
+      "division": "E0",
+      "season": "2016/17",
+      "n": 380,
+      "mean": 10.413,
+      "variance": 11.858,
+      "dispersion_ratio": 1.139
+    },
+    {
+      "division": "E0",
+      "season": "2017/18",
+      "n": 380,
+      "mean": 10.292,
+      "variance": 11.059,
+      "dispersion_ratio": 1.075
+    },
+    {
+      "division": "E0",
+      "season": "2018/19",
+      "n": 380,
+      "mean": 10.258,
+      "variance": 9.744,
+      "dispersion_ratio": 0.95
+    },
+    {
+      "division": "E0",
+      "season": "2019/20",
+      "n": 314,
+      "mean": 10.863,
+      "variance": 14.634,
+      "dispersion_ratio": 1.347
+    },
+    {
+      "division": "E0",
+      "season": "2020/21",
+      "n": 446,
+      "mean": 10.155,
+      "variance": 11.924,
+      "dispersion_ratio": 1.174
+    },
+    {
+      "division": "E0",
+      "season": "2021/22",
+      "n": 380,
+      "mean": 10.424,
+      "variance": 11.418,
+      "dispersion_ratio": 1.095
+    },
+    {
+      "division": "E0",
+      "season": "2022/23",
+      "n": 380,
+      "mean": 10.108,
+      "variance": 10.596,
+      "dispersion_ratio": 1.048
+    },
+    {
+      "division": "E0",
+      "season": "2023/24",
+      "n": 380,
+      "mean": 10.837,
+      "variance": 12.363,
+      "dispersion_ratio": 1.141
+    },
+    {
+      "division": "E0",
+      "season": "2024/25",
+      "n": 380,
+      "mean": 10.297,
+      "variance": 12.014,
+      "dispersion_ratio": 1.167
+    },
+    {
+      "division": "E0",
+      "season": "2025/26",
+      "n": 186,
+      "mean": 9.806,
+      "variance": 11.317,
+      "dispersion_ratio": 1.154
+    },
+    {
+      "division": "F1",
+      "season": "2014/15",
+      "n": 191,
+      "mean": 9.366,
+      "variance": 11.049,
+      "dispersion_ratio": 1.18
+    },
+    {
+      "division": "F1",
+      "season": "2015/16",
+      "n": 380,
+      "mean": 9.566,
+      "variance": 11.94,
+      "dispersion_ratio": 1.248
+    },
+    {
+      "division": "F1",
+      "season": "2016/17",
+      "n": 379,
+      "mean": 9.604,
+      "variance": 10.582,
+      "dispersion_ratio": 1.102
+    },
+    {
+      "division": "F1",
+      "season": "2017/18",
+      "n": 380,
+      "mean": 9.847,
+      "variance": 11.171,
+      "dispersion_ratio": 1.134
+    },
+    {
+      "division": "F1",
+      "season": "2018/19",
+      "n": 380,
+      "mean": 9.555,
+      "variance": 10.894,
+      "dispersion_ratio": 1.14
+    },
+    {
+      "division": "F1",
+      "season": "2019/20",
+      "n": 279,
+      "mean": 9.71,
+      "variance": 11.26,
+      "dispersion_ratio": 1.16
+    },
+    {
+      "division": "F1",
+      "season": "2020/21",
+      "n": 380,
+      "mean": 9.518,
+      "variance": 10.776,
+      "dispersion_ratio": 1.132
+    },
+    {
+      "division": "F1",
+      "season": "2021/22",
+      "n": 380,
+      "mean": 9.766,
+      "variance": 11.274,
+      "dispersion_ratio": 1.154
+    },
+    {
+      "division": "F1",
+      "season": "2022/23",
+      "n": 380,
+      "mean": 9.25,
+      "variance": 9.193,
+      "dispersion_ratio": 0.994
+    },
+    {
+      "division": "F1",
+      "season": "2023/24",
+      "n": 306,
+      "mean": 9.392,
+      "variance": 10.983,
+      "dispersion_ratio": 1.169
+    },
+    {
+      "division": "F1",
+      "season": "2024/25",
+      "n": 306,
+      "mean": 9.356,
+      "variance": 10.961,
+      "dispersion_ratio": 1.172
+    },
+    {
+      "division": "F1",
+      "season": "2025/26",
+      "n": 144,
+      "mean": 9.576,
+      "variance": 12.605,
+      "dispersion_ratio": 1.316
+    },
+    {
+      "division": "I1",
+      "season": "2014/15",
+      "n": 220,
+      "mean": 10.514,
+      "variance": 10.795,
+      "dispersion_ratio": 1.027
+    },
+    {
+      "division": "I1",
+      "season": "2015/16",
+      "n": 380,
+      "mean": 10.426,
+      "variance": 11.96,
+      "dispersion_ratio": 1.147
+    },
+    {
+      "division": "I1",
+      "season": "2016/17",
+      "n": 380,
+      "mean": 10.842,
+      "variance": 13.859,
+      "dispersion_ratio": 1.278
+    },
+    {
+      "division": "I1",
+      "season": "2017/18",
+      "n": 380,
+      "mean": 10.337,
+      "variance": 12.918,
+      "dispersion_ratio": 1.25
+    },
+    {
+      "division": "I1",
+      "season": "2018/19",
+      "n": 380,
+      "mean": 10.695,
+      "variance": 12.323,
+      "dispersion_ratio": 1.152
+    },
+    {
+      "division": "I1",
+      "season": "2019/20",
+      "n": 282,
+      "mean": 10.741,
+      "variance": 12.561,
+      "dispersion_ratio": 1.169
+    },
+    {
+      "division": "I1",
+      "season": "2020/21",
+      "n": 478,
+      "mean": 9.803,
+      "variance": 12.279,
+      "dispersion_ratio": 1.253
+    },
+    {
+      "division": "I1",
+      "season": "2021/22",
+      "n": 380,
+      "mean": 9.582,
+      "variance": 11.375,
+      "dispersion_ratio": 1.187
+    },
+    {
+      "division": "I1",
+      "season": "2022/23",
+      "n": 380,
+      "mean": 9.4,
+      "variance": 11.066,
+      "dispersion_ratio": 1.177
+    },
+    {
+      "division": "I1",
+      "season": "2023/24",
+      "n": 380,
+      "mean": 9.632,
+      "variance": 11.885,
+      "dispersion_ratio": 1.234
+    },
+    {
+      "division": "I1",
+      "season": "2024/25",
+      "n": 380,
+      "mean": 9.311,
+      "variance": 12.546,
+      "dispersion_ratio": 1.347
+    },
+    {
+      "division": "I1",
+      "season": "2025/26",
+      "n": 166,
+      "mean": 8.873,
+      "variance": 9.809,
+      "dispersion_ratio": 1.105
+    },
+    {
+      "division": "SP1",
+      "season": "2014/15",
+      "n": 221,
+      "mean": 10.24,
+      "variance": 10.58,
+      "dispersion_ratio": 1.033
+    },
+    {
+      "division": "SP1",
+      "season": "2015/16",
+      "n": 380,
+      "mean": 10.105,
+      "variance": 11.799,
+      "dispersion_ratio": 1.168
+    },
+    {
+      "division": "SP1",
+      "season": "2016/17",
+      "n": 380,
+      "mean": 9.5,
+      "variance": 10.734,
+      "dispersion_ratio": 1.13
+    },
+    {
+      "division": "SP1",
+      "season": "2017/18",
+      "n": 380,
+      "mean": 9.805,
+      "variance": 10.036,
+      "dispersion_ratio": 1.024
+    },
+    {
+      "division": "SP1",
+      "season": "2018/19",
+      "n": 380,
+      "mean": 9.595,
+      "variance": 10.657,
+      "dispersion_ratio": 1.111
+    },
+    {
+      "division": "SP1",
+      "season": "2019/20",
+      "n": 323,
+      "mean": 9.387,
+      "variance": 10.404,
+      "dispersion_ratio": 1.108
+    },
+    {
+      "division": "SP1",
+      "season": "2020/21",
+      "n": 437,
+      "mean": 8.691,
+      "variance": 9.806,
+      "dispersion_ratio": 1.128
+    },
+    {
+      "division": "SP1",
+      "season": "2021/22",
+      "n": 380,
+      "mean": 9.424,
+      "variance": 10.176,
+      "dispersion_ratio": 1.08
+    },
+    {
+      "division": "SP1",
+      "season": "2022/23",
+      "n": 380,
+      "mean": 9.534,
+      "variance": 11.296,
+      "dispersion_ratio": 1.185
+    },
+    {
+      "division": "SP1",
+      "season": "2023/24",
+      "n": 380,
+      "mean": 9.366,
+      "variance": 9.99,
+      "dispersion_ratio": 1.067
+    },
+    {
+      "division": "SP1",
+      "season": "2024/25",
+      "n": 380,
+      "mean": 9.518,
+      "variance": 10.776,
+      "dispersion_ratio": 1.132
+    },
+    {
+      "division": "SP1",
+      "season": "2025/26",
+      "n": 171,
+      "mean": 9.784,
+      "variance": 12.099,
+      "dispersion_ratio": 1.237
+    }
+  ],
+  "financial_limitation": "odds de corners/cards ausentes nos CSVs: sem m\u00e9tricas de aposta",
+  "results": {
+    "corners_8.5": {
+      "Poisson": {
+        "logloss": 0.6774,
+        "brier": 0.4837,
+        "ece": 0.0447,
+        "n": 1736,
+        "p_over_mean": 0.6421,
+        "actual_over_rate": 0.5962
+      },
+      "NegBin": {
+        "logloss": 0.6729,
+        "brier": 0.4799,
+        "ece": 0.0283,
+        "n": 1736,
+        "p_over_mean": 0.5741,
+        "actual_over_rate": 0.5962
+      },
+      "XGBoost": {
+        "logloss": 0.6717,
+        "brier": 0.4784,
+        "ece": 0.0251,
+        "n": 1736,
+        "p_over_mean": 0.6225,
+        "actual_over_rate": 0.5962
+      },
+      "LightGBM": {
+        "logloss": 0.6721,
+        "brier": 0.4788,
+        "ece": 0.0247,
+        "n": 1736,
+        "p_over_mean": 0.6235,
+        "actual_over_rate": 0.5962
+      },
+      "Ensemble": {
+        "logloss": 0.6717,
+        "brier": 0.4785,
+        "ece": 0.0265,
+        "n": 1736,
+        "p_over_mean": 0.623,
+        "actual_over_rate": 0.5962
+      }
+    },
+    "corners_9.5": {
+      "Poisson": {
+        "logloss": 0.6929,
+        "brier": 0.4996,
+        "ece": 0.0257,
+        "n": 1736,
+        "p_over_mean": 0.5158,
+        "actual_over_rate": 0.4839
+      },
+      "NegBin": {
+        "logloss": 0.6899,
+        "brier": 0.4968,
+        "ece": 0.009,
+        "n": 1736,
+        "p_over_mean": 0.4811,
+        "actual_over_rate": 0.4839
+      },
+      "XGBoost": {
+        "logloss": 0.6906,
+        "brier": 0.4974,
+        "ece": 0.0092,
+        "n": 1736,
+        "p_over_mean": 0.5049,
+        "actual_over_rate": 0.4839
+      },
+      "LightGBM": {
+        "logloss": 0.6917,
+        "brier": 0.4985,
+        "ece": 0.016,
+        "n": 1736,
+        "p_over_mean": 0.5047,
+        "actual_over_rate": 0.4839
+      },
+      "Ensemble": {
+        "logloss": 0.691,
+        "brier": 0.4979,
+        "ece": 0.01,
+        "n": 1736,
+        "p_over_mean": 0.5048,
+        "actual_over_rate": 0.4839
+      }
+    },
+    "corners_10.5": {
+      "Poisson": {
+        "logloss": 0.6619,
+        "brier": 0.4691,
+        "ece": 0.011,
+        "n": 1736,
+        "p_over_mean": 0.3923,
+        "actual_over_rate": 0.3738
+      },
+      "NegBin": {
+        "logloss": 0.6605,
+        "brier": 0.4678,
+        "ece": 0.0192,
+        "n": 1736,
+        "p_over_mean": 0.3937,
+        "actual_over_rate": 0.3738
+      },
+      "XGBoost": {
+        "logloss": 0.6612,
+        "brier": 0.4684,
+        "ece": 0.0193,
+        "n": 1736,
+        "p_over_mean": 0.386,
+        "actual_over_rate": 0.3738
+      },
+      "LightGBM": {
+        "logloss": 0.6595,
+        "brier": 0.4668,
+        "ece": 0.0167,
+        "n": 1736,
+        "p_over_mean": 0.3868,
+        "actual_over_rate": 0.3738
+      },
+      "Ensemble": {
+        "logloss": 0.6602,
+        "brier": 0.4675,
+        "ece": 0.0141,
+        "n": 1736,
+        "p_over_mean": 0.3864,
+        "actual_over_rate": 0.3738
+      }
+    }
+  },
+  "feature_importance": {
+    "XGBoost": {
+      "native": [
+        {
+          "feature": "away_corners_against",
+          "importance": 0.0366143174469471
+        },
+        {
+          "feature": "away_corners_against_20",
+          "importance": 0.036144837737083435
+        },
+        {
+          "feature": "home_corners_for_20",
+          "importance": 0.02451348304748535
+        },
+        {
+          "feature": "home_corners_against_20",
+          "importance": 0.021830448880791664
+        },
+        {
+          "feature": "away_corners_for_20",
+          "importance": 0.020510395988821983
+        },
+        {
+          "feature": "referee_n",
+          "importance": 0.019878804683685303
+        },
+        {
+          "feature": "home_corners_for",
+          "importance": 0.019821958616375923
+        },
+        {
+          "feature": "home_corners_for_10",
+          "importance": 0.019369764253497124
+        },
+        {
+          "feature": "referee_home_bias",
+          "importance": 0.01922626979649067
+        },
+        {
+          "feature": "home_corners_against",
+          "importance": 0.017558204010128975
+        },
+        {
+          "feature": "away_shots_against_5",
+          "importance": 0.017214342951774597
+        },
+        {
+          "feature": "away_shots_against_10",
+          "importance": 0.017054500058293343
+        },
+        {
+          "feature": "away_shots_on_target_against_20",
+          "importance": 0.016978120431303978
+        },
+        {
+          "feature": "away_corners_for",
+          "importance": 0.016156667843461037
+        },
+        {
+          "feature": "away_corners_against_5",
+          "importance": 0.015416174195706844
+        }
+      ],
+      "permutation": [
+        {
+          "feature": "home_corners_for",
+          "delta_logloss": 0.002957
+        },
+        {
+          "feature": "away_corners_for_20",
+          "delta_logloss": 0.002248
+        },
+        {
+          "feature": "home_corners_for_20",
+          "delta_logloss": 0.001253
+        },
+        {
+          "feature": "away_corners_for",
+          "delta_logloss": 0.000944
+        },
+        {
+          "feature": "away_corners_against",
+          "delta_logloss": 0.000886
+        },
+        {
+          "feature": "home_corners_for_10",
+          "delta_logloss": 0.000733
+        },
+        {
+          "feature": "home_shots_against",
+          "delta_logloss": 0.000439
+        },
+        {
+          "feature": "away_shots_for",
+          "delta_logloss": 0.000418
+        },
+        {
+          "feature": "away_shots_on_target_against",
+          "delta_logloss": 0.000416
+        },
+        {
+          "feature": "away_corners_for_10",
+          "delta_logloss": 0.000389
+        },
+        {
+          "feature": "elo_difference",
+          "delta_logloss": 0.00037
+        },
+        {
+          "feature": "home_cards_for_5",
+          "delta_logloss": 0.000337
+        },
+        {
+          "feature": "away_cards_for_20",
+          "delta_logloss": 0.000325
+        },
+        {
+          "feature": "home_cards_against_10",
+          "delta_logloss": 0.000317
+        },
+        {
+          "feature": "away_cards_for_5",
+          "delta_logloss": 0.00026
+        }
+      ]
+    },
+    "LightGBM": {
+      "native": [
+        {
+          "feature": "home_corners_for",
+          "importance": 68.0
+        },
+        {
+          "feature": "home_corners_for_20",
+          "importance": 67.0
+        },
+        {
+          "feature": "home_corners_against_20",
+          "importance": 51.0
+        },
+        {
+          "feature": "home_shots_against",
+          "importance": 50.0
+        },
+        {
+          "feature": "away_corners_for_20",
+          "importance": 46.0
+        },
+        {
+          "feature": "away_shots_against_5",
+          "importance": 41.0
+        },
+        {
+          "feature": "away_shots_for",
+          "importance": 40.0
+        },
+        {
+          "feature": "away_corners_for",
+          "importance": 38.0
+        },
+        {
+          "feature": "away_corners_against",
+          "importance": 38.0
+        },
+        {
+          "feature": "away_corners_against_20",
+          "importance": 35.0
+        },
+        {
+          "feature": "away_cards_for",
+          "importance": 35.0
+        },
+        {
+          "feature": "away_corners_for_10",
+          "importance": 29.0
+        },
+        {
+          "feature": "home_cards_against_10",
+          "importance": 29.0
+        },
+        {
+          "feature": "home_corners_against_10",
+          "importance": 28.0
+        },
+        {
+          "feature": "elo_difference",
+          "importance": 28.0
+        }
+      ],
+      "permutation": [
+        {
+          "feature": "home_corners_for",
+          "delta_logloss": 0.002448
+        },
+        {
+          "feature": "away_corners_for_20",
+          "delta_logloss": 0.001897
+        },
+        {
+          "feature": "home_corners_for_20",
+          "delta_logloss": 0.001632
+        },
+        {
+          "feature": "away_corners_against",
+          "delta_logloss": 0.00137
+        },
+        {
+          "feature": "home_shots_against",
+          "delta_logloss": 0.000675
+        },
+        {
+          "feature": "away_corners_for_10",
+          "delta_logloss": 0.000535
+        },
+        {
+          "feature": "away_shots_for",
+          "delta_logloss": 0.000503
+        },
+        {
+          "feature": "away_corners_for",
+          "delta_logloss": 0.000472
+        },
+        {
+          "feature": "away_shots_on_target_against",
+          "delta_logloss": 0.000378
+        },
+        {
+          "feature": "home_corners_for_10",
+          "delta_logloss": 0.000371
+        },
+        {
+          "feature": "home_shots_for",
+          "delta_logloss": 0.000323
+        },
+        {
+          "feature": "away_shots_on_target_against_20",
+          "delta_logloss": 0.000279
+        },
+        {
+          "feature": "home_corners_against_5",
+          "delta_logloss": 0.000232
+        },
+        {
+          "feature": "away_cards_for_20",
+          "delta_logloss": 0.000219
+        },
+        {
+          "feature": "elo_difference",
+          "delta_logloss": 0.00021
+        }
+      ]
+    }
+  }
+}

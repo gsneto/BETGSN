@@ -1,0 +1,1564 @@
+{
+  "kind": "feature_ablation",
+  "market": "1x2",
+  "groups_tested": [
+    "Elo",
+    "Form",
+    "OpponentStrength",
+    "Rest",
+    "H2H"
+  ],
+  "groups_unavailable": [
+    "xG",
+    "Injuries",
+    "Lineups",
+    "OddsMovement"
+  ],
+  "method": "forward_addition e leave_one_group_out; metricas probabilisticas; baseline = Poisson/Dixon-Coles de producao (sem features)",
+  "segments": [
+    {
+      "division": "E0",
+      "test_year": 2024,
+      "n_train": 3072,
+      "n_val": 411,
+      "n_test": 371,
+      "baseline": {
+        "logloss": 0.9601,
+        "brier": 0.5697,
+        "rps": 0.1901,
+        "ece": 0.0285
+      },
+      "models": {
+        "XGBoost": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9819,
+              "brier": 0.5815,
+              "rps": 0.1945,
+              "ece": 0.029
+            },
+            "+Form": {
+              "logloss": 0.9787,
+              "brier": 0.5795,
+              "rps": 0.193,
+              "ece": 0.0338
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9799,
+              "brier": 0.5799,
+              "rps": 0.1928,
+              "ece": 0.0266
+            },
+            "+Rest": {
+              "logloss": 0.9779,
+              "brier": 0.5788,
+              "rps": 0.1922,
+              "ece": 0.0288
+            },
+            "+H2H": {
+              "logloss": 0.9778,
+              "brier": 0.5785,
+              "rps": 0.1921,
+              "ece": 0.0316
+            },
+            "FULL": {
+              "logloss": 0.9772,
+              "brier": 0.5782,
+              "rps": 0.1918,
+              "ece": 0.0263
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 0.9862,
+              "brier": 0.5845,
+              "rps": 0.1949,
+              "ece": 0.0173
+            },
+            "-Form": {
+              "logloss": 0.9866,
+              "brier": 0.5833,
+              "rps": 0.1949,
+              "ece": 0.0239
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9791,
+              "brier": 0.5796,
+              "rps": 0.1928,
+              "ece": 0.0275
+            },
+            "-Rest": {
+              "logloss": 0.9799,
+              "brier": 0.5801,
+              "rps": 0.1929,
+              "ece": 0.0247
+            },
+            "-H2H": {
+              "logloss": 0.9769,
+              "brier": 0.578,
+              "rps": 0.1918,
+              "ece": 0.0244
+            },
+            "FULL": {
+              "logloss": 0.9772,
+              "brier": 0.5782,
+              "rps": 0.1918,
+              "ece": 0.0263
+            }
+          },
+          "full": {
+            "logloss": 0.9772,
+            "brier": 0.5782,
+            "rps": 0.1918,
+            "ece": 0.0263
+          }
+        },
+        "LightGBM": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.981,
+              "brier": 0.5811,
+              "rps": 0.1943,
+              "ece": 0.0293
+            },
+            "+Form": {
+              "logloss": 0.9797,
+              "brier": 0.5802,
+              "rps": 0.1933,
+              "ece": 0.0286
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9752,
+              "brier": 0.5771,
+              "rps": 0.1915,
+              "ece": 0.0284
+            },
+            "+Rest": {
+              "logloss": 0.981,
+              "brier": 0.5811,
+              "rps": 0.1936,
+              "ece": 0.0165
+            },
+            "+H2H": {
+              "logloss": 0.9796,
+              "brier": 0.5799,
+              "rps": 0.1929,
+              "ece": 0.0329
+            },
+            "FULL": {
+              "logloss": 0.9816,
+              "brier": 0.5812,
+              "rps": 0.1936,
+              "ece": 0.0241
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 0.9853,
+              "brier": 0.5843,
+              "rps": 0.1949,
+              "ece": 0.0238
+            },
+            "-Form": {
+              "logloss": 0.9801,
+              "brier": 0.5796,
+              "rps": 0.1931,
+              "ece": 0.0234
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9794,
+              "brier": 0.5801,
+              "rps": 0.1934,
+              "ece": 0.0268
+            },
+            "-Rest": {
+              "logloss": 0.9783,
+              "brier": 0.5792,
+              "rps": 0.1927,
+              "ece": 0.0273
+            },
+            "-H2H": {
+              "logloss": 0.9782,
+              "brier": 0.5788,
+              "rps": 0.1923,
+              "ece": 0.0218
+            },
+            "FULL": {
+              "logloss": 0.9816,
+              "brier": 0.5812,
+              "rps": 0.1936,
+              "ece": 0.0241
+            }
+          },
+          "full": {
+            "logloss": 0.9816,
+            "brier": 0.5812,
+            "rps": 0.1936,
+            "ece": 0.0241
+          }
+        }
+      }
+    },
+    {
+      "division": "E0",
+      "test_year": 2025,
+      "n_train": 3483,
+      "n_val": 371,
+      "n_test": 377,
+      "baseline": {
+        "logloss": 0.9721,
+        "brier": 0.5778,
+        "rps": 0.2037,
+        "ece": 0.0205
+      },
+      "models": {
+        "XGBoost": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9709,
+              "brier": 0.5774,
+              "rps": 0.2024,
+              "ece": 0.013
+            },
+            "+Form": {
+              "logloss": 0.9871,
+              "brier": 0.5869,
+              "rps": 0.2072,
+              "ece": 0.0269
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9781,
+              "brier": 0.5812,
+              "rps": 0.2046,
+              "ece": 0.0141
+            },
+            "+Rest": {
+              "logloss": 0.9807,
+              "brier": 0.5831,
+              "rps": 0.2052,
+              "ece": 0.0214
+            },
+            "+H2H": {
+              "logloss": 0.9788,
+              "brier": 0.5816,
+              "rps": 0.205,
+              "ece": 0.0146
+            },
+            "FULL": {
+              "logloss": 0.9756,
+              "brier": 0.5796,
+              "rps": 0.2042,
+              "ece": 0.0212
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 0.9868,
+              "brier": 0.589,
+              "rps": 0.2093,
+              "ece": 0.0253
+            },
+            "-Form": {
+              "logloss": 0.9755,
+              "brier": 0.58,
+              "rps": 0.2037,
+              "ece": 0.011
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9825,
+              "brier": 0.5838,
+              "rps": 0.206,
+              "ece": 0.0327
+            },
+            "-Rest": {
+              "logloss": 0.9786,
+              "brier": 0.5816,
+              "rps": 0.205,
+              "ece": 0.0164
+            },
+            "-H2H": {
+              "logloss": 0.9792,
+              "brier": 0.5822,
+              "rps": 0.205,
+              "ece": 0.0247
+            },
+            "FULL": {
+              "logloss": 0.9756,
+              "brier": 0.5796,
+              "rps": 0.2042,
+              "ece": 0.0212
+            }
+          },
+          "full": {
+            "logloss": 0.9756,
+            "brier": 0.5796,
+            "rps": 0.2042,
+            "ece": 0.0212
+          }
+        },
+        "LightGBM": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.97,
+              "brier": 0.5767,
+              "rps": 0.2019,
+              "ece": 0.0227
+            },
+            "+Form": {
+              "logloss": 0.9939,
+              "brier": 0.5915,
+              "rps": 0.2089,
+              "ece": 0.041
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9869,
+              "brier": 0.5871,
+              "rps": 0.2069,
+              "ece": 0.0249
+            },
+            "+Rest": {
+              "logloss": 0.9841,
+              "brier": 0.5854,
+              "rps": 0.2062,
+              "ece": 0.0324
+            },
+            "+H2H": {
+              "logloss": 0.9811,
+              "brier": 0.5832,
+              "rps": 0.2057,
+              "ece": 0.0235
+            },
+            "FULL": {
+              "logloss": 0.9821,
+              "brier": 0.5842,
+              "rps": 0.2057,
+              "ece": 0.035
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 0.9933,
+              "brier": 0.5938,
+              "rps": 0.2112,
+              "ece": 0.0095
+            },
+            "-Form": {
+              "logloss": 0.9763,
+              "brier": 0.5808,
+              "rps": 0.2042,
+              "ece": 0.0142
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9905,
+              "brier": 0.5895,
+              "rps": 0.208,
+              "ece": 0.042
+            },
+            "-Rest": {
+              "logloss": 0.9849,
+              "brier": 0.5864,
+              "rps": 0.207,
+              "ece": 0.0257
+            },
+            "-H2H": {
+              "logloss": 0.9883,
+              "brier": 0.5879,
+              "rps": 0.2073,
+              "ece": 0.0341
+            },
+            "FULL": {
+              "logloss": 0.9821,
+              "brier": 0.5842,
+              "rps": 0.2057,
+              "ece": 0.035
+            }
+          },
+          "full": {
+            "logloss": 0.9821,
+            "brier": 0.5842,
+            "rps": 0.2057,
+            "ece": 0.035
+          }
+        }
+      }
+    },
+    {
+      "division": "SP1",
+      "test_year": 2024,
+      "n_train": 3081,
+      "n_val": 409,
+      "n_test": 380,
+      "baseline": {
+        "logloss": 0.9779,
+        "brier": 0.5827,
+        "rps": 0.197,
+        "ece": 0.0199
+      },
+      "models": {
+        "XGBoost": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9794,
+              "brier": 0.5819,
+              "rps": 0.1962,
+              "ece": 0.0238
+            },
+            "+Form": {
+              "logloss": 0.9733,
+              "brier": 0.5783,
+              "rps": 0.1952,
+              "ece": 0.0245
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9739,
+              "brier": 0.5787,
+              "rps": 0.1955,
+              "ece": 0.027
+            },
+            "+Rest": {
+              "logloss": 0.9737,
+              "brier": 0.5787,
+              "rps": 0.1954,
+              "ece": 0.0253
+            },
+            "+H2H": {
+              "logloss": 0.9721,
+              "brier": 0.5778,
+              "rps": 0.1949,
+              "ece": 0.035
+            },
+            "FULL": {
+              "logloss": 0.9745,
+              "brier": 0.579,
+              "rps": 0.1954,
+              "ece": 0.0242
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 0.983,
+              "brier": 0.5859,
+              "rps": 0.1989,
+              "ece": 0.0176
+            },
+            "-Form": {
+              "logloss": 0.976,
+              "brier": 0.5792,
+              "rps": 0.1954,
+              "ece": 0.0196
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9737,
+              "brier": 0.5783,
+              "rps": 0.1955,
+              "ece": 0.0246
+            },
+            "-Rest": {
+              "logloss": 0.9722,
+              "brier": 0.5774,
+              "rps": 0.1952,
+              "ece": 0.0297
+            },
+            "-H2H": {
+              "logloss": 0.9752,
+              "brier": 0.5796,
+              "rps": 0.196,
+              "ece": 0.0345
+            },
+            "FULL": {
+              "logloss": 0.9745,
+              "brier": 0.579,
+              "rps": 0.1954,
+              "ece": 0.0242
+            }
+          },
+          "full": {
+            "logloss": 0.9745,
+            "brier": 0.579,
+            "rps": 0.1954,
+            "ece": 0.0242
+          }
+        },
+        "LightGBM": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9815,
+              "brier": 0.5832,
+              "rps": 0.1963,
+              "ece": 0.0217
+            },
+            "+Form": {
+              "logloss": 0.9767,
+              "brier": 0.5804,
+              "rps": 0.1962,
+              "ece": 0.0256
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9756,
+              "brier": 0.58,
+              "rps": 0.1957,
+              "ece": 0.0246
+            },
+            "+Rest": {
+              "logloss": 0.975,
+              "brier": 0.5796,
+              "rps": 0.1954,
+              "ece": 0.0381
+            },
+            "+H2H": {
+              "logloss": 0.9768,
+              "brier": 0.5804,
+              "rps": 0.1958,
+              "ece": 0.0262
+            },
+            "FULL": {
+              "logloss": 0.9751,
+              "brier": 0.5792,
+              "rps": 0.1956,
+              "ece": 0.0285
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 0.9815,
+              "brier": 0.5841,
+              "rps": 0.1985,
+              "ece": 0.0292
+            },
+            "-Form": {
+              "logloss": 0.9799,
+              "brier": 0.5818,
+              "rps": 0.1958,
+              "ece": 0.0193
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9742,
+              "brier": 0.5789,
+              "rps": 0.1955,
+              "ece": 0.0235
+            },
+            "-Rest": {
+              "logloss": 0.9761,
+              "brier": 0.5797,
+              "rps": 0.1961,
+              "ece": 0.0288
+            },
+            "-H2H": {
+              "logloss": 0.9731,
+              "brier": 0.5783,
+              "rps": 0.1949,
+              "ece": 0.0219
+            },
+            "FULL": {
+              "logloss": 0.9751,
+              "brier": 0.5792,
+              "rps": 0.1956,
+              "ece": 0.0285
+            }
+          },
+          "full": {
+            "logloss": 0.9751,
+            "brier": 0.5792,
+            "rps": 0.1956,
+            "ece": 0.0285
+          }
+        }
+      }
+    },
+    {
+      "division": "SP1",
+      "test_year": 2025,
+      "n_train": 3497,
+      "n_val": 380,
+      "n_test": 368,
+      "baseline": {
+        "logloss": 0.9758,
+        "brier": 0.5794,
+        "rps": 0.1979,
+        "ece": 0.0173
+      },
+      "models": {
+        "XGBoost": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9683,
+              "brier": 0.5755,
+              "rps": 0.1955,
+              "ece": 0.0384
+            },
+            "+Form": {
+              "logloss": 0.9556,
+              "brier": 0.5662,
+              "rps": 0.1915,
+              "ece": 0.0176
+            },
+            "+OpponentStrength": {
+              "logloss": 0.958,
+              "brier": 0.5679,
+              "rps": 0.192,
+              "ece": 0.0282
+            },
+            "+Rest": {
+              "logloss": 0.9584,
+              "brier": 0.5678,
+              "rps": 0.192,
+              "ece": 0.0135
+            },
+            "+H2H": {
+              "logloss": 0.9562,
+              "brier": 0.5666,
+              "rps": 0.1918,
+              "ece": 0.019
+            },
+            "FULL": {
+              "logloss": 0.9594,
+              "brier": 0.5684,
+              "rps": 0.1922,
+              "ece": 0.0239
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 0.9687,
+              "brier": 0.5751,
+              "rps": 0.1954,
+              "ece": 0.0239
+            },
+            "-Form": {
+              "logloss": 0.9673,
+              "brier": 0.5745,
+              "rps": 0.1959,
+              "ece": 0.0263
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9572,
+              "brier": 0.5671,
+              "rps": 0.1917,
+              "ece": 0.0184
+            },
+            "-Rest": {
+              "logloss": 0.961,
+              "brier": 0.5696,
+              "rps": 0.1927,
+              "ece": 0.0204
+            },
+            "-H2H": {
+              "logloss": 0.9597,
+              "brier": 0.5687,
+              "rps": 0.1923,
+              "ece": 0.0192
+            },
+            "FULL": {
+              "logloss": 0.9594,
+              "brier": 0.5684,
+              "rps": 0.1922,
+              "ece": 0.0239
+            }
+          },
+          "full": {
+            "logloss": 0.9594,
+            "brier": 0.5684,
+            "rps": 0.1922,
+            "ece": 0.0239
+          }
+        },
+        "LightGBM": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9672,
+              "brier": 0.5741,
+              "rps": 0.1949,
+              "ece": 0.0375
+            },
+            "+Form": {
+              "logloss": 0.9569,
+              "brier": 0.5673,
+              "rps": 0.1918,
+              "ece": 0.0256
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9556,
+              "brier": 0.5663,
+              "rps": 0.1915,
+              "ece": 0.0234
+            },
+            "+Rest": {
+              "logloss": 0.956,
+              "brier": 0.5665,
+              "rps": 0.1917,
+              "ece": 0.0259
+            },
+            "+H2H": {
+              "logloss": 0.9567,
+              "brier": 0.5665,
+              "rps": 0.1919,
+              "ece": 0.0156
+            },
+            "FULL": {
+              "logloss": 0.9557,
+              "brier": 0.566,
+              "rps": 0.1919,
+              "ece": 0.0212
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 0.9638,
+              "brier": 0.5719,
+              "rps": 0.1948,
+              "ece": 0.0214
+            },
+            "-Form": {
+              "logloss": 0.9633,
+              "brier": 0.5716,
+              "rps": 0.1949,
+              "ece": 0.0225
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9559,
+              "brier": 0.5664,
+              "rps": 0.1919,
+              "ece": 0.013
+            },
+            "-Rest": {
+              "logloss": 0.9573,
+              "brier": 0.5674,
+              "rps": 0.1921,
+              "ece": 0.0138
+            },
+            "-H2H": {
+              "logloss": 0.9554,
+              "brier": 0.5661,
+              "rps": 0.1916,
+              "ece": 0.0358
+            },
+            "FULL": {
+              "logloss": 0.9557,
+              "brier": 0.566,
+              "rps": 0.1919,
+              "ece": 0.0212
+            }
+          },
+          "full": {
+            "logloss": 0.9557,
+            "brier": 0.566,
+            "rps": 0.1919,
+            "ece": 0.0212
+          }
+        }
+      }
+    },
+    {
+      "division": "I1",
+      "test_year": 2024,
+      "n_train": 3086,
+      "n_val": 409,
+      "n_test": 376,
+      "baseline": {
+        "logloss": 0.9913,
+        "brier": 0.596,
+        "rps": 0.1942,
+        "ece": 0.0282
+      },
+      "models": {
+        "XGBoost": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9984,
+              "brier": 0.5963,
+              "rps": 0.1928,
+              "ece": 0.0161
+            },
+            "+Form": {
+              "logloss": 0.9943,
+              "brier": 0.5946,
+              "rps": 0.1918,
+              "ece": 0.0263
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9938,
+              "brier": 0.5944,
+              "rps": 0.1913,
+              "ece": 0.023
+            },
+            "+Rest": {
+              "logloss": 0.993,
+              "brier": 0.5942,
+              "rps": 0.1917,
+              "ece": 0.0339
+            },
+            "+H2H": {
+              "logloss": 0.9921,
+              "brier": 0.5933,
+              "rps": 0.1911,
+              "ece": 0.0195
+            },
+            "FULL": {
+              "logloss": 0.9924,
+              "brier": 0.5936,
+              "rps": 0.1914,
+              "ece": 0.0264
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 1.0077,
+              "brier": 0.6041,
+              "rps": 0.1965,
+              "ece": 0.0116
+            },
+            "-Form": {
+              "logloss": 0.9948,
+              "brier": 0.5941,
+              "rps": 0.192,
+              "ece": 0.0358
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9942,
+              "brier": 0.5947,
+              "rps": 0.1917,
+              "ece": 0.0367
+            },
+            "-Rest": {
+              "logloss": 0.9946,
+              "brier": 0.5951,
+              "rps": 0.1919,
+              "ece": 0.0331
+            },
+            "-H2H": {
+              "logloss": 0.9909,
+              "brier": 0.5927,
+              "rps": 0.1912,
+              "ece": 0.0343
+            },
+            "FULL": {
+              "logloss": 0.9924,
+              "brier": 0.5936,
+              "rps": 0.1914,
+              "ece": 0.0264
+            }
+          },
+          "full": {
+            "logloss": 0.9924,
+            "brier": 0.5936,
+            "rps": 0.1914,
+            "ece": 0.0264
+          }
+        },
+        "LightGBM": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9986,
+              "brier": 0.5964,
+              "rps": 0.1928,
+              "ece": 0.022
+            },
+            "+Form": {
+              "logloss": 0.9905,
+              "brier": 0.5926,
+              "rps": 0.1909,
+              "ece": 0.0256
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9913,
+              "brier": 0.5934,
+              "rps": 0.1911,
+              "ece": 0.0224
+            },
+            "+Rest": {
+              "logloss": 0.9866,
+              "brier": 0.5906,
+              "rps": 0.1904,
+              "ece": 0.0221
+            },
+            "+H2H": {
+              "logloss": 0.9911,
+              "brier": 0.5929,
+              "rps": 0.1906,
+              "ece": 0.037
+            },
+            "FULL": {
+              "logloss": 0.9948,
+              "brier": 0.5947,
+              "rps": 0.1919,
+              "ece": 0.0355
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 1.0082,
+              "brier": 0.6048,
+              "rps": 0.1971,
+              "ece": 0.0261
+            },
+            "-Form": {
+              "logloss": 0.9946,
+              "brier": 0.5938,
+              "rps": 0.1921,
+              "ece": 0.0315
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9937,
+              "brier": 0.5951,
+              "rps": 0.1919,
+              "ece": 0.0417
+            },
+            "-Rest": {
+              "logloss": 0.9961,
+              "brier": 0.5958,
+              "rps": 0.1925,
+              "ece": 0.0334
+            },
+            "-H2H": {
+              "logloss": 0.988,
+              "brier": 0.5914,
+              "rps": 0.19,
+              "ece": 0.024
+            },
+            "FULL": {
+              "logloss": 0.9948,
+              "brier": 0.5947,
+              "rps": 0.1919,
+              "ece": 0.0355
+            }
+          },
+          "full": {
+            "logloss": 0.9948,
+            "brier": 0.5947,
+            "rps": 0.1919,
+            "ece": 0.0355
+          }
+        }
+      }
+    },
+    {
+      "division": "I1",
+      "test_year": 2025,
+      "n_train": 3489,
+      "n_val": 376,
+      "n_test": 367,
+      "baseline": {
+        "logloss": 1.0017,
+        "brier": 0.5996,
+        "rps": 0.1991,
+        "ece": 0.0209
+      },
+      "models": {
+        "XGBoost": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9961,
+              "brier": 0.5944,
+              "rps": 0.1961,
+              "ece": 0.0476
+            },
+            "+Form": {
+              "logloss": 0.9958,
+              "brier": 0.5962,
+              "rps": 0.1964,
+              "ece": 0.0197
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9965,
+              "brier": 0.5962,
+              "rps": 0.1964,
+              "ece": 0.0268
+            },
+            "+Rest": {
+              "logloss": 0.992,
+              "brier": 0.5933,
+              "rps": 0.1954,
+              "ece": 0.0249
+            },
+            "+H2H": {
+              "logloss": 0.9953,
+              "brier": 0.5955,
+              "rps": 0.1961,
+              "ece": 0.0255
+            },
+            "FULL": {
+              "logloss": 0.9957,
+              "brier": 0.596,
+              "rps": 0.1964,
+              "ece": 0.0205
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 1.0015,
+              "brier": 0.6002,
+              "rps": 0.1979,
+              "ece": 0.0155
+            },
+            "-Form": {
+              "logloss": 0.9969,
+              "brier": 0.595,
+              "rps": 0.1964,
+              "ece": 0.0293
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9953,
+              "brier": 0.5956,
+              "rps": 0.1963,
+              "ece": 0.0259
+            },
+            "-Rest": {
+              "logloss": 0.9934,
+              "brier": 0.5939,
+              "rps": 0.1956,
+              "ece": 0.023
+            },
+            "-H2H": {
+              "logloss": 0.9951,
+              "brier": 0.5952,
+              "rps": 0.1959,
+              "ece": 0.0303
+            },
+            "FULL": {
+              "logloss": 0.9957,
+              "brier": 0.596,
+              "rps": 0.1964,
+              "ece": 0.0205
+            }
+          },
+          "full": {
+            "logloss": 0.9957,
+            "brier": 0.596,
+            "rps": 0.1964,
+            "ece": 0.0205
+          }
+        },
+        "LightGBM": {
+          "forward_addition": {
+            "+Elo": {
+              "logloss": 0.9913,
+              "brier": 0.592,
+              "rps": 0.1954,
+              "ece": 0.0389
+            },
+            "+Form": {
+              "logloss": 0.9925,
+              "brier": 0.594,
+              "rps": 0.1956,
+              "ece": 0.022
+            },
+            "+OpponentStrength": {
+              "logloss": 0.9939,
+              "brier": 0.5946,
+              "rps": 0.1957,
+              "ece": 0.0318
+            },
+            "+Rest": {
+              "logloss": 0.995,
+              "brier": 0.5953,
+              "rps": 0.1958,
+              "ece": 0.0347
+            },
+            "+H2H": {
+              "logloss": 0.9928,
+              "brier": 0.5942,
+              "rps": 0.1953,
+              "ece": 0.0257
+            },
+            "FULL": {
+              "logloss": 0.996,
+              "brier": 0.5962,
+              "rps": 0.1961,
+              "ece": 0.0265
+            }
+          },
+          "leave_one_out": {
+            "-Elo": {
+              "logloss": 1.0073,
+              "brier": 0.6043,
+              "rps": 0.199,
+              "ece": 0.027
+            },
+            "-Form": {
+              "logloss": 1.0014,
+              "brier": 0.5975,
+              "rps": 0.1973,
+              "ece": 0.0448
+            },
+            "-OpponentStrength": {
+              "logloss": 0.9971,
+              "brier": 0.5968,
+              "rps": 0.1965,
+              "ece": 0.026
+            },
+            "-Rest": {
+              "logloss": 0.997,
+              "brier": 0.5967,
+              "rps": 0.1963,
+              "ece": 0.0247
+            },
+            "-H2H": {
+              "logloss": 0.9944,
+              "brier": 0.595,
+              "rps": 0.1956,
+              "ece": 0.0316
+            },
+            "FULL": {
+              "logloss": 0.996,
+              "brier": 0.5962,
+              "rps": 0.1961,
+              "ece": 0.0265
+            }
+          },
+          "full": {
+            "logloss": 0.996,
+            "brier": 0.5962,
+            "rps": 0.1961,
+            "ece": 0.0265
+          }
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "XGBoost": {
+      "forward": {
+        "+Elo": {
+          "rps": {
+            "mean_delta": 0.00102,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00337,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00203,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00423,
+            "n_segments": 6
+          }
+        },
+        "+Form": {
+          "rps": {
+            "mean_delta": 0.00062,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00167,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00115,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00105,
+            "n_segments": 6
+          }
+        },
+        "+H2H": {
+          "rps": {
+            "mean_delta": -7e-05,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": -0.00042,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": -0.00025,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00045,
+            "n_segments": 6
+          }
+        },
+        "+OpponentStrength": {
+          "rps": {
+            "mean_delta": 0.0002,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.0009,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00058,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00053,
+            "n_segments": 6
+          }
+        },
+        "+Rest": {
+          "rps": {
+            "mean_delta": 8e-05,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00015,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00018,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00088,
+            "n_segments": 6
+          }
+        },
+        "FULL": {
+          "rps": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          }
+        }
+      },
+      "leave_one_out": {
+        "-Elo": {
+          "rps": {
+            "mean_delta": 0.00358,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00985,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00733,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": -0.00522,
+            "n_segments": 6
+          }
+        },
+        "-Form": {
+          "rps": {
+            "mean_delta": 0.00115,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00372,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00188,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00057,
+            "n_segments": 6
+          }
+        },
+        "-H2H": {
+          "rps": {
+            "mean_delta": 0.00013,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00037,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00027,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00415,
+            "n_segments": 6
+          }
+        },
+        "-OpponentStrength": {
+          "rps": {
+            "mean_delta": 0.00043,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.0012,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00072,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00388,
+            "n_segments": 6
+          }
+        },
+        "-Rest": {
+          "rps": {
+            "mean_delta": 0.00032,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00082,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00048,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.0008,
+            "n_segments": 6
+          }
+        },
+        "FULL": {
+          "rps": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          }
+        }
+      }
+    },
+    "LightGBM": {
+      "forward": {
+        "+Elo": {
+          "rps": {
+            "mean_delta": 0.00013,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00072,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00033,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00022,
+            "n_segments": 6
+          }
+        },
+        "+Form": {
+          "rps": {
+            "mean_delta": 0.00032,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00082,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00075,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": -0.0004,
+            "n_segments": 6
+          }
+        },
+        "+H2H": {
+          "rps": {
+            "mean_delta": -0.00043,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": -0.0012,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": -0.00073,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": -0.00165,
+            "n_segments": 6
+          }
+        },
+        "+OpponentStrength": {
+          "rps": {
+            "mean_delta": -0.0004,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": -0.00113,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": -0.0005,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": -0.00255,
+            "n_segments": 6
+          }
+        },
+        "+Rest": {
+          "rps": {
+            "mean_delta": -0.00028,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": -0.00127,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": -0.0005,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": -0.00018,
+            "n_segments": 6
+          }
+        },
+        "FULL": {
+          "rps": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          }
+        }
+      },
+      "leave_one_out": {
+        "-Elo": {
+          "rps": {
+            "mean_delta": 0.00345,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00902,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00695,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": -0.00563,
+            "n_segments": 6
+          }
+        },
+        "-Form": {
+          "rps": {
+            "mean_delta": 0.00043,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00172,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.0006,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": -0.00252,
+            "n_segments": 6
+          }
+        },
+        "-H2H": {
+          "rps": {
+            "mean_delta": -0.00052,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": -0.00132,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": -0.00067,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": -0.00027,
+            "n_segments": 6
+          }
+        },
+        "-OpponentStrength": {
+          "rps": {
+            "mean_delta": 0.0004,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00092,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00088,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.00037,
+            "n_segments": 6
+          }
+        },
+        "-Rest": {
+          "rps": {
+            "mean_delta": 0.00032,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.00073,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.00062,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": -0.00285,
+            "n_segments": 6
+          }
+        },
+        "FULL": {
+          "rps": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "logloss": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "brier": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          },
+          "ece": {
+            "mean_delta": 0.0,
+            "n_segments": 6
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "kind": "low_odds_band_analysis",
+  "market": "Resultado Final (1X2)",
+  "min_books": 3,
+  "divisions": [
+    "E0",
+    "SP1",
+    "I1",
+    "D1",
+    "F1"
+  ],
+  "n_matches": 46709,
+  "n_bets_considered": 101673,
+  "skipped_no_odds": 12,
+  "price_used": "best_available_across_books",
+  "financial_status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+  "bands": [
+    {
+      "band": "1.00-1.10",
+      "n": 27,
+      "hit_rate": 0.9259,
+      "implied_hit_rate": 0.9305,
+      "hit_vs_implied": -0.0046,
+      "avg_odd": 1.075,
+      "roi": -0.0052,
+      "roi_se": 0.0542,
+      "roi_t_stat": -0.1,
+      "significant_95": false,
+      "log_growth_1pct": -5.584e-05
+    },
+    {
+      "band": "1.10-1.20",
+      "n": 390,
+      "hit_rate": 0.8846,
+      "implied_hit_rate": 0.8696,
+      "hit_vs_implied": 0.015,
+      "avg_odd": 1.151,
+      "roi": 0.0174,
+      "roi_se": 0.0186,
+      "roi_t_stat": 0.93,
+      "significant_95": false,
+      "log_growth_1pct": 0.00016707
+    },
+    {
+      "band": "1.20-1.30",
+      "n": 1127,
+      "hit_rate": 0.7941,
+      "implied_hit_rate": 0.8047,
+      "hit_vs_implied": -0.0106,
+      "avg_odd": 1.243,
+      "roi": -0.0134,
+      "roi_se": 0.015,
+      "roi_t_stat": -0.9,
+      "significant_95": false,
+      "log_growth_1pct": -0.00014718
+    },
+    {
+      "band": "1.30-1.40",
+      "n": 1476,
+      "hit_rate": 0.7493,
+      "implied_hit_rate": 0.7485,
+      "hit_vs_implied": 0.0008,
+      "avg_odd": 1.337,
+      "roi": 0.0019,
+      "roi_se": 0.0151,
+      "roi_t_stat": 0.13,
+      "significant_95": false,
+      "log_growth_1pct": 2.01e-06
+    },
+    {
+      "band": "1.40-1.60",
+      "n": 3999,
+      "hit_rate": 0.6664,
+      "implied_hit_rate": 0.6733,
+      "hit_vs_implied": -0.0069,
+      "avg_odd": 1.488,
+      "roi": -0.0105,
+      "roi_se": 0.0111,
+      "roi_t_stat": -0.95,
+      "significant_95": false,
+      "log_growth_1pct": -0.00013016
+    },
+    {
+      "band": "1.60-2.00",
+      "n": 9670,
+      "hit_rate": 0.5587,
+      "implied_hit_rate": 0.5636,
+      "hit_vs_implied": -0.0049,
+      "avg_odd": 1.781,
+      "roi": -0.0093,
+      "roi_se": 0.009,
+      "roi_t_stat": -1.03,
+      "significant_95": false,
+      "log_growth_1pct": -0.00013192
+    },
+    {
+      "band": "2.00-3.00",
+      "n": 21602,
+      "hit_rate": 0.4072,
+      "implied_hit_rate": 0.4162,
+      "hit_vs_implied": -0.009,
+      "avg_odd": 2.435,
+      "roi": -0.0227,
+      "roi_se": 0.0081,
+      "roi_t_stat": -2.79,
+      "significant_95": true,
+      "log_growth_1pct": -0.00029765
+    },
+    {
+      "band": "3.00+",
+      "n": 63382,
+      "hit_rate": 0.2312,
+      "implied_hit_rate": 0.246,
+      "hit_vs_implied": -0.0147,
+      "avg_odd": 4.717,
+      "roi": -0.0646,
+      "roi_se": 0.0074,
+      "roi_t_stat": -8.71,
+      "significant_95": true,
+      "log_growth_1pct": -0.00081569
+    }
+  ]
+}
