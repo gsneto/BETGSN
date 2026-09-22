@@ -249,6 +249,10 @@ def test_runner_delegates_to_decide_bet(monkeypatch):
     seria o do espiao.
     """
     from betgsn import strategy_runner
+    import betgsn.value_strategy as vs_mod
+
+    # determinismo: sem cache valido, a evidencia e a das CONSTANTES
+    monkeypatch.setattr(vs_mod, "cached_validation", lambda *a, **k: None)
 
     real = decide_bet
     calls: list[dict] = []
@@ -597,13 +601,18 @@ def test_value_strategy_evidence_uses_fresh_cache(monkeypatch):
     assert evidence.n_bets == 6748
 
 
-def test_value_strategy_decision_path_unchanged():
+def test_value_strategy_decision_path_unchanged(monkeypatch):
     """O caminho da estrategia real decide como antes (H).
 
     Sem cache valido no ambiente (ou com ele): timestamped sustenta BET
     com a vantagem validada; exploratory e NO_BET — o mesmo contrato de
-    sempre, agora via registry + runner.
+    sempre, agora via registry + runner. O cache e isolado aqui para
+    que as constantes fallback sejam a evidencia deterministica.
     """
+    import betgsn.value_strategy as vs_mod
+
+    monkeypatch.setattr(vs_mod, "cached_validation", lambda *a, **k: None)
+
     bet = run_strategy_decision(STRATEGY_NAME, evidence_status="timestamped")
     assert bet.action == "BET"
     assert 0 < bet.fraction <= 0.05
