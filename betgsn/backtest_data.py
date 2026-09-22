@@ -310,10 +310,23 @@ class HistoricalCorpus:
         for m in sorted(self._available_matches[:idx], key=self.utc_key_of):
             # xG externo só está disponível se houver publicação anterior.
             # Dados de demonstração continuam explicitamente experimentais.
-            if m.xg_status == "REAL" and (not m.xg_available_at or utc_key(m.xg_available_at) >= key):
-                if m.home_xg is not None or m.away_xg is not None:
-                    m = replace(m, home_xg=None, away_xg=None, home_xg_against=None,
-                                away_xg_against=None, xg_status="UNAVAILABLE")
+            # REGRA (Fase D): xG só é visível no corte quando há prova de
+            # publicação ANTERIOR ao instante de avaliação:
+            # - REAL sem `xg_available_at`: removido (sem prova, sem xG);
+            # - qualquer status não-UNAVAILABLE com `xg_available_at`
+            #   declarado e futuro (>= corte): removido — ESTIMATED com
+            #   data futura não pode vazar antes da publicação;
+            # - ESTIMATED sem `xg_available_at`: preservado (semântica de
+            #   demonstração, data nunca é inventada).
+            strip_xg = False
+            if m.xg_status != "UNAVAILABLE":
+                if m.xg_status == "REAL" and not m.xg_available_at:
+                    strip_xg = True
+                elif m.xg_available_at and utc_key(m.xg_available_at) >= key:
+                    strip_xg = True
+            if strip_xg and (m.home_xg is not None or m.away_xg is not None):
+                m = replace(m, home_xg=None, away_xg=None, home_xg_against=None,
+                            away_xg_against=None, xg_status="UNAVAILABLE")
             out.append(m)
         return out
 

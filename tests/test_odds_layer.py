@@ -224,6 +224,28 @@ def test_normalize_event_requires_timestamp():
     assert normalize_event(_event(), "The Odds API", "") == []
 
 
+def test_normalize_event_fallback_timestamp_is_the_observation_instant():
+    """Evento sem ``timestamp``: o ``fetched_at`` vira o instante da quote.
+
+    O fallback e o INSTANTE DE OBSERVACAO (quando o dado foi visto), nao
+    um timestamp da fonte: providers que nao publicam horario por evento
+    (endpoint live gratuito) recebem o momento honesto da captura. A
+    quote permanece pre-kickoff apenas se a observacao de fato precede o
+    kickoff — o filtro temporal continua valendo.
+    """
+    quotes = normalize_event(_event(), "The Odds API", "2029-12-31T12:00:00Z")
+    assert quotes
+    assert {q.timestamp for q in quotes} == {"2029-12-31T12:00:00Z"}
+    assert all(q.pre_kickoff for q in quotes)
+
+    # Observacao apos o kickoff: a quote nao e utilizavel (o fallback
+    # nao "corrige" a observacao para caber no contrato).
+    late = normalize_event(_event(), "The Odds API", "2030-01-01T13:00:00Z")
+    assert late
+    assert all(not q.pre_kickoff for q in late)
+    assert all(not q.usable for q in late)
+
+
 def test_event_key_is_provider_independent():
     assert event_key("São Paulo", "Flamengo", KICKOFF) == event_key(
         "Sao Paulo FC", "CR Flamengo", KICKOFF

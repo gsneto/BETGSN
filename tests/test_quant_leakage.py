@@ -161,3 +161,49 @@ def test_result_time_embargo_and_guard():
 def test_corpus_rejects_matches_without_kickoff():
     with pytest.raises(ValueError):
         HistoricalCorpus([_match("A", "B", 1, 0, "")])
+
+
+# ------------------------------------------------------ xG embargo (D.1)
+
+
+def test_estimated_xg_with_future_publication_is_embargoed():
+    """ESTIMATED + `xg_available_at` futuro: xG nao pode vazar antes.
+
+    A regra vale para qualquer status != UNAVAILABLE com data de
+    publicacao declarada: observacao publicada DEPOIS do corte e
+    removida (strip para UNAVAILABLE), mesmo sendo estimada.
+    """
+    m = _match("A", "B", 1, 0, "2025-01-01",
+               home_xg=1.4, away_xg=0.8, xg_status="ESTIMATED",
+               xg_source="demo", xg_available_at="2025-01-10")
+    corpus = HistoricalCorpus([m])
+    # Resultado ja publicado (embargo de 2 dias ok), mas xG ainda nao.
+    got = corpus.available_before("2025-01-05T00:00:00Z")
+    assert len(got) == 1
+    assert got[0].xg_status == "UNAVAILABLE"
+    assert got[0].home_xg is None and got[0].away_xg is None
+    # Apos a publicacao declarada do xG, a observacao aparece.
+    got = corpus.available_before("2025-01-11T00:00:00Z")
+    assert got[0].xg_status == "ESTIMATED"
+    assert got[0].home_xg == 1.4
+
+
+def test_estimated_xg_without_publication_keeps_demo_semantics():
+    """ESTIMATED sem `xg_available_at`: semantica demo preservada.
+
+    Nao ha prova de publicacao, mas tambem nao ha data para inventar:
+    o comportamento de demonstracao (visivel) e mantido. REAL sem data
+    continua removido — status REAL exige prova.
+    """
+    demo = _match("A", "B", 1, 0, "2025-01-01",
+                  home_xg=1.4, away_xg=0.8, xg_status="ESTIMATED",
+                  xg_source="demo")
+    real_no_proof = _match("C", "D", 1, 0, "2025-01-01",
+                           home_xg=2.0, away_xg=1.0, xg_status="REAL",
+                           xg_source="provider")
+    corpus = HistoricalCorpus([demo, real_no_proof])
+    got = {m.home: m for m in corpus.available_before("2025-01-05T00:00:00Z")}
+    assert got["A"].xg_status == "ESTIMATED"
+    assert got["A"].home_xg == 1.4
+    assert got["C"].xg_status == "UNAVAILABLE"
+    assert got["C"].home_xg is None

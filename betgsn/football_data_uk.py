@@ -710,6 +710,20 @@ class CsvMatch:
     market_reference: dict[str, dict[str, float]] = field(default_factory=dict)
 
     @property
+    def time_is_known(self) -> bool:
+        """True quando o CSV informa a hora real do kickoff.
+
+        CSVs antigos nao possuem coluna ``Time``: nessas linhas o
+        ``kickoff`` e day-anchored (``00:00`` local) para continuar
+        aceito pelo corpus historico — um instante de conveniencia, NAO
+        observado. O marcador nomeia a limitacao sem fabricar horario
+        (o contrato de ``UpcomingFixture`` recusa kickoff inventado;
+        aqui o corpus historico preserva a semantica day-only e o
+        consumidor pode distinguir os dois casos).
+        """
+        return bool(self.time.strip())
+
+    @property
     def kickoff(self) -> str:
         """Kickoff local no formato aceito por timeutil."""
         return f"{self.date} {self.time or '00:00'}"
