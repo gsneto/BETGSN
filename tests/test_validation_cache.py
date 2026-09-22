@@ -10,18 +10,21 @@ Aqui se prova que o fingerprint:
 
 - e deterministico (mesma entrada -> mesma chave);
 - muda com CADA elemento relevante (regra, mercados, fechamento,
-  corpus);
+  corpus, parametros de bootstrap e faixas de odd — Fase D);
 - e o gate REAL do cache (hit so com fingerprint identico; miss
   recalcula);
 - protege a decisao: cache de outro corpus nao entra em decide_bet.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 
 import pytest
 
 from betgsn.value_strategy import (
+    BOOTSTRAP_RESAMPLES,
+    BOOTSTRAP_SEED,
     MARKETS,
     MAX_ODD,
     MIN_BOOKS,
@@ -91,6 +94,63 @@ def test_fingerprint_changes_with_closing_flag():
 def test_fingerprint_changes_with_corpus():
     """Um CSV novo (assinatura nova) invalida o cache antigo."""
     assert _fp(corpus_signature="corpus-2") != _fp(corpus_signature="corpus-1")
+
+
+# ------------------------------------------------- Fase D: bootstrap/bandas
+
+
+def test_fingerprint_changes_with_bootstrap_resamples():
+    """Outro numero de resamples = outros ICs persistidos = outra medicao."""
+    assert _fp(bootstrap_resamples=BOOTSTRAP_RESAMPLES + 1000) != _fp()
+
+
+def test_fingerprint_changes_with_bootstrap_seed():
+    """Outra seed = outros ICs persistidos = outra medicao."""
+    assert _fp(bootstrap_seed=BOOTSTRAP_SEED + 1) != _fp()
+
+
+def test_fingerprint_changes_with_odd_bands():
+    """Outras faixas = outro `by_band` persistido = outra medicao."""
+    assert _fp(odd_bands=((1.01, 1.10), (1.10, 1.20))) != _fp()
+
+
+def test_cache_from_old_schema_is_rejected(monkeypatch):
+    """Cache escrito no schema v2 (fingerprint antigo) nao e servido.
+
+    O fingerprint v3 inclui schema + bootstrap + faixas: o JSON legado
+    em disco (pre-Fase D) nao bate e e recalculado, nunca lido como se
+    fosse validacao atual. O fallback seguro para as constantes
+    validadas cobre o intervalo sem cache (teste abaixo ja o prova).
+    """
+    from betgsn.value_strategy import ODD_BANDS
+
+    _patch_corpus(monkeypatch, "corpus-1")
+    # Fingerprint EXATAMENTE como era no schema v2 (payload antigo,
+    # sem bootstrap/faixas) — o que um cache real pre-Fase D carrega.
+    legacy_payload = {
+        "schema": 2,
+        "max_odd": float(MAX_ODD),
+        "min_books": int(MIN_BOOKS),
+        "markets": list(MARKETS),
+        "closing": False,
+        "corpus": "corpus-1",
+    }
+    assert ODD_BANDS  # sanity: faixas existem no payload atual
+    legacy_fp = hashlib.sha256(
+        json.dumps(legacy_payload, sort_keys=True, ensure_ascii=False)
+        .encode("utf-8")
+    ).hexdigest()[:16]
+    assert legacy_fp != _fp()  # schema novo produz chave diferente
+    _write_cache(_validation_payload(legacy_fp))
+
+    assert cached_validation() is None
+    bets = [{"d": "2025-01-01", "lg": "E0", "mkt": MARKETS[0],
+             "odd": 1.10, "ret": 0.10}]
+    monkeypatch.setattr("betgsn.value_strategy.collect_bets",
+                        lambda *a, **k: list(bets))
+    result = validate()
+    assert result.n_bets == 1
+    assert result.cache_fingerprint == _fp()
 
 
 # --------------------------------------------------------- cache hit/miss

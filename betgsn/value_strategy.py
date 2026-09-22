@@ -107,7 +107,10 @@ def _validation_cache_path() -> Path:
 #: Versao do ESQUEMA do cache (nao do modelo): muda quando os campos
 #: persistidos ou a semantica do fingerprint mudam. Caches sem essa
 #: versao sao invalidados — nunca lidos como se fossem atuais.
-CACHE_SCHEMA_VERSION = 2
+#: v3 (Fase D): o fingerprint passa a incluir os parametros que
+#: determinam materialmente os valores persistidos (bootstrap e faixas
+#: de odd); caches do schema v2 sao invalidados uma unica vez.
+CACHE_SCHEMA_VERSION = 3
 
 BOOTSTRAP_RESAMPLES = 4000
 BOOTSTRAP_SEED = 424242
@@ -120,6 +123,9 @@ def validation_cache_fingerprint(
     markets: Sequence[str] = MARKETS,
     closing: bool = False,
     corpus_signature: str = "",
+    bootstrap_resamples: int = BOOTSTRAP_RESAMPLES,
+    bootstrap_seed: int = BOOTSTRAP_SEED,
+    odd_bands: Sequence[tuple[float, float]] = ODD_BANDS,
 ) -> str:
     """Fingerprint deterministico do que a validacao mede (I-14).
 
@@ -131,12 +137,19 @@ def validation_cache_fingerprint(
     - `closing`: odds de abertura (False) ou fechamento (True);
     - `corpus_signature`: assinatura do corpus (arquivos/mtime via
       `FootballDataClient.corpus_signature`) — muda quando um CSV novo
-      chega ou um existente e atualizado.
+      chega ou um existente e atualizado;
+    - `bootstrap_resamples`/`bootstrap_seed`: determinam os ICs
+      persistidos (`ci_low`/`ci_high`) — outro bootstrap e OUTRA
+      medicao (Fase D);
+    - `odd_bands`: as faixas de `by_band`/`band_counts` persistidas —
+      mudar os limites muda o conteudo do cache (Fase D).
 
     Sem o corpus na chave, uma validacao feita sobre 2000-2025 seria
     servida como se valesse para um corpus que ganhou a temporada 2026:
     cache misturando corpora. Sem os mercados/fechamento, mudancas de
     configuracao silenciosas reutilizariam numeros de outra medicao.
+    Sem o bootstrap/faixas, editar esses parametros serviria ICs e
+    bandas de outra configuracao como se fossem atuais.
     """
     payload = {
         "schema": CACHE_SCHEMA_VERSION,
@@ -145,6 +158,9 @@ def validation_cache_fingerprint(
         "markets": list(markets),
         "closing": bool(closing),
         "corpus": corpus_signature,
+        "bootstrap_resamples": int(bootstrap_resamples),
+        "bootstrap_seed": int(bootstrap_seed),
+        "odd_bands": [[float(lo), float(hi)] for lo, hi in odd_bands],
     }
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
@@ -295,6 +311,8 @@ def validate(
     fingerprint = validation_cache_fingerprint(
         max_odd=max_odd, min_books=min_books, markets=MARKETS,
         closing=closing, corpus_signature=corpus,
+        bootstrap_resamples=BOOTSTRAP_RESAMPLES,
+        bootstrap_seed=BOOTSTRAP_SEED, odd_bands=ODD_BANDS,
     )
     cache_path = _validation_cache_path()
     if use_cache and cache_path.exists():
@@ -395,6 +413,8 @@ def cached_validation(
         max_odd=max_odd, min_books=min_books, markets=MARKETS,
         closing=closing,
         corpus_signature=FootballDataClient().corpus_signature(),
+        bootstrap_resamples=BOOTSTRAP_RESAMPLES,
+        bootstrap_seed=BOOTSTRAP_SEED, odd_bands=ODD_BANDS,
     )
     if val.cache_fingerprint != expected:
         return None
