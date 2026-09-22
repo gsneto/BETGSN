@@ -102,6 +102,37 @@ def evaluate_all(segments: dict[str, list[SegmentResult]]) -> list[dict]:
     return out
 
 
+def _value_cache_is_stale(payload: dict) -> bool:
+    """True quando o cache armazenado NAO bate com a medicao atual.
+
+    Usa o MESMO mecanismo do cache de validacao (I-14 + Fase D): regra,
+    mercados, tipo de odd, corpus, schema, bootstrap e faixas de odd.
+    Este relatorio le o JSON diretamente — sem este gate, uma validacao
+    de outro corpus/configuracao seria reportada como evidencia atual.
+    Nao verificavel (cache legado sem fingerprint) tambem e stale: so
+    serve como dado historico, nunca como validacao corrente.
+    """
+    from betgsn.football_data_uk import FootballDataClient
+    from betgsn.value_strategy import (
+        BOOTSTRAP_RESAMPLES,
+        BOOTSTRAP_SEED,
+        MARKETS,
+        MAX_ODD,
+        MIN_BOOKS,
+        ODD_BANDS,
+        validation_cache_fingerprint,
+    )
+
+    expected = validation_cache_fingerprint(
+        max_odd=MAX_ODD, min_books=MIN_BOOKS, markets=MARKETS,
+        closing=False,
+        corpus_signature=FootballDataClient().corpus_signature(),
+        bootstrap_resamples=BOOTSTRAP_RESAMPLES,
+        bootstrap_seed=BOOTSTRAP_SEED, odd_bands=ODD_BANDS,
+    )
+    return payload.get("cache_fingerprint") != expected
+
+
 def betting_evidence(odds_bands_path: Path, value_path: Path) -> dict:
     """Resume a evidencia financeira e classifica o que ela permite concluir."""
     bands = load(odds_bands_path)
@@ -114,6 +145,30 @@ def betting_evidence(odds_bands_path: Path, value_path: Path) -> dict:
         if b.get("significant_95") and b.get("roi", 0) < 0
     ]
     value = load(value_path) if value_path.exists() else None
+    if value is None:
+        value_validation = None
+    else:
+        stale = _value_cache_is_stale(value)
+        note = (
+            "preco real de fecho, mas sem timestamp de publicacao: "
+            "nao prova disponibilidade no momento da decisao"
+        )
+        if stale:
+            note += (
+                "; CACHE STALE: fingerprint nao corresponde a "
+                "regra/corpus/parametros atuais — valores mantidos "
+                "apenas como dado historico, nao como validacao corrente"
+            )
+        value_validation = {
+            "roi": value.get("roi"),
+            "se": value.get("se"),
+            "ci_low": value.get("ci_low"),
+            "ci_high": value.get("ci_high"),
+            "n_bets": value.get("n_bets"),
+            "cache_stale": stale,
+            "status": "EXPLORATORY_CSV_UNTIMESTAMPED",
+            "note": note,
+        }
     return {
         "odds_bands": {
             "n_bets_considered": bands.get("n_bets_considered"),
@@ -130,21 +185,7 @@ def betting_evidence(odds_bands_path: Path, value_path: Path) -> dict:
                 else "ha faixa com ROI positivo significativo — investigar antes de apostar"
             ),
         },
-        "value_validation": (
-            {
-                "roi": value.get("roi"),
-                "se": value.get("se"),
-                "ci_low": value.get("ci_low"),
-                "ci_high": value.get("ci_high"),
-                "n_bets": value.get("n_bets"),
-                "status": "EXPLORATORY_CSV_UNTIMESTAMPED",
-                "note": (
-                    "preco real de fecho, mas sem timestamp de publicacao: "
-                    "nao prova disponibilidade no momento da decisao"
-                ),
-            }
-            if value else None
-        ),
+        "value_validation": value_validation,
     }
 
 

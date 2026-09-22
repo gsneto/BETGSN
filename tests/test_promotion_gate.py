@@ -356,6 +356,32 @@ def test_clv_without_sample_info_keeps_backward_compatible_evaluation():
     assert "amostra nao informada" in criterion.detail
 
 
+def test_clv_without_provenance_is_marked_in_detail():
+    """Fase D: CLV sem 'prospective' declarado fica marcado, nao aprovado.
+
+    O pass/fail NAO muda (retrocompatibilidade preservada), mas a
+    ausencia de provenancia e explicita no detail: CLV nao classificado
+    pode ser retrospectivo, e o leitor do relatorio precisa saber antes
+    de tratar o criterio como evidencia prospectiva.
+    """
+    d = evaluate_promotion(
+        "X", _good_segments(), clv={"mean": 0.02, "ci_low": 0.005, "n": 100},
+    )
+    assert "clv_nao_negativo" not in d.blocking_failures
+    criterion = next(
+        c for c in d.criteria if c.name == "clv_nao_negativo")
+    assert "PROVENANCIA NAO DECLARADA" in criterion.detail
+
+    # Com a proveniencia declarada, a marcacao some.
+    d = evaluate_promotion(
+        "X", _good_segments(),
+        clv={"mean": 0.02, "ci_low": 0.005, "n": 100, "prospective": True},
+    )
+    criterion = next(
+        c for c in d.criteria if c.name == "clv_nao_negativo")
+    assert "PROVENANCIA NAO DECLARADA" not in criterion.detail
+
+
 def test_clv_negative_with_large_sample_still_blocks():
     d = evaluate_promotion(
         "X", _good_segments(),

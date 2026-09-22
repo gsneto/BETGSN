@@ -243,3 +243,38 @@ def test_no_bet_by_lack_of_evidence_yields_zero_stake():
     assert "evidencia_confiavel" in quant.reason
     assert quant.fraction == 0.0
     assert all(b.stake == 0.0 for b in enforce_decision(_bets(), quant))
+
+
+def test_fixtures_evidence_cannot_become_trusted_without_timestamps():
+    """Fase D — invariante de evidencia das odds CSV de fixtures.
+
+    Os CSVs de jogos futuros trazem precos REAIS de bookmakers SEM
+    timestamp de publicacao: um preco sem carimbo nao prova que estava
+    disponivel no instante da decisao. Enquanto `UpcomingFixture` nao
+    carregar carimbo de publicacao das odds, `FIXTURES_EVIDENCE_STATUS`
+    precisa ficar FORA de `TRUSTED_EVIDENCE` — promover essa fonte a
+    evidencia confiavel exige PRIMEIRO um mecanismo de timestamp, nao
+    apenas trocar a constante (o que abriria BET sobre odds cuja
+    disponibilidade no instante da decisao nao pode ser demonstrada).
+
+    O teste falha de dois jeitos: se o status virar confiavel sem
+    carimbo, ou se um carimbo real for adicionado sem revisitar o
+    status — nos dois casos a decisao precisa ser consciente.
+    """
+    import dataclasses
+
+    from betgsn.api.service import FIXTURES_EVIDENCE_STATUS
+    from betgsn.football_data_uk import UpcomingFixture
+    from betgsn.staking import TRUSTED_EVIDENCE
+
+    # Premissa estrutural (AST-level: campos do contrato): o fixture
+    # NAO possui campo de carimbo de publicacao das odds.
+    names = {f.name for f in dataclasses.fields(UpcomingFixture)}
+    stamped = {n for n in names
+               if "timestamp" in n or "fetched" in n or "available" in n}
+    assert stamped == set(), (
+        f"fixture ganhou carimbo de odds ({stamped}): revisitar "
+        "FIXTURES_EVIDENCE_STATUS conscientemente"
+    )
+    # Invariante: sem carimbo, o status da fonte nao e confiavel.
+    assert FIXTURES_EVIDENCE_STATUS not in TRUSTED_EVIDENCE

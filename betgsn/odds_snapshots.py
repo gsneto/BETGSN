@@ -960,7 +960,16 @@ class OddsSnapshotStore:
 
     def coverage(self, bets: Sequence[dict],
                  window_minutes: float = CLOSING_WINDOW_MINUTES) -> CLVCoverage:
-        """Cobertura agregada. bets: [{match_key, market, outcome, odd}]."""
+        """Cobertura agregada. bets: [{match_key, market, outcome, odd}].
+
+        ATENCAO (Fase D): esta agregacao usa CLV RETROSPECTIVO — a odd
+        de entrada vem do chamador (tipicamente a melhor odd atual), nao
+        de uma entrada congelada no instante da decisao. E um indicador
+        de DIAGNOSTICO de cobertura de fechamento; NAO constitui
+        evidencia de promocao. A unica CLV que sustenta promocao e a
+        prospectiva (`clv_prospective`, com entrada FIRST-WINS via
+        `register_entry` e ordem entry < closing verificada).
+        """
         report = CLVCoverage(total_bets=len(bets))
         pcts: list[float] = []
         probs: list[float] = []

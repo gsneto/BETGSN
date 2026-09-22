@@ -446,6 +446,13 @@ def evaluate_promotion(
             clv_passed = False
             detail += "; RETROSPECTIVO: entrada apos o fechamento, nao " \
                       "e evidencia prospectiva"
+        elif prospective is None:
+            # Fase D: a chave nao foi declarada. O pass/fail original e
+            # PRESERVADO (retrocompatibilidade), mas a ausencia fica
+            # explicita — CLV sem proveniencia declarada pode ser
+            # retrospectivo e o leitor do relatorio precisa saber.
+            detail += "; PROVENANCIA NAO DECLARADA: informe " \
+                      "'prospective' para classificar o CLV"
         n_clv = clv.get("n")
         if clv_passed and n_clv is not None:
             if int(n_clv) < MIN_CLV_SAMPLE:
