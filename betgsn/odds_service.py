@@ -268,18 +268,25 @@ class OddsService:
                     name, gathered.headers, spend_cost
                 )
             events = gathered.events
-            if not events:
-                self._health.record_no_coverage(name)
-                attempts.append(ProviderAttempt(name, "NO_COVERAGE"))
-                continue
-
-            if gathered.quotes is not None:
-                quotes = gathered.quotes
-            else:
+            if gathered.quotes is None:
+                # caminho LEGADO (duck): portao historico em eventos,
+                # byte-equivalente — vazio e NO_COVERAGE, proximo provider.
+                if not events:
+                    self._health.record_no_coverage(name)
+                    attempts.append(ProviderAttempt(name, "NO_COVERAGE"))
+                    continue
                 quotes = dedupe_quotes(
                     normalize_events(events, name, fetched_at, sport_key=sport_key)
                 )
+            else:
+                # contrato FASE B: cobertura e dada pelas QUOTES —
+                # `raw_events` e OPCIONAL no contrato (odds_provider.py),
+                # um provider so-de-quotes nao pode ser classificado
+                # como NO_COVERAGE nem ter quotes descartadas.
+                quotes = gathered.quotes
             if not quotes:
+                # sem quotes (com ou sem `no_coverage` explicito, com ou
+                # sem eventos): sem cobertura — nunca se fabrica quote.
                 self._health.record_no_coverage(name)
                 attempts.append(
                     ProviderAttempt(

@@ -466,3 +466,110 @@ def test_scan_live_consumes_quotes_not_raw_events():
     assert "scan_events" not in names
     assert "odds_event_to_internal" not in names  # nada de payload cru
     assert "_opportunities_from_quotes" in names  # odds construidas das quotes
+
+
+# ==========================================================================
+# (7) contrato FASE B: quotes SEM raw_events — cobertura e dada pelas
+#     quotes, nao pelos eventos (`raw_events` e opcional no contrato)
+# ==========================================================================
+
+
+class _QuotesOnlyFake:
+    """Provider FALSO do contrato que devolve o fetch PRONTO.
+
+    Diferente do `FakeContractProvider`, nao deriva quotes de eventos:
+    permite simular um provider so-de-quotes (raw_events vazio) sem
+    inventar payload.
+    """
+
+    def __init__(self, name, fetch: OddsProviderFetch):
+        self.name = name
+        self._fetch = fetch
+        self.requests: list[OddsFetchRequest] = []
+
+    def available(self) -> bool:
+        return True
+
+    def fetch_odds(self, request: OddsFetchRequest) -> OddsProviderFetch:
+        self.requests.append(request)
+        return self._fetch
+
+
+def _contract_quotes(provider_name):
+    """Quotes validas (parser canonico + dedupe) para o fetch de um fake.
+
+    O servico aplica `dedupe_quotes` as quotes do contrato; o esperado
+    aqui passa pela mesma ordenacao canonica.
+    """
+    from betgsn.odds_normalize import dedupe_quotes
+
+    return tuple(dedupe_quotes(
+        normalize_events([_raw_event()], provider_name, FETCHED_AT)
+    ))
+
+
+def test_contract_quotes_without_raw_events_is_served():
+    """Cobertura do contrato: quotes presentes, raw_events vazio.
+
+    `raw_events` e OPCIONAL no contrato (odds_provider.py); um provider
+    so-de-quotes nao pode ser classificado como NO_COVERAGE nem ter as
+    quotes descartadas.
+    """
+    quotes = _contract_quotes("QOnly")
+    provider = _QuotesOnlyFake("QOnly", OddsProviderFetch(quotes=quotes))
+    svc = OddsService(providers=[("QOnly", provider)], now=Clock(FETCHED_AT))
+
+    result = svc.fetch("soccer_epl")
+
+    assert result.ok is True
+    assert result.provider == "QOnly"
+    assert result.quotes == list(quotes)
+    assert result.events == 0  # sem raw_events: nada e inventado
+    assert result.attempts[0].status == "OK"
+    assert result.attempts[0].quotes == len(quotes)
+    assert svc.health_snapshot()["QOnly"]["state"] == "HEALTHY"
+
+
+def test_contract_no_coverage_without_quotes_or_events():
+    """Sem quotes, sem eventos e no_coverage explicito: como hoje."""
+    provider = _QuotesOnlyFake(
+        "QOnly", OddsProviderFetch(quotes=(), raw_events=(), no_coverage=True)
+    )
+    svc = OddsService(providers=[("QOnly", provider)], now=Clock(FETCHED_AT))
+
+    result = svc.fetch("soccer_epl")
+
+    assert result.ok is False
+    assert result.quotes == []
+    assert result.attempts[0].status == "NO_COVERAGE"
+    assert svc.health_snapshot()["QOnly"]["state"] == "NO_COVERAGE"
+
+
+def test_contract_quotes_with_raw_events_parity():
+    """Paridade: mesmas quotes COM raw_events — comportamento inalterado."""
+    quotes = _contract_quotes("QBoth")
+    provider = _QuotesOnlyFake(
+        "QBoth",
+        OddsProviderFetch(quotes=quotes, raw_events=(_raw_event(),)),
+    )
+    svc = OddsService(providers=[("QBoth", provider)], now=Clock(FETCHED_AT))
+
+    result = svc.fetch("soccer_epl")
+
+    assert result.ok is True
+    assert result.provider == "QBoth"
+    assert result.quotes == list(quotes)
+    assert result.events == 1
+    assert result.attempts[0].status == "OK"
+
+
+def test_contract_neither_quotes_nor_events_nor_flag_is_no_coverage():
+    """Nem quotes, nem eventos, nem flag: sem cobertura (nunca fabrica)."""
+    provider = _QuotesOnlyFake("QOnly", OddsProviderFetch())
+    svc = OddsService(providers=[("QOnly", provider)], now=Clock(FETCHED_AT))
+
+    result = svc.fetch("soccer_epl")
+
+    assert result.ok is False
+    assert result.attempts[0].status == "NO_COVERAGE"
+    assert svc.health_snapshot()["QOnly"]["state"] == "NO_COVERAGE"
