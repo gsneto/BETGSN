@@ -56,7 +56,12 @@ export interface FixtureItem {
   away: string;
   league: string;
   round_label: string;
+  /** Instante do kickoff em UTC canônico (YYYY-MM-DDTHH:MM:SSZ). */
   kickoff: string;
+  /** Horário local da competição (YYYY-MM-DD HH:MM), quando disponível. */
+  kickoff_local?: string;
+  /** Fuso IANA de origem (ex.: "Europe/London"), quando disponível. */
+  timezone?: string;
   has_odds: boolean;
   n_bookmakers: number;
   bookmakers: string[];
@@ -241,6 +246,28 @@ export interface ModelCalibrationInfo {
   verdict: string;
 }
 
+/** Uma verificação individual da decisão de apostar (auditável). */
+export interface DecisionCheck {
+  name: string;
+  passed: boolean;
+  detail: string;
+}
+
+/**
+ * Decisão do Quant: apostar (BET) ou não apostar (NO_BET).
+ *
+ * NO_BET é resultado de primeira classe: não vira aposta e não ganha
+ * stake — `fraction` é 0 e `reason` preserva o motivo da decisão.
+ */
+export interface BetDecision {
+  action: "BET" | "NO_BET";
+  reason: string;
+  fraction: number;
+  conservative_roi: number | null;
+  kelly_full: number | null;
+  checks: DecisionCheck[];
+}
+
 /** De onde vieram os sinais. */
 export type SignalSource = "synthetic" | "real";
 
@@ -259,6 +286,8 @@ export interface SignalReport {
   skipped_insufficient_books: number;
   /** presente apenas quando source = "real" */
   calibration: ModelCalibrationInfo | null;
+  /** decisão do Quant sobre a evidência atual (BET | NO_BET), com motivo */
+  decision: BetDecision | null;
 }
 
 export interface SignalsSourceStatus {

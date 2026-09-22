@@ -3,6 +3,10 @@
  *
  * Lista os jogos futuros com disponibilidade de odds e bookmakers.
  * Todos os dados vêm de GET /api/fixtures. Nenhum cálculo local.
+ *
+ * Kickoff: o backend manda o instante em UTC canônico (`kickoff`) e, quando
+ * disponível, o horário local da competição (`kickoff_local` + `timezone`).
+ * Exibe-se o horário local com o fuso — nunca a hora local com um "Z".
  */
 
 import { useMemo, useState } from "react";
@@ -23,8 +27,18 @@ import {
 } from "@/components/ui";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useStore } from "@/store/context";
+import type { FixtureItem } from "@/types/api";
 import { cn } from "@/utils/cn";
 import { fmtDateTime, fmtInt } from "@/utils/format";
+
+function kickoffLabel(f: FixtureItem): string {
+  if (f.kickoff_local) {
+    return f.timezone
+      ? `${fmtDateTime(f.kickoff_local)} (${f.timezone})`
+      : fmtDateTime(f.kickoff_local);
+  }
+  return fmtDateTime(f.kickoff);
+}
 
 export default function FixturesPage() {
   const { dataVersion } = useStore();
@@ -114,7 +128,7 @@ export default function FixturesPage() {
                         )}
                       </Td>
                       <Td mono className="text-ink-3">{f.league}</Td>
-                      <Td mono className="text-ink-2">{fmtDateTime(f.kickoff)}</Td>
+                      <Td mono className="text-ink-2">{kickoffLabel(f)}</Td>
                       <Td align="center" mono>
                         {f.has_odds ? (
                           <span className="text-accent-300">sim</span>

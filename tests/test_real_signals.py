@@ -192,3 +192,44 @@ def test_report_uses_supplied_odds_and_can_return_no_signals(monkeypatch):
         assert signal.best_odd == fx.odds[signal.market][signal.best_book][signal.outcome]
     empty, _ = svc.report(market_keys=("1x2",), min_ev=100.0)
     assert empty.signals == []
+
+
+def test_report_kickoff_is_canonical_utc_instant(monkeypatch):
+    """Signal.kickoff e o INSTANTE em UTC canonico.
+
+    O jogo e 14:00 em Londres no verao (BST = UTC+1) = 13:00Z. Essa e a
+    mesma chave que /api/fixtures usa — o mesmo jogo representa o mesmo
+    instante em todos os endpoints. O horario local nunca ganha um "Z".
+    """
+    from dataclasses import replace
+
+    from betgsn.real_signals import RealSnapshot
+    from betgsn.timeutil import utc_key
+
+    summer = _fixture("Arsenal", "Chelsea")                     # 2026-09-20, BST
+    winter = replace(_fixture("Arsenal", "Chelsea"), date="2026-01-17")  # GMT
+
+    def _snap(fx):
+        return RealSnapshot(
+            fixtures=[fx],
+            ratings={"Arsenal": _rating("Arsenal"), "Chelsea": _rating("Chelsea")},
+            league_goals=2.7, teams=["Arsenal", "Chelsea"], n_history=100,
+            history_window=("2025-01-01", "2026-01-01"),
+            generated_at="2026-09-19T00:00:00Z",
+            computed_in_ms=0.0, sources=["controlled-test"],
+        )
+
+    svc = RealSignalsService()
+    monkeypatch.setattr(svc, "snapshot", lambda: _snap(summer))
+    report, _ = svc.report(market_keys=("1x2",))
+    assert report.signals
+    for signal in report.signals:
+        assert signal.kickoff == "2026-09-20T13:00:00Z", signal.kickoff
+        # e a chave canonica: reparsear nao muda o instante
+        assert utc_key(signal.kickoff) == signal.kickoff
+
+    monkeypatch.setattr(svc, "snapshot", lambda: _snap(winter))
+    report, _ = svc.report(market_keys=("1x2",))
+    assert report.signals
+    for signal in report.signals:
+        assert signal.kickoff == "2026-01-17T14:00:00Z", signal.kickoff

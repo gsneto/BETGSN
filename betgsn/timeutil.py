@@ -119,6 +119,18 @@ def utc_key(value: str, tz_name: str = "") -> str:
     return parse_kickoff(value, tz_name).strftime(UTC_FORMAT)
 
 
+def now_utc() -> str:
+    """O instante atual, ja na chave canonica UTC (UTC_FORMAT).
+
+    "Agora" e um instante como qualquer outro: quando vira string, tem
+    que ser a MESMA chave canonica usada para kickoffs e carimbos. Chamar
+    `datetime.now().strftime(...)` sem fuso produz hora local sem offset
+    que, lida depois como UTC, desloca o instante — exatamente o erro que
+    este modulo existe para impedir.
+    """
+    return datetime.now(UTC).strftime(UTC_FORMAT)
+
+
 def is_valid_kickoff(value: str, tz_name: str = "") -> bool:
     try:
         parse_kickoff(value, tz_name)

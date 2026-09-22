@@ -92,14 +92,46 @@ export const dashboardSummary: DashboardSummary = {
   data_source: "Dataset local sintetico (seed fixo)",
 };
 
+export const betDecisionNoBet = {
+  action: "NO_BET" as const,
+  reason: "falhou: evidencia_confiavel",
+  fraction: 0,
+  conservative_roi: 0.0071,
+  kelly_full: 0.0762,
+  checks: [
+    {
+      name: "evidencia_confiavel",
+      passed: false,
+      detail:
+        "status 'exploratory': odds sem timestamp/validacao nao sustentam dinheiro real",
+    },
+    {
+      name: "limite_inferior_positivo",
+      passed: true,
+      detail: "ROI conservador +0,71%",
+    },
+    {
+      name: "amostra_suficiente",
+      passed: true,
+      detail: "6748 apostas (minimo 1000)",
+    },
+    {
+      name: "ruina_toleravel",
+      passed: true,
+      detail: "P(cair a metade) 0,78%",
+    },
+  ],
+};
+
 export const signalReport: SignalReport = {
-  generated_at: "2025-05-05 16:00:00",
+  generated_at: "2025-05-05T16:00:00Z",
   bankroll: 1000,
   kpis: dashboardSummary.kpis,
   source: "real",
   source_detail: "Jogos futuros reais com odds reais (football-data.co.uk).",
   skipped_no_rating: 18,
   skipped_insufficient_books: 0,
+  decision: betDecisionNoBet,
   calibration: {
     measured_on: "13.334 partidas (top-5 europeu, 2018-2025)",
     ev_predicted: 0.224,

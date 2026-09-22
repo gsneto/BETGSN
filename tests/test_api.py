@@ -590,3 +590,181 @@ def test_clv_entry_odd_is_numeric_and_matches_outcome(monkeypatch, tmp_path):
         assert isinstance(entry.entry_odd, float)
         assert entry.outcome in fixture.best_odds[entry.market]
         assert entry.entry_odd == fixture.best_odds[entry.market][entry.outcome]
+
+
+# --------------------------------------------------------------------------
+# contrato temporal: kickoff/prediction_timestamp em UTC canonico
+# --------------------------------------------------------------------------
+
+import re  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
+
+UTC_STAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+
+
+def test_fixtures_kickoff_is_utc_instant_with_local_preserved(monkeypatch, tmp_path):
+    """kickoff e o INSTANTE em UTC canonico; local e fuso nao se perdem.
+
+    14:00 em Londres no verao (BST, UTC+1) = 13:00Z. Nao se poe "Z" na
+    hora local: a conversao usa o fuso IANA da liga.
+    """
+    fixture = _upcoming_fixture()  # 2026-09-20 14:00 Europe/London (BST)
+    _patch_fixture_source(monkeypatch, tmp_path, [fixture])
+
+    item = BetgsnService().fixtures().fixtures[0]
+    assert item.kickoff == "2026-09-20T13:00:00Z"
+    assert UTC_STAMP_RE.match(item.kickoff)
+    assert item.kickoff_local == "2026-09-20 14:00"
+    assert item.timezone == "Europe/London"
+
+
+def test_fixtures_kickoff_respects_dst(monkeypatch, tmp_path):
+    """O fuso da liga muda com o horario de verao — e o instante muda junto.
+
+    Mesmo horario local (14:00 em Londres): 13:00Z no verao (BST) e
+    14:00Z no inverno (GMT). Offset fixo quebraria um dos dois.
+    """
+    from dataclasses import replace
+
+    summer = _upcoming_fixture()                            # 2026-09-20 (BST)
+    winter = replace(_upcoming_fixture(), date="2026-01-17")  # (GMT)
+    _patch_fixture_source(monkeypatch, tmp_path, [summer, winter])
+
+    items = BetgsnService().fixtures().fixtures
+    by_date = {i.kickoff_local[:10]: i for i in items}
+    assert by_date["2026-09-20"].kickoff == "2026-09-20T13:00:00Z"
+    assert by_date["2026-01-17"].kickoff == "2026-01-17T14:00:00Z"
+
+
+def test_fixtures_kickoff_is_round_trip_stable(monkeypatch, tmp_path):
+    """A chave UTC canonica e estavel: reparsear nao muda o instante."""
+    from betgsn.timeutil import utc_key
+
+    fixture = _upcoming_fixture()
+    _patch_fixture_source(monkeypatch, tmp_path, [fixture])
+
+    item = BetgsnService().fixtures().fixtures[0]
+    assert utc_key(item.kickoff) == item.kickoff
+
+
+def test_signals_and_games_kickoff_are_canonical_utc(svc_snapshot):
+    """kickoff representa o mesmo tipo de instante em todos os endpoints."""
+    svc, snap = svc_snapshot
+    rep = svc.signal_report(snap)
+    games = svc.games(snap)
+    assert rep.signals and games
+    for s in rep.signals:
+        assert UTC_STAMP_RE.match(s.kickoff), s.kickoff
+    for g in games:
+        assert UTC_STAMP_RE.match(g.kickoff), g.kickoff
+
+
+def test_signal_report_prediction_timestamp_is_real_utc_instant(svc_snapshot):
+    """prediction_timestamp/generated_at sao instantes reais em UTC.
+
+    Uma hora local sem offset, lida como UTC, deslocaria o instante da
+    previsao — e com ele o corte point-in-time — pelo fuso da maquina.
+    """
+    svc, snap = svc_snapshot
+    rep = svc.signal_report(snap)
+    assert UTC_STAMP_RE.match(rep.generated_at)
+    assert rep.provenance.prediction_timestamp == rep.generated_at
+    ts = datetime.strptime(rep.generated_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=timezone.utc)
+    assert abs((datetime.now(timezone.utc) - ts).total_seconds()) < 3600.0
+
+
+def test_movement_passes_utc_instants_as_cutoff(monkeypatch, tmp_path):
+    """O cutoff do movimento recebe kickoff UTC, nunca a hora local.
+
+    `fx.kickoff` e hora LOCAL da competicao; sem a conversao com o fuso
+    da liga, o corte temporal (e o minutes_to_kickoff) seria deslocado.
+    """
+    from betgsn.features import movement as movement_mod
+
+    fixture = _upcoming_fixture()  # 14:00 Londres (BST) -> 13:00Z
+    _patch_fixture_source(monkeypatch, tmp_path, [fixture])
+
+    calls: list[tuple[str, str]] = []
+
+    def fake(points, market, outcome, prediction_timestamp, kickoff):
+        calls.append((prediction_timestamp, kickoff))
+        return {}
+
+    monkeypatch.setattr(movement_mod, "movement_features", fake)
+    overview = BetgsnService().movement()
+    assert overview.movements
+    assert calls
+    for prediction_timestamp, kickoff in calls:
+        assert UTC_STAMP_RE.match(prediction_timestamp), prediction_timestamp
+        assert kickoff == "2026-09-20T13:00:00Z", kickoff
+    assert UTC_STAMP_RE.match(overview.generated_at)
+
+
+# --------------------------------------------------------------------------
+# contrato NO BET: a decisao do Quant chega inteira a API e ao frontend
+# --------------------------------------------------------------------------
+
+
+def test_signals_route_carries_quant_decision(client):
+    """A decisao (BET | NO_BET) e um campo de primeira classe do relatorio."""
+    r = client.get("/api/signals", params={"source": "synthetic"})
+    assert r.status_code == 200
+    decision = r.json()["decision"]
+    assert decision is not None
+    assert decision["action"] == "NO_BET", (
+        "odds sinteticas de demonstracao nao sao evidencia confiavel"
+    )
+    assert decision["reason"]
+    assert decision["fraction"] == 0.0, "NO_BET nao cria stake"
+    assert decision["checks"], "as verificacoes do Quant precisam chegar"
+
+
+def test_real_signals_preserve_no_bet(client):
+    """Odds reais sem timestamp de publicacao -> o Quant decide NO_BET.
+
+    A decisao vem do Quant (staking.decide_bet), nao de uma regra da API:
+    o motivo e as verificacoes falhas sao preservados.
+    """
+    r = client.get("/api/signals", params={"source": "real"})
+    if r.status_code != 200:
+        pytest.skip("sem jogos futuros em cache neste ambiente")
+    decision = r.json()["decision"]
+    assert decision is not None
+    assert decision["action"] == "NO_BET"
+    assert "evidencia_confiavel" in decision["reason"]
+    assert decision["fraction"] == 0.0
+    failed = [c for c in decision["checks"] if not c["passed"]]
+    assert failed, "NO_BET precisa expor qual verificacao falhou"
+    assert any(c["name"] == "evidencia_confiavel" for c in failed)
+
+
+def test_quant_decision_is_not_hardcoded(svc_snapshot):
+    """A API nao fabrica NO_BET: com evidencia confiavel o Quant diz BET."""
+    svc, _ = svc_snapshot
+    decision = svc._quant_decision("timestamped")
+    assert decision.action == "BET"
+    assert decision.should_bet is True
+    assert 0 < decision.fraction <= 0.05
+    assert all(c.passed for c in decision.checks)
+    assert {c.name for c in decision.checks} == {
+        "evidencia_confiavel", "limite_inferior_positivo",
+        "amostra_suficiente", "ruina_toleravel",
+    }
+
+
+def test_quant_decision_no_bet_when_evidence_is_exploratory(svc_snapshot):
+    svc, _ = svc_snapshot
+    decision = svc._quant_decision("exploratory")
+    assert decision.action == "NO_BET"
+    assert decision.fraction == 0.0
+    assert "evidencia_confiavel" in decision.reason
+    assert not decision.should_bet
+
+
+def test_decision_schema_rejects_unknown_action():
+    """action so aceita BET | NO_BET — nada de terceiro estado ambiguo."""
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        S.BetDecision(action="TALVEZ", reason="x")

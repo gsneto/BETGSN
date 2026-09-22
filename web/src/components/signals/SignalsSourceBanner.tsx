@@ -11,8 +11,13 @@
 
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
-import { AlertTriangleIcon, DatabaseIcon, InfoIcon } from "@/components/ui/icons";
-import type { ModelCalibrationInfo, SignalSource, SignalsSourceStatus } from "@/types/api";
+import { AlertTriangleIcon, CheckIcon, DatabaseIcon, InfoIcon } from "@/components/ui/icons";
+import type {
+  BetDecision,
+  ModelCalibrationInfo,
+  SignalSource,
+  SignalsSourceStatus,
+} from "@/types/api";
 import { cn } from "@/utils/cn";
 import { fmtDate, fmtInt, fmtPct } from "@/utils/format";
 
@@ -22,6 +27,7 @@ interface Props {
   detail: string;
   calibration: ModelCalibrationInfo | null;
   skippedNoRating: number;
+  decision: BetDecision | null;
   onChange: (next: SignalSource) => void;
 }
 
@@ -31,6 +37,7 @@ export default function SignalsSourceBanner({
   detail,
   calibration,
   skippedNoRating,
+  decision,
   onChange,
 }: Props) {
   const realAvailable = status?.real.available ?? false;
@@ -96,6 +103,54 @@ export default function SignalsSourceBanner({
           </div>
         </div>
       </div>
+
+      {/* --------------------------------- decisão do Quant: BET | NO_BET */}
+      {decision ? (
+        decision.action === "NO_BET" ? (
+          <div
+            role="alert"
+            data-testid="quant-decision"
+            data-decision="NO_BET"
+            className="flex flex-col gap-1.5 rounded-lg border border-neg-500/45 bg-neg-900/25 px-3.5 py-3"
+          >
+            <p className="flex items-center gap-2 text-body font-semibold text-neg-300">
+              <AlertTriangleIcon className="size-4 shrink-0" />
+              Decisão do Quant: NÃO APOSTAR (NO BET)
+            </p>
+            <p className="text-[12px] leading-relaxed text-ink-2" data-testid="quant-decision-reason">
+              {decision.reason}
+            </p>
+            <ul className="flex flex-col gap-1">
+              {decision.checks
+                .filter((c) => !c.passed)
+                .map((c) => (
+                  <li key={c.name} className="text-[11.5px] leading-relaxed text-ink-4">
+                    <span className="mono">{c.name}</span>: {c.detail}
+                  </li>
+                ))}
+            </ul>
+            <p className="text-[11px] leading-relaxed text-ink-4">
+              A decisão vem do módulo quantitativo sobre a evidência disponível. Nenhuma
+              aposta é criada para NO BET — os sinais abaixo são apenas triagem analítica.
+            </p>
+          </div>
+        ) : (
+          <div
+            role="status"
+            data-testid="quant-decision"
+            data-decision="BET"
+            className="flex flex-col gap-1.5 rounded-lg border border-pos-700/45 bg-pos-900/25 px-3.5 py-3"
+          >
+            <p className="flex items-center gap-2 text-body font-semibold text-pos-400">
+              <CheckIcon className="size-4 shrink-0" />
+              Decisão do Quant: APOSTAR (BET)
+            </p>
+            <p className="text-[12px] leading-relaxed text-ink-2" data-testid="quant-decision-reason">
+              {decision.reason}
+            </p>
+          </div>
+        )
+      ) : null}
 
       {/* --------------------------------------------- aviso do sintetico */}
       {source === "synthetic" ? (

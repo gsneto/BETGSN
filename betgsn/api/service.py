@@ -10,6 +10,7 @@ requisicoes HTTP leiam o mesmo estado sem recalcular.
 
 from __future__ import annotations
 
+import json
 import platform
 import sys
 import threading
@@ -26,12 +27,14 @@ from ..model import RHO_DEFAULT, TeamRating
 from ..pipeline import FixtureAnalysis, RunResult, run
 from ..providers import available_providers
 from ..signals import EV_FORTE, EV_FRACA, EV_MEDIA, MAX_SPREAD, MIN_BOOKS, Signal as CoreSignal
+from ..timeutil import now_utc, utc_key
 from . import schemas as S
 
 MODEL_DOC_FALLBACK = "Documentacao do modelo indisponivel."
 
 # --------------------------------------------------------------------------
 # Contratos de status: dominio (odds_snapshots) -> API (schemas)
+# --------------------------------------------------------------------------
 # --------------------------------------------------------------------------
 # O dominio produz estados que a API precisa representar SEM perder
 # informacao e SEM aceitar string qualquer. Os mapeamentos abaixo sao
@@ -158,6 +161,14 @@ def _provider_health_dto(
     )
 
 
+#: Status de evidencia das odds dos jogos futuros do football-data.co.uk.
+#: Os CSVs trazem precos REAIS de bookmakers, mas SEM timestamp de
+#: publicacao: um preco sem carimbo nao prova que estava disponivel no
+#: instante da decisao. Por isso a evidencia e "exploratory" — e o que
+#: isso implica (NO_BET) e decidido pelo Quant, nao pela API.
+FIXTURES_EVIDENCE_STATUS = "exploratory"
+
+
 def _model_doc() -> str:
     """Le a documentacao do modelo da GUI legada sem importar Tkinter."""
     try:
@@ -241,7 +252,7 @@ class BetgsnService:
             result=result,
             config=config,
             generated_at=result.report.generated_at if result.report
-            else datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            else now_utc(),
             computed_in_ms=round(elapsed, 2),
             source=self.source,
         )
@@ -306,9 +317,51 @@ class BetgsnService:
 
     # ------------------------------------------------------------- sinais
 
+    def _quant_decision(self, evidence_status: str) -> S.BetDecision:
+        """Decisao de apostar ou nao, produzida pelo Quant.
+
+        A decisao vem de `staking.decide_bet` sobre a vantagem validada
+        (`value_strategy`), com o status de evidencia da fonte de odds.
+        A API NUNCA fabrica NO_BET nem inventa stake: so traduz o que o
+        Quant decidiu, preservando o motivo e as verificacoes.
+        """
+        from ..staking import EDGE_ODD, EDGE_ROI, EDGE_SE, decide_bet
+        from ..value_strategy import VALIDATION_CACHE, StrategyValidation
+
+        # Vantagem medida: usa a validacao em cache quando existe; sem
+        # cache, os parametros validados constantes do modulo staking.
+        # Nao roda a validacao aqui: percorrer 195 mil partidas num
+        # request HTTP nao e lugar para isso.
+        roi, se, odd, n_bets = EDGE_ROI, EDGE_SE, EDGE_ODD, None
+        try:
+            if VALIDATION_CACHE.exists():
+                payload = json.loads(
+                    VALIDATION_CACHE.read_text(encoding="utf-8"))
+                val = StrategyValidation.from_json(payload)
+                roi, se, odd, n_bets = (
+                    val.roi, val.se, val.avg_odd or EDGE_ODD, val.n_bets)
+        except (OSError, ValueError, TypeError):
+            pass  # cache ausente/ilegivel: usa os parametros constantes
+
+        core = decide_bet(
+            roi, se, odd, evidence_status=evidence_status, n_bets=n_bets)
+        return S.BetDecision(
+            action=core.action,
+            reason=core.reason,
+            fraction=core.fraction,
+            conservative_roi=core.conservative_roi,
+            kelly_full=core.kelly_full,
+            checks=[S.DecisionCheck(name=name, passed=passed, detail=detail)
+                    for name, passed, detail in core.checks],
+        )
+
     def signal_report(self, snap: Snapshot) -> S.SignalReport:
         rep = snap.result.report
         signals = [self._signal(s, i, snap) for i, s in enumerate(rep.signals)] if rep else []
+        # A decisao de apostar e do Quant: evidencia "synthetic" para o
+        # dataset de demonstracao; para dados reais, o status das odds
+        # dos fixtures (sem timestamp de publicacao).
+        evidence = "synthetic" if snap.source == "synthetic" else FIXTURES_EVIDENCE_STATUS
         return S.SignalReport(
             provenance=self.provenance(snap),
             generated_at=snap.generated_at,
@@ -317,6 +370,7 @@ class BetgsnService:
             signals=signals,
             top_tips=list(snap.result.tips),
             source=snap.source,
+            decision=self._quant_decision(evidence),
             source_detail=(
                 "Dataset local gerado em memoria: datas fixas no codigo e "
                 "odds sintetizadas a partir do proprio modelo. Serve para "
@@ -379,6 +433,7 @@ class BetgsnService:
             ),
             generated_at=snap.generated_at,
             computed_in_ms=snap.computed_in_ms,
+            source="real",
         )
 
         base = self.signal_report(proxy)
@@ -408,7 +463,7 @@ class BetgsnService:
             match=s.match,
             home=home,
             away=away,
-            kickoff=s.kickoff,
+            kickoff=utc_key(s.kickoff),
             league=a.fixture.league if a else "",
             round_label=a.fixture.round_label if a else "",
             market=s.market,
@@ -481,7 +536,7 @@ class BetgsnService:
             home=a.fixture.home,
             away=a.fixture.away,
             league=a.fixture.league,
-            kickoff=a.fixture.kickoff,
+            kickoff=utc_key(a.fixture.kickoff),
             round_label=a.fixture.round_label,
             lambda_home=a.lambdas[0],
             lambda_away=a.lambdas[1],
@@ -836,7 +891,7 @@ class BetgsnService:
         client = FootballDataClient()
         inv = client.fixtures_inventory()
         fixtures_raw = client.load_fixtures()
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = now_utc()
 
         fixture_items: list[S.FixtureItem] = []
         for fx in fixtures_raw:
@@ -863,7 +918,9 @@ class BetgsnService:
                 away=fx.away,
                 league=fx.league,
                 round_label=fx.division,
-                kickoff=fx.kickoff,
+                kickoff=utc_key(fx.kickoff, fx.timezone),
+                kickoff_local=fx.kickoff,
+                timezone=fx.timezone,
                 has_odds=has_odds,
                 n_bookmakers=len(bookmakers),
                 bookmakers=bookmakers,
@@ -891,7 +948,10 @@ class BetgsnService:
         client = FootballDataClient()
         fixtures = client.load_fixtures()
         store = OddsSnapshotStore()
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # O instante da previsao e AGORA — carimbo canonico UTC. Uma hora
+        # local sem offset, lida como UTC pelo corte temporal, deslocaria
+        # o cutoff (e o point-in-time) pelo fuso da maquina.
+        now = now_utc()
 
         movements: list[S.OddsMovement] = []
 
@@ -914,12 +974,16 @@ class BetgsnService:
             # `fx.odds` e {mercado: {casa: {resultado: odd}}}; iterar as
             # chaves internas daria NOMES DE CASA como outcome. As linhas
             # reais sao mercado + resultado.
+            # O kickoff entra convertido para UTC com o fuso da liga:
+            # `fx.kickoff` e hora LOCAL da competicao, e tratar local
+            # como UTC deslocaria o cutoff temporal pelo fuso.
+            kickoff_utc = utc_key(fx.kickoff, fx.timezone)
             for market, best in fx.best_odds.items():
                 for oc in list(best.keys())[:3]:
                     # Assinatura: (points, market, outcome,
-                    # prediction_timestamp, kickoff). O kickoff e o da
-                    # partida; o instante da previsao e agora.
-                    feat = movement_features(points, market, oc, now, fx.kickoff)
+                    # prediction_timestamp, kickoff). Ambos os instantes
+                    # em UTC canonico; o kickoff e o da partida.
+                    feat = movement_features(points, market, oc, now, kickoff_utc)
                     delta = feat.get("price_delta")
                     observed = feat.get("n_observations")
                     movements.append(S.OddsMovement(

@@ -62,6 +62,12 @@ def movement_features(
 ) -> dict[str, Optional[float]]:
     """Features de movimento para UMA linha (mercado + resultado).
 
+    Contrato temporal: `prediction_timestamp` e `kickoff` sao INSTANTES
+    (idealmente em UTC canonico, "YYYY-MM-DDTHH:MM:SSZ"). O chamador que
+    tem hora LOCAL da competicao (ex.: fixtures do football-data.co.uk)
+    deve converter com o fuso da liga ANTES de chamar — uma hora local
+    passada aqui seria tratada como UTC e deslocaria o cutoff.
+
     Devolve None — nunca zero — quando nao ha dado suficiente. Zero seria
     indistinguivel de "o preco nao se moveu", o que e uma afirmacao forte.
 

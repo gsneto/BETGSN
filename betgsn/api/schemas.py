@@ -69,13 +69,26 @@ class ProviderOverview(BaseModel):
 # --------------------------------------------------------------------------
 
 class FixtureItem(BaseModel):
-    """Um jogo futuro com sua disponibilidade de odds."""
+    """Um jogo futuro com sua disponibilidade de odds.
+
+    Contrato temporal:
+      - `kickoff` e o INSTANTE do kickoff em UTC canonico
+        ("YYYY-MM-DDTHH:MM:SSZ"), igual ao usado em /api/signals e
+        /api/games — o mesmo jogo representa o mesmo instante em todos
+        os endpoints;
+      - `kickoff_local` e `timezone` preservam o horario local da
+        competicao e o fuso IANA de origem. Nunca se poe "Z" numa hora
+        local: a conversao para UTC usa o fuso da liga (incluindo DST).
+    """
+
     match: str
     home: str
     away: str
     league: str
     round_label: str
     kickoff: str
+    kickoff_local: str = ""
+    timezone: str = ""
     has_odds: bool
     n_bookmakers: int
     bookmakers: list[str]
@@ -315,6 +328,34 @@ class ModelCalibrationInfo(BaseModel):
     verdict: str
 
 
+class DecisionCheck(BaseModel):
+    """Uma verificacao individual da decisao de apostar (auditavel)."""
+
+    name: str
+    passed: bool
+    detail: str
+
+
+class BetDecision(BaseModel):
+    """Decisao do Quant: apostar (BET) ou nao apostar (NO_BET).
+
+    A decisao vem do Quant (`staking.decide_bet`); a API so traduz.
+    NO_BET e resultado de primeira classe: nao vira aposta, nao ganha
+    stake inventado — `fraction` e 0.0 e o `reason` preserva o motivo.
+    """
+
+    action: Literal["BET", "NO_BET"]
+    reason: str
+    fraction: float = 0.0
+    conservative_roi: float | None = None
+    kelly_full: float | None = None
+    checks: list[DecisionCheck] = Field(default_factory=list)
+
+    @property
+    def should_bet(self) -> bool:
+        return self.action == "BET"
+
+
 class SignalReport(BaseModel):
     provenance: Provenance = Field(default_factory=Provenance)
     generated_at: str
@@ -332,6 +373,8 @@ class SignalReport(BaseModel):
     skipped_insufficient_books: int = 0
     #: presente apenas quando source="real"
     calibration: ModelCalibrationInfo | None = None
+    #: decisao do Quant sobre a evidencia atual (BET | NO_BET), com motivo
+    decision: BetDecision | None = None
 
 
 # --------------------------------------------------------------------------
