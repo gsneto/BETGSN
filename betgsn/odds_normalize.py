@@ -112,6 +112,124 @@ class NormalizedQuote:
         """Cotacao aproveitavel: pre-jogo e com preco valido."""
         return self.pre_kickoff and isfinite(self.price) and self.price > 1.0
 
+
+# --------------------------------------------------------------------------
+# Resolucao de identidade: evento de provider -> event_key do FIXTURE
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FixtureMatch:
+    """Resultado da resolucao de um evento de provider contra fixtures.
+
+    status:
+      - "MATCHED"   — exatamente um fixture casou; `match_key` e a
+                      event_key DO FIXTURE (o fixture e o dono da chave
+                      canonica que a API consome);
+      - "AMBIGUOUS" — mais de um fixture casou; NAO casa (preferimos
+                      ausencia a falso positivo);
+      - "UNKNOWN"   — nenhum fixture casou; NAO casa.
+    """
+
+    status: str
+    match_key: Optional[str] = None
+    candidates: int = 0
+
+    @property
+    def ok(self) -> bool:
+        return self.status == "MATCHED" and bool(self.match_key)
+
+
+class FixtureMatchIndex:
+    """Indice deterministico de fixtures para casar eventos de provider.
+
+    O casamento exige TODAS as condicoes — sem fuzzy, sem tolerancia:
+
+      1. escopo: fixture da MESMA divisao FDUK que o sport key cobre;
+      2. home exato apos alias (opcional, por divisao) + normalizacao;
+      3. away exato apos alias + normalizacao;
+      4. kickoff UTC exato (igualdade de string canonica `...Z`).
+
+    Zero candidatos = UNKNOWN; mais de um = AMBIGUOUS. Em ambos os casos
+    o resultado e NO MATCH — a observacao do provider e preservada sob a
+    chave canonica do provider (dados nao se perdem), apenas nao e lida
+    pela API ate existir fixture correspondente.
+
+    Fixtures SEM horario publicado (`has_kickoff` falso) ficam fora do
+    indice: sem instante nao existe casamento temporal possivel.
+    """
+
+    def __init__(
+        self,
+        fixtures: Sequence,
+        aliases: Optional[Mapping[tuple[str, str], str]] = None,
+    ) -> None:
+        self._aliases: dict[tuple[str, str], str] = dict(aliases or {})
+        # (divisao, kickoff_utc) -> {(norm_home, norm_away) -> [event_key]}
+        self._by_division_kickoff: dict[
+            tuple[str, str], dict[tuple[str, str], list[str]]
+        ] = {}
+        for fx in fixtures:
+            kickoff_utc = self._fixture_kickoff_utc(fx)
+            if kickoff_utc is None:
+                continue  # sem horario publicado: fora do matching
+            bucket = self._by_division_kickoff.setdefault(
+                (fx.division, kickoff_utc), {}
+            )
+            names = (normalize_team(fx.home), normalize_team(fx.away))
+            bucket.setdefault(names, []).append(fx.event_key)
+
+    # ------------------------------------------------------------- helpers
+
+    @staticmethod
+    def _fixture_kickoff_utc(fx) -> Optional[str]:
+        """Kickoff UTC do fixture, ou None quando nao ha horario."""
+        if not getattr(fx, "has_kickoff", True) or not getattr(fx, "time", ""):
+            return None
+        from .timeutil import utc_key
+
+        try:
+            return utc_key(fx.kickoff, fx.timezone)
+        except (KickoffError, AttributeError, TypeError):
+            return None
+
+    # ------------------------------------------------------------ resolucao
+
+    def resolve(
+        self,
+        home: str,
+        away: str,
+        kickoff_utc: str,
+        divisions: Sequence[str],
+    ) -> FixtureMatch:
+        """Resolve (home, away, kickoff UTC) contra os fixtures indexados.
+
+        `divisions` e o escopo: as divisoes FDUK que o sport key cobre.
+        Escopo vazio (sport key sem divisao conhecida) devolve UNKNOWN —
+        sem escopo nao ha casamento seguro.
+
+        Contam-se FIXTURES candidatos, nao chaves distintas: mais de um
+        fixture no escopo (duplicata de CSV, mesmo confronto em outra
+        competicao) e AMBIGUOUS — preferimos ausencia a falso positivo,
+        mesmo que as chaves coincidam.
+        """
+        kickoff = _utc_or_raw((kickoff_utc or "").strip())
+        candidates: list[str] = []
+        for division in divisions:
+            bucket = self._by_division_kickoff.get((division, kickoff))
+            if not bucket:
+                continue
+            home_fduk = self._aliases.get((division, (home or "").strip()), home)
+            away_fduk = self._aliases.get((division, (away or "").strip()), away)
+            names = (normalize_team(home_fduk or ""), normalize_team(away_fduk or ""))
+            candidates.extend(bucket.get(names, ()))
+
+        if len(candidates) == 1:
+            return FixtureMatch("MATCHED", match_key=candidates[0], candidates=1)
+        if len(candidates) > 1:
+            return FixtureMatch("AMBIGUOUS", candidates=len(candidates))
+        return FixtureMatch("UNKNOWN", candidates=0)
+
     def to_dict(self) -> dict:
         return {
             "event_id": self.event_id,

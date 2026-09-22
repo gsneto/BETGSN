@@ -750,7 +750,9 @@ def test_parse_extra_fixture_row():
     assert fx is not None
     assert fx.home == "Palmeiras" and fx.away == "Flamengo"
     assert fx.league == "Serie A (Brazil)"
-    assert fx.timezone == "America/Sao_Paulo"
+    # O horario publicado pelo site e UK time (ver FIXTURES_TZ): o fuso da
+    # liga e metadado de origem, NAO o fuso do horario publicado.
+    assert fx.timezone == "Europe/London"
     assert "Pinnacle" in fx.odds["Resultado Final (1X2)"]
 
 

@@ -143,7 +143,7 @@ def _by_name(overview: S.ProviderOverview) -> dict[str, S.ProviderHealth]:
 def test_api_reflects_healthy_state_from_odds_layer():
     svc, odds = _svc_with(("The Odds API", FakeProvider([_event()])),
                           now=Clock("2029-12-31T12:00:00Z"))
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
     dto = _by_name(svc.providers())["The Odds API"]
     assert odds.health_snapshot()["The Odds API"]["state"] == "HEALTHY"
     assert dto.status == "HEALTHY"
@@ -157,7 +157,7 @@ def test_api_reflects_degraded_state_from_odds_layer():
         ("ParlayAPI", FakeProvider([_event()])),
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
     dto = _by_name(svc.providers())["The Odds API"]
     assert odds.health_snapshot()["The Odds API"]["state"] == "DEGRADED"
     assert dto.status == "DEGRADED"
@@ -170,7 +170,7 @@ def test_api_reflects_unavailable_state_from_odds_layer():
             "401", status=401, kind=FAILURE_AUTH))),
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
     dto = _by_name(svc.providers())["The Odds API"]
     assert odds.health_snapshot()["The Odds API"]["state"] == "UNAVAILABLE"
     assert dto.status == "UNAVAILABLE"
@@ -179,7 +179,7 @@ def test_api_reflects_unavailable_state_from_odds_layer():
 def test_api_reflects_no_coverage_state_from_odds_layer():
     svc, odds = _svc_with(("The Odds API", FakeProvider([])),
                           now=Clock("2029-12-31T12:00:00Z"))
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
     dto = _by_name(svc.providers())["The Odds API"]
     assert odds.health_snapshot()["The Odds API"]["state"] == "NO_COVERAGE"
     assert dto.status == "NO_COVERAGE"
@@ -189,13 +189,13 @@ def test_api_reflects_stale_state_from_odds_layer():
     clock = Clock("2029-12-31T12:00:00Z")
     provider = FakeProvider([_event()])
     svc, odds = _svc_with(("The Odds API", provider), now=clock)
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
 
     # provider passa a falhar e o tempo avanca alem do stale_after: a
     # coleta degradada entrega cache velho e marca STALE no tracker.
     provider.exc = ProviderError("500", status=500, kind="SERVER", retryable=True)
     clock.value = "2029-12-31T13:00:00Z"
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
 
     dto = _by_name(svc.providers())["The Odds API"]
     assert odds.health_snapshot()["The Odds API"]["state"] == "STALE"
@@ -223,7 +223,7 @@ def test_no_fictional_quota_when_credit_information_absent():
     """Sem informacao de credito: quota e None, nunca 999999."""
     svc, odds = _svc_with(("The Odds API", FakeProvider([_event()])),
                           now=Clock("2029-12-31T12:00:00Z"))
-    odds.fetch("soccer_epl", persist=False)  # sem headers de quota, sem limite
+    odds.fetch("soccer_epl")  # sem headers de quota, sem limite
     dto = _by_name(svc.providers())["The Odds API"]
     assert dto.status == "HEALTHY"
     assert dto.quota_remaining is None
@@ -237,7 +237,7 @@ def test_real_quota_from_provider_headers_flows_to_api():
                                       headers={"x-requests-remaining": "7"})),
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
     dto = _by_name(svc.providers())["The Odds API"]
     assert dto.quota_remaining == 7
 
@@ -247,7 +247,7 @@ def test_latency_is_measured_not_fixed():
     perf = PerfCounter(step=0.25)  # cada chamada "dura" 250 ms
     svc, odds = _svc_with(("The Odds API", FakeProvider([_event()])),
                           now=Clock("2029-12-31T12:00:00Z"), perf=perf)
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
     dto = _by_name(svc.providers())["The Odds API"]
     assert dto.latency_ms == pytest.approx(250.0)
     assert dto.latency_ms != 12.0
@@ -260,7 +260,7 @@ def test_latency_absent_when_never_measured():
             "429", status=429, kind=FAILURE_RATE_LIMIT, retryable=True))),
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
     dto = _by_name(svc.providers())["The Odds API"]
     assert dto.status == "DEGRADED"
     assert dto.latency_ms is None
@@ -270,7 +270,7 @@ def test_last_update_is_tracker_timestamp_not_now():
     """last_update e o last_success_at do tracker, nao o instante do request."""
     svc, odds = _svc_with(("The Odds API", FakeProvider([_event()])),
                           now=Clock("2029-12-31T12:00:00Z"))
-    odds.fetch("soccer_epl", persist=False)
+    odds.fetch("soccer_epl")
     overview = svc.providers()
     dto = _by_name(overview)["The Odds API"]
     assert dto.last_update == "2029-12-31T12:00:00Z"

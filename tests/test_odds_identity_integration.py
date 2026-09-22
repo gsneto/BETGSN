@@ -101,30 +101,48 @@ def test_event_key_is_canonical_not_display_name():
     assert fixture.match == "Arsenal vs Chelsea"
 
 
-def test_odds_service_persists_under_fixture_event_key(tmp_path):
-    """O produtor (OddsService) grava na chave que o consumidor usa."""
+def test_odds_service_has_no_persistence_path(tmp_path):
+    """I-04: o produtor operacional e a captura ao vivo, nao o OddsService.
+
+    A prova de que o produtor grava na chave que o consumidor usa esta em
+    `test_live_capture_feeds_the_canonical_store` (secao D). Este teste
+    trava o contrato do writer unico: o OddsService nao possui caminho de
+    persistencia — nem parametro, nem metodo, nem escrita.
+    """
+    import inspect
+
     from betgsn.odds_service import OddsService
 
-    fixture = _fixture()
+    init_params = inspect.signature(OddsService.__init__).parameters
+    assert "store" not in init_params
+
+    fetch_params = inspect.signature(OddsService.fetch).parameters
+    assert "persist" not in fetch_params
+    assert not hasattr(OddsService, "_persist")
+
+    # uma coleta real nao grava observacao em store algum
+    from betgsn.backtest_sources import LiveOddsCapture, OddsHistoryCache
+
     store = OddsSnapshotStore(tmp_path / "odds.db")
     service = OddsService(
         providers=[("The Odds API", _LiveProvider([_event()]))],
         now=lambda: "2030-01-01T10:00:00Z",
-        store=store,
     )
-
-    result = service.fetch("soccer_epl", persist=True)
+    result = service.fetch("soccer_epl")
     assert result.ok is True
-    assert result.snapshots_saved == 3
+    assert store.stats()["observations"] == 0
 
+    # o caminho operacional (captura) grava sob a MESMA chave do fixture
+    fixture = _fixture()
+    capture = LiveOddsCapture(
+        _LiveProvider([_event()]), OddsHistoryCache(tmp_path / "cache"),
+        regions="eu", markets="h2h", store=store,
+    )
+    capture.capture(
+        ["soccer_epl"], now=datetime(2030, 1, 1, 10, 0, tzinfo=timezone.utc)
+    )
     found = store.all_observations(fixture.event_key)
-    assert len(found) == 3
     assert {o.outcome for o in found} == {"1", "X", "2"}
-    assert all(o.market == MARKET for o in found)
-    assert all(o.match_key == KEY for o in found)
-
-    # a chave de exibicao NAO encontra nada: nao ha fallback silencioso
-    assert store.all_observations(fixture.match) == []
 
 
 # ==========================================================================

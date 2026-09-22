@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "description": "Aliases de nomes de times entre a The Odds API e o football-data.co.uk. Cada entrada mapeia o nome publicado pelo PROVIDER para o nome publicado pelo FDUK, no escopo de uma divisao FDUK. Entrada sem provenance e erro de contrato (o carregador recusa).",
+  "provenance_note": "Seed verificado contra a captura real de 2026-09-19T14:39:44Z (output/backtest_cache/odds/soccer_brazil_campeonato/20260919_143944.json, 20 eventos) x os fixtures reais de output/football_data_uk/fixtures/extra.csv (10 jogos da rodada 19-20/09/2026): os 8 jogos com horario confirmado casam exatamente sob Europe/London; 15/20 nomes casam por normalizacao; os 5 abaixo precisam de alias.",
+  "aliases": [
+    {
+      "division": "BRA",
+      "provider": "Atletico Mineiro",
+      "fduk": "Atletico-MG",
+      "provenance": "captura The Odds API 2026-09-19 x extra.csv 2026-09-19; kickoff 2026-09-19T19:00:00Z confirmado nos dois lados"
+    },
+    {
+      "division": "BRA",
+      "provider": "Atletico Paranaense",
+      "fduk": "Athletico-PR",
+      "provenance": "captura The Odds API 2026-09-19 x extra.csv 2026-09-19; mesmo confronto na rodada"
+    },
+    {
+      "division": "BRA",
+      "provider": "Flamengo",
+      "fduk": "Flamengo RJ",
+      "provenance": "captura The Odds API 2026-09-19 x extra.csv 2026-09-19; kickoff 2026-09-20T21:30:00Z confirmado nos dois lados"
+    },
+    {
+      "division": "BRA",
+      "provider": "Vasco da Gama",
+      "fduk": "Vasco",
+      "provenance": "captura The Odds API 2026-09-19 x extra.csv 2026-09-19; kickoff 2026-09-19T23:30:00Z confirmado nos dois lados"
+    },
+    {
+      "division": "BRA",
+      "provider": "Botafogo",
+      "fduk": "Botafogo RJ",
+      "provenance": "captura The Odds API 2026-09-19 x extra.csv 2026-09-19; mesmo confronto na rodada"
+    }
+  ]
+}

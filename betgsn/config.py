@@ -13,6 +13,21 @@ from typing import Any, Optional
 _ROOT = Path(__file__).resolve().parent.parent
 
 
+def output_root() -> Path:
+    """Raiz de saida de dados do BETGSN (<repo>/output por padrao).
+
+    A variavel de ambiente ``BETGSN_OUTPUT_DIR`` redireciona TODA a saida
+    de dados (bancos, caches, manifestos). E o mecanismo de isolamento dos
+    testes: a suite define a variavel em ``tests/conftest.py`` antes de
+    qualquer import de betgsn, e nenhum teste toca o ``output/`` de
+    producao. Resolvido no momento da chamada (lazy), nao no import.
+    """
+    env = os.environ.get("BETGSN_OUTPUT_DIR")
+    if env:
+        return Path(env)
+    return _ROOT / "output"
+
+
 @dataclass
 class ModelConfig:
     """Configuração do modelo estatístico."""

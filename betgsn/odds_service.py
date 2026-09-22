@@ -7,7 +7,12 @@ Fluxo:
       -> health check (UNAVAILABLE / sem creditos): pula
       -> chamada com retry LIMITADO (429/5xx/rede)
       -> resposta vazia: NO_COVERAGE, tenta o proximo
-      -> resposta com odds: normaliza, deduplica, grava snapshot, devolve
+      -> resposta com odds: normaliza, deduplica, devolve
+
+Este servico NAO persiste odds: o unico writer operacional do store
+SQLite (`OddsSnapshotStore`) e a captura ao vivo (`LiveOddsCapture`,
+CLI `--capture-odds`). O OddsService existe para coleta com fallback
+multi-provider e para alimentar o tracker de health/creditos.
 
 Se TODOS falharem, o servico devolve a ultima coleta conhecida marcada
 como STALE (`stale=True`), nunca como odd atual. Sem coleta anterior, a
@@ -31,7 +36,6 @@ from .odds_health import (
     classify_exception,
 )
 from .odds_normalize import NormalizedQuote, dedupe_quotes, normalize_events
-from .odds_snapshots import OddsSnapshotStore, observations_from_quotes
 from .providers import FAILURE_NO_COVERAGE
 from .timeutil import KickoffError, parse_kickoff
 
@@ -79,7 +83,6 @@ class OddsFetch:
     attempts: list[ProviderAttempt] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     credits_remaining: Optional[int] = None
-    snapshots_saved: int = 0
 
     @property
     def ok(self) -> bool:
@@ -107,7 +110,6 @@ class OddsFetch:
             "attempts": [a.to_dict() for a in self.attempts],
             "errors": list(self.errors),
             "credits_remaining": self.credits_remaining,
-            "snapshots_saved": self.snapshots_saved,
         }
 
 
@@ -119,7 +121,6 @@ class OddsService:
         providers: Optional[Sequence[tuple[str, object]]] = None,
         health: Optional[HealthTracker] = None,
         credits: Optional[CreditController] = None,
-        store: Optional[OddsSnapshotStore] = None,
         now: Callable[[], str] = _utcnow,
         stale_after_seconds: float = DEFAULT_STALE_AFTER_SECONDS,
         max_attempts_per_provider: int = 1,
@@ -129,7 +130,6 @@ class OddsService:
         self._providers: list[tuple[str, object]] = list(providers or [])
         self._health = health or HealthTracker(now=now)
         self._credits = credits or CreditController(now=now)
-        self._store = store
         self._now = now
         self._stale_after = max(0.0, float(stale_after_seconds))
         self._max_attempts = max(1, int(max_attempts_per_provider))
@@ -172,7 +172,6 @@ class OddsService:
         markets: str = "h2h",
         regions: Optional[str] = None,
         cost: int = 1,
-        persist: bool = True,
     ) -> OddsFetch:
         fetched_at = self._now()
         result = OddsFetch(fetched_at=fetched_at)
@@ -249,8 +248,6 @@ class OddsService:
             result.credits_remaining = credits_remaining
             result.attempts = attempts
             self._cache[sport_key] = (name, fetched_at, quotes, len(events))
-            if persist:
-                result.snapshots_saved = self._persist(quotes)
             return result
 
         result.attempts = attempts
@@ -281,23 +278,6 @@ class OddsService:
                 return remaining
         self._credits.record_spend(provider, cost)
         return self._credits.get(provider).known_remaining
-
-    def _persist(self, quotes: Sequence[NormalizedQuote]) -> int:
-        """Grava as cotacoes no store canonico (SQLite).
-
-        Usa `observations_from_quotes`, o mesmo conversor da captura ao vivo,
-        para que exista UMA regra de persistencia de odds no projeto — e para
-        que o `match_key` gravado seja o `event_id` canonico que a API le.
-        """
-        if self._store is None:
-            return 0
-        observations = observations_from_quotes(quotes)
-        if not observations:
-            return 0
-        try:
-            return self._store.add(observations)
-        except Exception:  # noqa: BLE001 - persistencia nao derruba a coleta
-            return 0
 
     def _degraded(
         self, sport_key: str, fetched_at: str, result: OddsFetch

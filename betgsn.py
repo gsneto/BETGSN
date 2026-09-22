@@ -338,7 +338,7 @@ def capture_odds_cli(args: list[str]) -> int:
     """
     from betgsn.backtest_sources import LiveOddsCapture, OddsHistoryCache
     from betgsn.odds_snapshots import OddsSnapshotStore
-    from betgsn.providers import OddsApiProvider
+    from betgsn.providers import OddsApiProvider, sport_keys_for_divisions
 
     provider = OddsApiProvider.from_env()
     if provider is None:
@@ -346,10 +346,41 @@ def capture_odds_cli(args: list[str]) -> int:
         print("Configure no .env ou no ambiente para capturar odds.")
         return 1
 
-    raw = _arg(args, "sports", "soccer_brazil_campeonato")
-    sports = [s.strip() for s in raw.split(",") if s.strip()]
+    raw = _arg(args, "sports", "")
+    fixtures: list = []
+    if raw:
+        sports = [s.strip() for s in raw.split(",") if s.strip()]
+    else:
+        # Sem --sports, a captura cobre as MESMAS divisoes que o fixture
+        # layer conhece (as partidas que a API consome em
+        # movement/CLV/coverage). Divisao sem sport key verificada e
+        # reportada, nunca inventada (ver DIVISION_TO_SPORT_KEY).
+        from betgsn.football_data_uk import FootballDataClient
+
+        fixtures = FootballDataClient().load_fixtures()
+        divisions = sorted(
+            {fx.division for fx in fixtures if fx.has_odds and fx.has_kickoff}
+        )
+        sports, unmapped = sport_keys_for_divisions(divisions)
+        if unmapped:
+            print(f"  divisoes sem sport key no provider (nao capturadas):")
+            for div in unmapped:
+                print(f"    - {div}")
+        if not sports:
+            print("ERRO: nenhuma divisao dos fixtures tem sport key mapeada.")
+            print("Rode `python betgsn.py --import-fixtures-live` ou informe --sports.")
+            return 1
+        print(f"  sports derivados dos fixtures: {', '.join(sports)}")
+
     regions = _arg(args, "regions", "eu")
     markets = _arg(args, "markets", "h2h,totals,btts")
+
+    # Resolucao de identidade (I-01): fixtures + aliases versionados. O
+    # evento do provider casado com um fixture e gravado sob a event_key DO
+    # FIXTURE — a mesma chave que a API consulta em movement/CLV/coverage.
+    from betgsn.team_aliases import load_team_aliases
+
+    aliases = load_team_aliases()
 
     cache = OddsHistoryCache()
     # Store canonico das observacoes por linha: e a fonte que a API consome
@@ -358,6 +389,8 @@ def capture_odds_cli(args: list[str]) -> int:
     capture = LiveOddsCapture(
         provider, cache, regions=regions, markets=markets,
         store=OddsSnapshotStore(),
+        fixtures=fixtures or None,
+        aliases=aliases,
     )
 
     print(f"Capturando odds de {len(sports)} esporte(s)...")
@@ -369,6 +402,13 @@ def capture_odds_cli(args: list[str]) -> int:
     print(f"  snapshots gravados : {report.snapshots_saved}")
     print(f"  observacoes (API)  : {report.observations_saved}")
     print(f"  eventos vistos     : {report.events} ({report.events_with_odds} com odds)")
+    print(f"  eventos casados    : {report.events_matched} "
+          f"(gravados sob a event_key do fixture)")
+    if report.events_unmatched:
+        print(f"  eventos sem fixture: {report.events_unmatched} "
+              f"(preservados sob a chave do provider)")
+    if report.events_ambiguous:
+        print(f"  eventos ambiguos   : {report.events_ambiguous} (NAO casados)")
     if report.credits_last is not None:
         print(f"  custo desta chamada: {report.credits_last} creditos")
     if report.credits_remaining is not None:

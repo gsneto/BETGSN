@@ -42,7 +42,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import Iterable, Mapping, Optional
 
 from .envconfig import env_file_candidates, resolve_env_file
 
@@ -394,6 +394,69 @@ SOCCER_KEYS = {
     "Champions League": "soccer_uefa_champs_league",
     "Libertadores": "soccer_conmebol_copa_libertadores",
 }
+
+#: Divisoes do football-data.co.uk -> sport key da The Odds API.
+#:
+#: PROVENIENCIA: chaves verificadas contra `GET /v4/sports` da The Odds
+#: API em 2026-09-21 (endpoint gratuito, sem custo de quota). Divisoes
+#: cujo torneio NAO existe na lista do provider ficam FORA do mapa: sao
+#: reportadas pela captura como nao-capturaveis — nunca adivisadas.
+#: Revalidar apos mudancas de catalogo do provider (ex.: a 2.Bundesliga
+#: e a Conference Nacional nao constavam da lista verificada).
+DIVISION_TO_SPORT_KEY: dict[str, str] = {
+    # main — Inglaterra
+    "E0": "soccer_epl",
+    "E1": "soccer_efl_champ",
+    "E2": "soccer_england_league1",
+    "E3": "soccer_england_league2",
+    # main — Escocia (so a divisao principal tem sport key)
+    "SC0": "soccer_spl",
+    # main — resto da Europa
+    "D1": "soccer_germany_bundesliga",
+    "I1": "soccer_italy_serie_a",
+    "I2": "soccer_italy_serie_b",
+    "SP1": "soccer_spain_la_liga",
+    "SP2": "soccer_spain_segunda_division",
+    "F1": "soccer_france_ligue_one",
+    "N1": "soccer_netherlands_eredivisie",
+    "G1": "soccer_greece_super_league",
+    # extras
+    "BRA": "soccer_brazil_campeonato",
+    "ARG": "soccer_argentina_primera_division",
+    "AUT": "soccer_austria_bundesliga",
+    "DNK": "soccer_denmark_superliga",
+    "IRL": "soccer_league_of_ireland",
+    "MEX": "soccer_mexico_ligamx",
+    "NOR": "soccer_norway_eliteserien",
+    "USA": "soccer_usa_mls",
+}
+
+#: Mapa reverso: sport key -> divisoes FDUK que ela cobre.
+SPORT_KEY_TO_DIVISIONS: dict[str, list[str]] = {}
+for _div, _sport in DIVISION_TO_SPORT_KEY.items():
+    SPORT_KEY_TO_DIVISIONS.setdefault(_sport, []).append(_div)
+
+
+def sport_keys_for_divisions(
+    divisions: Iterable[str],
+) -> tuple[list[str], list[str]]:
+    """Traduz divisoes FDUK para sport keys da The Odds API.
+
+    Devolve `(sport_keys, divisoes_sem_mapeamento)`. Divisao sem sport key
+    verificada NAO e inventada: entra na segunda lista para o chamador
+    reportar. A ordem dos sport keys preserva a ordem de primeira
+    aparicao das divisoes (deterministica para a mesma entrada).
+    """
+    sports: list[str] = []
+    unmapped: list[str] = []
+    for div in divisions:
+        key = DIVISION_TO_SPORT_KEY.get(div)
+        if key is None:
+            if div not in unmapped:
+                unmapped.append(div)
+        elif key not in sports:
+            sports.append(key)
+    return sports, unmapped
 
 
 @dataclass

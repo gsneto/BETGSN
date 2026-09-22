@@ -56,7 +56,7 @@ __all__ = [
     "SourceRegistration",
     "MultiSourceLayer",
     "TTL_BY_KIND",
-    "DEFAULT_CACHE_ROOT",
+    "_default_cache_root",
 ]
 
 #: Tipos de dado que a camada entende (fontes declaram quais suportam).
@@ -83,7 +83,11 @@ TTL_BY_KIND: dict[str, float] = {
     "h2h": TTL_H2H,
 }
 
-DEFAULT_CACHE_ROOT = Path(__file__).resolve().parent.parent.parent / "output" / "datalayer_cache"
+def _default_cache_root() -> Path:
+    """Raiz do cache do data layer (respeita BETGSN_OUTPUT_DIR)."""
+    from ..config import output_root
+
+    return output_root() / "datalayer_cache"
 
 #: Janela padrão em que um cache expirado ainda pode ser servido como STALE.
 DEFAULT_MAX_STALE_SECONDS = 6 * 3600.0
@@ -196,7 +200,7 @@ class MultiSourceLayer:
         default_retry: RetryPolicy | None = None,
         namespace: str = "datalayer",
     ) -> None:
-        self.cache = cache if cache is not None else DiskCache(cache_root or DEFAULT_CACHE_ROOT)
+        self.cache = cache if cache is not None else DiskCache(cache_root or _default_cache_root())
         self.quota = quota if quota is not None else QuotaManager()
         self.health = health if health is not None else HealthRegistry()
         self.sleep = sleep

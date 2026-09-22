@@ -206,7 +206,12 @@ class RealSignalsService:
             )
 
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        com_odds = [f for f in com_odds if utc_key(f.kickoff, f.timezone) > now]
+        # Fixture sem horario publicado nao tem instante — fica fora do
+        # corte temporal (nao fabricamos 00:00). Ver UpcomingFixture.kickoff.
+        com_odds = [
+            f for f in com_odds
+            if f.has_kickoff and utc_key(f.kickoff, f.timezone) > now
+        ]
         if not com_odds:
             raise RealDataError("nenhum jogo futuro após o instante atual; atualize com --import-fixtures-live")
         # Um único corte conservador, anterior a TODOS os jogos do snapshot.

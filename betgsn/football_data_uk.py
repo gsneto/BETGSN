@@ -50,10 +50,11 @@ from .backtest_data import HistoricalCorpus
 from .model import HistoricalMatch
 from .timeutil import utc_key
 
-CACHE_ROOT = Path(__file__).resolve().parent.parent / "output" / "football_data_uk"
-MAIN_DIR = CACHE_ROOT / "main"
-EXTRA_DIR = CACHE_ROOT / "extra"
-FIXTURES_DIR = CACHE_ROOT / "fixtures"
+def _cache_root() -> Path:
+    """Raiz do cache football-data.co.uk (respeita BETGSN_OUTPUT_DIR)."""
+    from .config import output_root
+
+    return output_root() / "football_data_uk"
 
 BASE_MAIN = "https://www.football-data.co.uk/mmz4281"
 BASE_EXTRA = "https://www.football-data.co.uk/new"
@@ -107,7 +108,7 @@ def _append_manifest(manifest_path: Path, kind: str, report: Any) -> None:
 
 def read_manifest(manifest_path: Path | None = None) -> dict[str, Any]:
     """Le o manifesto de importacoes do cache."""
-    path = Path(manifest_path) if manifest_path else CACHE_ROOT / "manifest.json"
+    path = Path(manifest_path) if manifest_path else _cache_root() / "manifest.json"
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
@@ -128,6 +129,20 @@ class League:
     has_stats: bool
     has_ou: bool
     has_ah: bool
+
+
+#: Fuso dos horarios publicados pelo football-data.co.uk.
+#:
+#: O site publica TODOS os horarios de jogos futuros em hora do REINO
+#: UNIDO — verificacao empirica (2026-09-21): os 10 jogos brasileiros de
+#: 19-20/09/2026 do `extra.csv` casam EXATAMENTE com os `commence_time`
+#: (UTC) da The Odds API sob Europe/London (8/8 jogos com horario
+#: confirmado) e NAO casam sob o fuso local da liga (0/8 sob
+#: America/Sao_Paulo). Interpretar o horario publicado com o fuso da
+#: liga deslocava o kickoff UTC em ate 4 horas e quebrava a event_key.
+#: O campo `League.timezone` continua valido como METADADO de origem
+#: (historico), mas o parse de FIXTURES usa sempre este fuso.
+FIXTURES_TZ = "Europe/London"
 
 
 #: Divisões principais. `has_stats` indica se o arquivo traz cantos/cartoes.
@@ -430,7 +445,20 @@ class UpcomingFixture:
 
     @property
     def kickoff(self) -> str:
-        return f"{self.date} {self.time or '00:00'}"
+        """Horario local de inicio (UK time, ver FIXTURES_TZ).
+
+        Vazio quando o CSV nao informa `Time`: sem horario NAO existe
+        instante — fabricar '00:00' seria inventar um kickoff e deslocar
+        a event_key. Consumidores temporais devem checar `has_kickoff`.
+        """
+        if not self.time:
+            return ""
+        return f"{self.date} {self.time}"
+
+    @property
+    def has_kickoff(self) -> bool:
+        """True quando o CSV informou horario de inicio."""
+        return bool(self.time)
 
     @property
     def match(self) -> str:
@@ -442,10 +470,17 @@ class UpcomingFixture:
 
         E exatamente `odds_normalize.event_key(mandante, visitante,
         kickoff_utc)`: a mesma chave gravada como `match_key` nas
-        observacoes de odds. O kickoff entra convertido para UTC com o fuso
-        da liga, preservando a identidade temporal da partida — sem isso,
-        escrita e leitura apontariam para jogos diferentes.
+        observacoes de odds. O kickoff entra convertido para UTC com o
+        fuso de publicacao do site (FIXTURES_TZ), preservando a
+        identidade temporal da partida — sem isso, escrita e leitura
+        apontariam para jogos diferentes.
+
+        Fixture SEM horario nao tem identidade temporal: devolve "" em
+        vez de fabricar meia-noite. "" nunca casa (nenhum produtor grava
+        sob ""); consumers devem checar `has_kickoff` antes.
         """
+        if not self.time:
+            return ""
         from .odds_normalize import event_key
         from .timeutil import utc_key
 
@@ -548,7 +583,7 @@ def parse_fixture_row(row: dict[str, str]) -> UpcomingFixture | None:
         league=league_label(division),
         date=date,
         time=(row.get("Time") or "").strip(),
-        timezone=league.timezone,
+        timezone=FIXTURES_TZ,
         home=home,
         away=away,
         referee=(row.get("Referee") or "").strip(),
@@ -583,7 +618,6 @@ def parse_extra_fixture_row(row: dict[str, str]) -> UpcomingFixture | None:
     code = _extra_code_for(row.get("Country", ""), row.get("League", ""))
     if code is None:
         return None
-    league = EXTRA_LEAGUES[code]
     date = parse_date(row.get("Date", ""))
     home = (row.get("Home") or "").strip()
     away = (row.get("Away") or "").strip()
@@ -608,7 +642,7 @@ def parse_extra_fixture_row(row: dict[str, str]) -> UpcomingFixture | None:
         league=league_label(code),
         date=date,
         time=(row.get("Time") or "").strip(),
-        timezone=league.timezone,
+        timezone=FIXTURES_TZ,
         home=home,
         away=away,
         odds=odds,
@@ -869,7 +903,7 @@ class FootballDataClient:
         delay: float = REQUEST_DELAY_SECONDS,
         timeout: int = 45,
     ) -> None:
-        self.root = Path(root) if root else CACHE_ROOT
+        self.root = Path(root) if root else _cache_root()
         self.main_dir = self.root / "main"
         self.extra_dir = self.root / "extra"
         self._fixtures_dir = self.root / "fixtures"

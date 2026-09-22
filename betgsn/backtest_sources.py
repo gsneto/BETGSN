@@ -36,7 +36,7 @@ import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from .model import HistoricalMatch
 from .odds_snapshots import OddsSnapshotStore, observations_from_quotes
@@ -48,10 +48,11 @@ from .providers import (
 )
 from .timeutil import UTC_FORMAT, KickoffError, parse_kickoff, utc_key
 
-CACHE_ROOT = Path(__file__).resolve().parent.parent / "output" / "backtest_cache"
-ODDS_DIR = CACHE_ROOT / "odds"
-FIXTURES_DIR = CACHE_ROOT / "fixtures"
-MANIFEST_PATH = CACHE_ROOT / "manifest.json"
+def _cache_root() -> Path:
+    """Raiz do cache de odds/backtest (respeita BETGSN_OUTPUT_DIR)."""
+    from .config import output_root
+
+    return output_root() / "backtest_cache"
 
 #: Nome canonico do provider de odds ao vivo. E o mesmo rotulo usado por
 #: `providers.configured_odds_providers`, para que a observacao persistida
@@ -149,7 +150,7 @@ class OddsHistoryCache:
     """
 
     def __init__(self, root: Path | None = None) -> None:
-        self.root = Path(root) if root else ODDS_DIR
+        self.root = Path(root) if root else _cache_root() / "odds"
         self.root.mkdir(parents=True, exist_ok=True)
         self._index: dict[str, list[OddsSnapshot]] = {}
 
@@ -528,7 +529,7 @@ class HistoricalFixtureImporter:
         sleep_seconds: float = 0.0,
     ) -> None:
         self.provider = provider
-        self.root = Path(root) if root else FIXTURES_DIR
+        self.root = Path(root) if root else _cache_root() / "fixtures"
         self.root.mkdir(parents=True, exist_ok=True)
         self.sleep_seconds = sleep_seconds
 
@@ -691,7 +692,7 @@ def redact_text(text: str) -> str:
 
 
 def read_manifest(manifest_path: Path | None = None) -> dict[str, Any]:
-    path = Path(manifest_path) if manifest_path else MANIFEST_PATH
+    path = Path(manifest_path) if manifest_path else _cache_root() / "manifest.json"
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
@@ -705,7 +706,7 @@ def load_imported_matches(root: Path | None = None) -> list[HistoricalMatch]:
     Devolve lista vazia se nada foi importado — quem chama decide o que
     fazer (a API devolve erro explicativo, nunca um backtest vazio).
     """
-    base = Path(root) if root else FIXTURES_DIR
+    base = Path(root) if root else _cache_root() / "fixtures"
     if not base.exists():
         return []
     out: list[HistoricalMatch] = []
@@ -752,6 +753,14 @@ class CaptureReport:
     observations_saved: int = 0
     events: int = 0
     events_with_odds: int = 0
+    #: eventos de provider casados com um fixture (gravados sob a event_key
+    #: DO FIXTURE — a chave que a API consome)
+    events_matched: int = 0
+    #: eventos de provider sem fixture correspondente (preservados sob a
+    #: chave canonica do provider; nao sao lidos pela API ate haver fixture)
+    events_unmatched: int = 0
+    #: eventos com mais de um fixture candidato — AMBIGUOUS nao casa
+    events_ambiguous: int = 0
     credits_last: int | None = None
     credits_used: int | None = None
     credits_remaining: int | None = None
@@ -790,6 +799,9 @@ class LiveOddsCapture:
         regions: str = "eu,uk",
         markets: str = "h2h,totals,btts",
         store: OddsSnapshotStore | None = None,
+        fixtures: Sequence | None = None,
+        aliases: Mapping[tuple[str, str], str] | None = None,
+        perf: "Callable[[], float]" = time.perf_counter,
     ) -> None:
         self.provider = provider
         self.cache = cache or OddsHistoryCache()
@@ -799,6 +811,16 @@ class LiveOddsCapture:
         #: captura ainda arquiva o snapshot cru, mas NAO alimenta a API —
         #: por isso o caminho operacional (CLI) sempre injeta um.
         self.store = store
+        #: relogio de performance injetavel (testes) para latencia REAL.
+        self._perf = perf
+        #: indice de fixtures para resolucao de identidade (I-01): evento de
+        #: provider -> event_key do FIXTURE. Sem fixtures, as observacoes sao
+        #: gravadas sob a chave canonica do provider (comportamento anterior).
+        from .odds_normalize import FixtureMatchIndex
+
+        self._match_index = (
+            FixtureMatchIndex(fixtures, aliases) if fixtures else None
+        )
 
     def capture(
         self,
@@ -814,13 +836,45 @@ class LiveOddsCapture:
         Se o esporte nao suportar algum mercado pedido (ex.: `btts` no
         endpoint ao vivo), o mercado e removido e a captura segue com os
         demais — em vez de perder a captura inteira.
+
+        Health do provider (I-06): cada chamada ao provider registra
+        sucesso/falha/cobertura num `HealthTracker` local com latencia
+        REALmente medida e quota dos headers. Ao final, o registro e
+        persistido no store operacional — o processo da API le o mesmo
+        banco e deixa de reportar UNKNOWN eterno. So dados observados:
+        sem chamada nao ha latencia, sem header nao ha quota.
         """
+        from .odds_health import (
+            CreditController,
+            HealthTracker,
+            classify_exception,
+        )
+
         moment = now or datetime.now(timezone.utc)
         stamp = moment.strftime(UTC_FORMAT)
         report = CaptureReport(captured_at=stamp, sport_keys=list(sport_keys))
+        health = HealthTracker(now=lambda: stamp)
+        credits = CreditController(now=lambda: stamp)
 
         for sport in sport_keys:
-            events, headers, used_markets = self._fetch_with_fallback(sport, report)
+            call_started = self._perf()
+            events, headers, used_markets, failure = self._fetch_with_fallback(
+                sport, report
+            )
+            # latencia REAL da chamada que acabou de acontecer — nunca um
+            # valor fixo. Sem chamada concluida, o campo permanece None.
+            latency_ms = (self._perf() - call_started) * 1000.0
+
+            if failure is not None:
+                kind, _retryable = classify_exception(failure)
+                health.record_failure(
+                    LIVE_ODDS_PROVIDER, kind, str(failure)[:300],
+                    status=getattr(failure, "status", None),
+                )
+                continue
+
+            if headers:
+                credits.update_from_headers(LIVE_ODDS_PROVIDER, headers)
             if events is None:
                 continue
 
@@ -829,14 +883,23 @@ class LiveOddsCapture:
             report.credits_remaining = _int_or_none(headers.get("x-requests-remaining"))
             report.markets_used[sport] = used_markets
 
-            if not events:
+            with_odds = [e for e in events if e.get("bookmakers")]
+            if not events or not with_odds:
+                # resposta sem cobertura: nao e falha do provider —
+                # apenas nao ha jogos com odds neste esporte agora.
+                health.record_no_coverage(LIVE_ODDS_PROVIDER)
+                report.events += len(events)
+                report.events_with_odds += len(with_odds)
                 continue
 
-            with_odds = [e for e in events if e.get("bookmakers")]
+            health.record_success(
+                LIVE_ODDS_PROVIDER,
+                observations=len(with_odds),
+                credits_remaining=credits.get(LIVE_ODDS_PROVIDER).known_remaining,
+                latency_ms=latency_ms,
+            )
             report.events += len(events)
             report.events_with_odds += len(with_odds)
-            if not with_odds:
-                continue
 
             self.cache.save(OddsSnapshot(
                 sport_key=sport,
@@ -846,9 +909,21 @@ class LiveOddsCapture:
                 provider="the-odds-api-live",
             ))
             report.snapshots_saved += 1
-            report.observations_saved += self._persist_observations(
+            saved, matched, unmatched, ambiguous = self._persist_observations(
                 with_odds, sport, stamp
             )
+            report.observations_saved += saved
+            report.events_matched += matched
+            report.events_unmatched += unmatched
+            report.events_ambiguous += ambiguous
+
+        if self.store is not None:
+            try:
+                self.store.save_provider_health(
+                    health.snapshot(), credits.snapshot()
+                )
+            except Exception:  # noqa: BLE001 - health nao derruba a captura
+                pass
 
         _append_manifest(self.cache.root.parent / "manifest.json", "capture", report)
         return report
@@ -858,7 +933,7 @@ class LiveOddsCapture:
         events: Sequence[dict],
         sport: str,
         stamp: str,
-    ) -> int:
+    ) -> tuple[int, int, int, int]:
         """Grava as cotacoes normalizadas no store canonico (SQLite).
 
         E a MESMA fonte que a API consome em movement/CLV/coverage: o
@@ -866,49 +941,90 @@ class LiveOddsCapture:
         operacao. A conversao reusa `odds_normalize.normalize_events` — nao
         existe um segundo parser.
 
+        Resolucao de identidade (I-01): com um indice de fixtures, cada
+        evento de provider e casado contra os fixtures da divisao coberta
+        pelo sport key (alias + normalizacao exata + kickoff UTC exato).
+        Casado: a observacao e gravada sob a `event_key` DO FIXTURE — a
+        mesma chave que a API consulta. Nao casado (UNKNOWN/AMBIGUOUS): a
+        observacao e PRESERVADA sob a chave canonica do provider e o evento
+        entra nos contadores de unmatched/ambiguous do report. Nunca ha
+        falso positivo: sem casamento unico, nao se casa.
+
+        Devolve (observacoes_gravadas, eventos_casados, eventos_nao_casados,
+        eventos_ambiguos).
+
         Sem store configurado nada e gravado; cotacoes pos-kickoff ou
         invalidas sao descartadas por `observations_from_quotes`. Nunca se
         inventa observacao.
         """
-        if self.store is None:
-            return 0
         from .odds_normalize import dedupe_quotes, normalize_events
+        from .providers import SPORT_KEY_TO_DIVISIONS
+
+        if self.store is None:
+            return 0, 0, 0, 0
 
         quotes = dedupe_quotes(
-            normalize_events(
-                events, LIVE_ODDS_PROVIDER, stamp, sport_key=sport
-            )
+            normalize_events(events, LIVE_ODDS_PROVIDER, stamp, sport_key=sport)
         )
-        observations = observations_from_quotes(quotes)
+
+        match_keys: dict[str, str] = {}
+        seen_events: set[str] = set()
+        matched = unmatched = ambiguous = 0
+        if self._match_index is not None:
+            divisions = SPORT_KEY_TO_DIVISIONS.get(sport, [])
+            for quote in quotes:
+                if quote.event_id in seen_events:
+                    continue  # mesmo evento ja resolvido (1/X/2 = 1 evento)
+                seen_events.add(quote.event_id)
+                result = self._match_index.resolve(
+                    quote.home_team, quote.away_team, quote.kickoff, divisions
+                )
+                if result.ok:
+                    match_keys[quote.event_id] = result.match_key or ""
+                    matched += 1
+                elif result.status == "AMBIGUOUS":
+                    ambiguous += 1
+                else:
+                    unmatched += 1
+
+        observations = observations_from_quotes(quotes, match_keys=match_keys)
         if not observations:
-            return 0
+            return 0, matched, unmatched, ambiguous
         try:
-            return self.store.add(observations)
+            saved = self.store.add(observations)
         except Exception:  # noqa: BLE001 - persistencia nao derruba a captura
-            return 0
+            saved = 0
+        return saved, matched, unmatched, ambiguous
 
     def _fetch_with_fallback(
         self,
         sport: str,
         report: CaptureReport,
-    ) -> tuple[list[dict] | None, dict[str, str], list[str]]:
-        """Busca odds removendo mercados nao suportados, um a um."""
+    ) -> tuple[list[dict] | None, dict[str, str], list[str], ProviderError | None]:
+        """Busca odds removendo mercados nao suportados, um a um.
+
+        Alem do trio (events, headers, mercados), devolve a ultima
+        `ProviderError` quando a busca falhou — o chamador registra o
+        health com o kind classificado da falha real.
+        """
         markets = [m.strip() for m in self.markets.split(",") if m.strip()]
+        last_error: ProviderError | None = None
         for _ in range(len(markets) + 1):
             if not markets:
                 report.errors.append(f"{sport}: nenhum mercado valido restou")
-                return None, {}, []
+                return None, {}, [], last_error
             try:
                 events, headers = self.provider.live_odds_with_meta(
                     sport, regions=self.regions, markets=",".join(markets)
                 )
-                return events, headers, list(markets)
+                return events, headers, list(markets), None
             except ProviderError as exc:
+                last_error = exc
                 message = str(exc)
                 unsupported = _unsupported_markets(message)
                 if not unsupported:
                     report.errors.append(f"{sport}: {exc}")
-                    return None, {}, []
+                    return None, {}, [], exc
                 for bad in unsupported:
                     if bad in markets:
                         markets.remove(bad)
@@ -916,7 +1032,7 @@ class LiveOddsCapture:
                             f"{sport}: mercado '{bad}' nao suportado neste "
                             f"endpoint — removido e tentando de novo"
                         )
-        return None, {}, []
+        return None, {}, [], last_error
 
     def capture_pending_matches(
         self,

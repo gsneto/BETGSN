@@ -37,9 +37,12 @@ from .backtest_metrics import BacktestMetrics, compute_metrics
 
 SCHEMA_VERSION = 1
 
-DEFAULT_DB_PATH = (
-    Path(__file__).resolve().parent.parent / "output" / "backtests" / "betgsn_backtest.db"
-)
+
+def _default_db_path() -> Path:
+    """Caminho default do banco de backtests (respeita BETGSN_OUTPUT_DIR)."""
+    from .config import output_root
+
+    return output_root() / "backtests" / "betgsn_backtest.db"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -99,7 +102,7 @@ class BacktestStore:
     """Armazena e recupera execucoes de backtest. Thread-safe."""
 
     def __init__(self, path: Path | str | None = None) -> None:
-        self.path = Path(path) if path else DEFAULT_DB_PATH
+        self.path = Path(path) if path else _default_db_path()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
         self._ensure_schema()

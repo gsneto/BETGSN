@@ -12,12 +12,29 @@ import statistics
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Mapping, Optional, Sequence
 
 from .timeutil import parse_kickoff, utc_key
 
-SCHEMA_VERSION = 1
-DEFAULT_DB = Path(__file__).resolve().parent.parent / "output" / "odds_snapshots.db"
+SCHEMA_VERSION = 2
+
+
+def _default_db() -> Path:
+    """Caminho default do store operacional (respeita BETGSN_OUTPUT_DIR)."""
+    from .config import output_root
+
+    return output_root() / "odds_snapshots.db"
+
+
+#: Colunas de health persistido. Sao EXATAMENTE os campos de
+#: `ProviderHealth.to_dict()` (odds_health) mais a quota observada do
+#: CreditController — nada alem do observado. NULL = nunca observado.
+_PROVIDER_HEALTH_COLUMNS = (
+    "name", "state", "consecutive_failures", "total_failures",
+    "total_successes", "last_success_at", "last_failure_at", "last_error",
+    "last_status", "last_kind", "credits_remaining", "observations",
+    "updated_at", "latency_ms", "credits_used", "credits_remaining_known",
+)
 
 #: Uma observacao so conta como "closing" se estiver a no maximo X minutos
 #: do kickoff. Sem isso, uma odd de 3 dias antes viraria "fechamento".
@@ -59,6 +76,7 @@ def observations_from_quotes(
     quotes: Sequence,
     *,
     default_provider: str = "",
+    match_keys: Optional[Mapping[str, str]] = None,
 ) -> list[OddsObservation]:
     """Converte cotacoes normalizadas em observacoes persistiveis.
 
@@ -66,6 +84,11 @@ def observations_from_quotes(
     `odds_normalize.event_key` (mandante|visitante|kickoff UTC). A chave nao
     e derivada de novo aqui, apenas transportada: escrita e leitura precisam
     falar do mesmo jogo.
+
+    `match_keys` (opcional) substitui a chave por evento: mapeia
+    `event_id` do provider -> `event_key` do FIXTURE casado via
+    `FixtureMatchIndex`. So a chave muda — odd, timestamp e kickoff sao os
+    observados; nada e reescrito para caber no contrato.
 
     Cotacoes pos-kickoff ou com preco invalido sao descartadas. A observacao
     nunca e "corrigida" para caber no contrato: sem dado utilizavel, nada e
@@ -75,10 +98,13 @@ def observations_from_quotes(
     for quote in quotes:
         if not getattr(quote, "pre_kickoff", False):
             continue
+        key = quote.event_id
+        if match_keys and quote.event_id in match_keys:
+            key = match_keys[quote.event_id]
         try:
             out.append(
                 OddsObservation(
-                    match_key=quote.event_id,
+                    match_key=key,
                     market=quote.market,
                     outcome=quote.selection,
                     bookmaker=quote.bookmaker,
@@ -196,7 +222,7 @@ class OddsSnapshotStore:
     """Store append-only de observacoes de odds."""
 
     def __init__(self, path: Optional[Path] = None) -> None:
-        self._path = Path(path) if path is not None else DEFAULT_DB
+        self._path = Path(path) if path is not None else _default_db()
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
         self._init_db()
@@ -234,10 +260,28 @@ class OddsSnapshotStore:
                         ON odds_observations(match_key, market, outcome);
                     CREATE INDEX IF NOT EXISTS idx_obs_ts
                         ON odds_observations(match_key, timestamp);
+                    CREATE TABLE IF NOT EXISTS provider_health (
+                        name TEXT PRIMARY KEY,
+                        state TEXT NOT NULL,
+                        consecutive_failures INTEGER NOT NULL DEFAULT 0,
+                        total_failures INTEGER NOT NULL DEFAULT 0,
+                        total_successes INTEGER NOT NULL DEFAULT 0,
+                        last_success_at TEXT,
+                        last_failure_at TEXT,
+                        last_error TEXT,
+                        last_status INTEGER,
+                        last_kind TEXT,
+                        credits_remaining INTEGER,
+                        observations INTEGER NOT NULL DEFAULT 0,
+                        updated_at TEXT,
+                        latency_ms REAL,
+                        credits_used INTEGER,
+                        credits_remaining_known INTEGER
+                    );
                     """
                 )
                 conn.execute(
-                    "INSERT OR IGNORE INTO schema_meta VALUES (?, ?)",
+                    "INSERT OR REPLACE INTO schema_meta VALUES (?, ?)",
                     ("version", str(SCHEMA_VERSION)),
                 )
                 conn.commit()
@@ -276,6 +320,124 @@ class OddsSnapshotStore:
                 conn.close()
 
     # ------------------------------------------------------------- leitura
+
+    def save_provider_health(
+        self,
+        health: Mapping[str, dict],
+        credits: Mapping[str, dict],
+    ) -> None:
+        """Upsert do health de providers observado por OUTRO processo.
+
+        A captura de odds roda em processo separado da API; este store e o
+        canal compartilhado entre eles. Os registros vem de
+        `HealthTracker.snapshot()` / `CreditController.snapshot()` — apenas
+        dados observados (sucessos, falhas, latencia medida, quota de
+        headers). Campos ausentes viram NULL, nunca defaults inventados.
+
+        `credits` mapeia nome -> registro de credito; um provider presente
+        em `health` mas ausente em `credits` persiste quota NULL.
+        """
+        rows = []
+        for name, record in sorted(health.items()):
+            credit = credits.get(name) or {}
+            rows.append(
+                (
+                    name,
+                    str(record.get("state", "")),
+                    int(record.get("consecutive_failures", 0) or 0),
+                    int(record.get("total_failures", 0) or 0),
+                    int(record.get("total_successes", 0) or 0),
+                    record.get("last_success_at") or None,
+                    record.get("last_failure_at") or None,
+                    record.get("last_error") or None,
+                    record.get("last_status"),
+                    record.get("last_kind") or None,
+                    record.get("credits_remaining"),
+                    int(record.get("observations", 0) or 0),
+                    record.get("updated_at") or None,
+                    record.get("latency_ms"),
+                    credit.get("used"),
+                    credit.get("known_remaining"),
+                )
+            )
+        if not rows:
+            return
+        with self._lock:
+            conn = self._conn()
+            try:
+                conn.executemany(
+                    """INSERT OR REPLACE INTO provider_health
+                       (name, state, consecutive_failures, total_failures,
+                        total_successes, last_success_at, last_failure_at,
+                        last_error, last_status, last_kind, credits_remaining,
+                        observations, updated_at, latency_ms, credits_used,
+                        credits_remaining_known)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    rows,
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+    def load_provider_health(self) -> dict[str, dict]:
+        """Health persistido por processo capturador, no formato de
+        `HealthTracker.snapshot()` — {nome: registro}. Banco sem health
+        devolve ``{}`` (ausencia, nunca UNKNOWN sintetico aqui)."""
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    "SELECT * FROM provider_health"
+                ).fetchall()
+            finally:
+                conn.close()
+        out: dict[str, dict] = {}
+        for r in rows:
+            out[r["name"]] = {
+                "provider": r["name"],
+                "state": r["state"],
+                "consecutive_failures": r["consecutive_failures"],
+                "total_failures": r["total_failures"],
+                "total_successes": r["total_successes"],
+                "last_success_at": r["last_success_at"] or "",
+                "last_failure_at": r["last_failure_at"] or "",
+                "last_error": r["last_error"] or "",
+                "last_status": r["last_status"],
+                "last_kind": r["last_kind"] or "",
+                "credits_remaining": r["credits_remaining"],
+                "observations": r["observations"],
+                "updated_at": r["updated_at"] or "",
+                "latency_ms": r["latency_ms"],
+            }
+        return out
+
+    def load_provider_credits(self) -> dict[str, dict]:
+        """Quota persistida por processo capturador, no formato de
+        `CreditController.snapshot()` — {nome: registro}."""
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    "SELECT name, credits_used, credits_remaining_known "
+                    "FROM provider_health"
+                ).fetchall()
+            finally:
+                conn.close()
+        out: dict[str, dict] = {}
+        for r in rows:
+            out[r["name"]] = {
+                "provider": r["name"],
+                "daily_limit": 0,
+                "used": r["credits_used"],
+                "remaining": r["credits_remaining_known"],
+                "known_remaining": r["credits_remaining_known"],
+                "exhausted": bool(
+                    r["credits_remaining_known"] is not None
+                    and r["credits_remaining_known"] <= 0
+                ),
+                "last_updated": "",
+            }
+        return out
 
     def observations_before(
         self, match_key: str, cutoff: str

@@ -41,7 +41,7 @@ from fastapi.responses import JSONResponse
 from .. import __version__
 from . import backtest_schemas as B
 from . import schemas as S
-from .backtest_service import backtest_service
+from .backtest_service import get_backtest_service
 from .service import BetgsnService, Snapshot, service
 
 ALLOWED_ORIGINS = [
@@ -104,7 +104,7 @@ async def lifespan(_app: FastAPI):
             return
         asyncio.run_coroutine_threadsafe(hub.broadcast(event, payload), loop)
 
-    backtest_service.set_broadcaster(schedule)
+    get_backtest_service().set_broadcaster(schedule)
     yield
 
 
@@ -184,10 +184,18 @@ def dashboard() -> S.DashboardSummary:
 
 @app.post("/api/recalculate", response_model=S.DashboardSummary, tags=["dashboard"])
 async def recalculate(config: S.ModelConfiguration) -> S.DashboardSummary:
+    from ..real_signals import RealDataError
+
     svc = _svc()
     await hub.broadcast("recalculate:start", {"configuration": config.model_dump()})
     try:
         snap = await asyncio.to_thread(svc.recalculate, config)
+    except RealDataError as exc:
+        # dados reais indisponiveis (cache de fixtures sem jogos futuros):
+        # mesmo contrato de /api/signals — 503 com instrucao, nao 500.
+        await hub.broadcast("recalculate:error", {"detail": str(exc)})
+        raise HTTPException(status_code=503,
+                            detail=f"pipeline indisponivel: {exc}") from exc
     except Exception as exc:
         await hub.broadcast("recalculate:error", {"detail": str(exc)})
         raise HTTPException(status_code=500,
@@ -315,19 +323,19 @@ async def model_performance(
 @app.get("/api/backtest/options", response_model=B.BacktestOptions, tags=["backtest"])
 def backtest_options() -> B.BacktestOptions:
     """Periodo, competicoes, mercados e defaults para o painel da UI."""
-    return backtest_service.options()
+    return get_backtest_service().options()
 
 
 @app.get("/api/backtest/status", response_model=B.BacktestJobStatus, tags=["backtest"])
 def backtest_status() -> B.BacktestJobStatus:
-    return backtest_service.status()
+    return get_backtest_service().status()
 
 
 @app.post("/api/backtest/run", response_model=B.BacktestJobStatus, tags=["backtest"])
 async def backtest_run(request: B.BacktestRequest) -> B.BacktestJobStatus:
     """Dispara o backtest em background. Progresso via GET /status ou WebSocket."""
     try:
-        status = backtest_service.start(request)
+        status = get_backtest_service().start(request)
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
@@ -338,12 +346,12 @@ async def backtest_run(request: B.BacktestRequest) -> B.BacktestJobStatus:
 
 @app.get("/api/backtest/runs", response_model=list[B.BacktestRunSummary], tags=["backtest"])
 def backtest_runs(limit: int = Query(50, ge=1, le=200)) -> list[B.BacktestRunSummary]:
-    return backtest_service.list_runs(limit)
+    return get_backtest_service().list_runs(limit)
 
 
 @app.get("/api/backtest/runs/{run_id}", response_model=B.BacktestRunDetail, tags=["backtest"])
 def backtest_run_detail(run_id: str) -> B.BacktestRunDetail:
-    detail = backtest_service.run_detail(run_id)
+    detail = get_backtest_service().run_detail(run_id)
     if detail is None:
         raise HTTPException(status_code=404, detail=f"backtest nao encontrado: {run_id}")
     return detail
@@ -363,9 +371,9 @@ def backtest_run_signals(
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ) -> B.SignalPage:
-    if backtest_service.run_detail(run_id) is None:
+    if get_backtest_service().run_detail(run_id) is None:
         raise HTTPException(status_code=404, detail=f"backtest nao encontrado: {run_id}")
-    return backtest_service.signals(
+    return get_backtest_service().signals(
         run_id,
         search=search,
         market=market,
@@ -378,7 +386,7 @@ def backtest_run_signals(
 
 @app.delete("/api/backtest/runs/{run_id}", tags=["backtest"])
 def backtest_delete_run(run_id: str) -> dict[str, bool]:
-    if not backtest_service.delete_run(run_id):
+    if not get_backtest_service().delete_run(run_id):
         raise HTTPException(status_code=404, detail=f"backtest nao encontrado: {run_id}")
     return {"deleted": True}
 
@@ -389,7 +397,7 @@ def backtest_compare(
     b: str = Query(..., description="run_id da execucao B"),
 ) -> B.RunComparison:
     try:
-        return backtest_service.compare(a, b)
+        return get_backtest_service().compare(a, b)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -556,7 +564,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             {"event": "status", "payload": _svc().status().model_dump()}, default=str))
         await ws.send_text(json.dumps(
             {"event": "backtest:progress",
-             "payload": backtest_service.status().model_dump()}, default=str))
+             "payload": get_backtest_service().status().model_dump()}, default=str))
         while True:
             raw = await ws.receive_text()
             if raw.strip() in {"ping", '"ping"'}:

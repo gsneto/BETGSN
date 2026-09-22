@@ -125,6 +125,29 @@ def api_provider_status(state) -> S.ProviderAvailability:
     return _DOMAIN_TO_API_STATUS.get(key, "UNKNOWN")
 
 
+def _merge_latest(
+    primary: dict, secondary: dict, stamp_field: str
+) -> dict:
+    """Combina registros de duas fontes por provider, mantendo o MAIS recente.
+
+    `primary` e o tracker em memoria deste processo; `secondary`, o registro
+    persistido pela captura (processo separado). Para cada provider vale o
+    registro com carimbo `stamp_field` mais recente — carimbos sao strings
+    ISO canonica UTC (`...Z`), comparaveis lexicograficamente. Provider so
+    em uma das fontes entra como esta; registro sem carimbo nunca desloca
+    registro com carimbo.
+    """
+    merged = dict(primary)
+    for name, record in secondary.items():
+        current = merged.get(name)
+        if current is None:
+            merged[name] = record
+            continue
+        if str(record.get(stamp_field) or "") > str(current.get(stamp_field) or ""):
+            merged[name] = record
+    return merged
+
+
 def _provider_health_dto(
     name: str,
     configured: bool,
@@ -326,7 +349,7 @@ class BetgsnService:
         Quant decidiu, preservando o motivo e as verificacoes.
         """
         from ..staking import EDGE_ODD, EDGE_ROI, EDGE_SE, decide_bet
-        from ..value_strategy import VALIDATION_CACHE, StrategyValidation
+        from ..value_strategy import StrategyValidation, _validation_cache_path
 
         # Vantagem medida: usa a validacao em cache quando existe; sem
         # cache, os parametros validados constantes do modulo staking.
@@ -334,9 +357,10 @@ class BetgsnService:
         # request HTTP nao e lugar para isso.
         roi, se, odd, n_bets = EDGE_ROI, EDGE_SE, EDGE_ODD, None
         try:
-            if VALIDATION_CACHE.exists():
+            cache_path = _validation_cache_path()
+            if cache_path.exists():
                 payload = json.loads(
-                    VALIDATION_CACHE.read_text(encoding="utf-8"))
+                    cache_path.read_text(encoding="utf-8"))
                 val = StrategyValidation.from_json(payload)
                 roi, se, odd, n_bets = (
                     val.roi, val.se, val.avg_odd or EDGE_ODD, val.n_bets)
@@ -854,15 +878,32 @@ class BetgsnService:
     def providers(self) -> S.ProviderOverview:
         """Traduz o health REAL do Odds Layer para o DTO da API.
 
-        Fonte unica de verdade: o `OddsService` deste processo, cujo
-        HealthTracker registra sucesso/falha/staleness por provider e cujo
-        CreditController carrega a quota real (header do provider ou teto
-        local). Ausencia de observacao vira UNKNOWN — nunca "HEALTHY por
-        chave configurada", nunca latency fixa, nunca quota ficticia.
+        Duas fontes de observacao, MESMO contrato:
+
+        1. o `OddsService` DESTE processo (HealthTracker/CreditController
+           em memoria — alimentado por coletas que acontecem aqui);
+        2. o health PERSISTIDO no store operacional pela captura de odds
+           (processo separado, CLI `--capture-odds`) — veja
+           `OddsSnapshotStore.save_provider_health`.
+
+        Para cada provider vale o registro MAIS RECENTE (updated_at). Sem
+        observacao em nenhuma fonte: UNKNOWN — nunca "HEALTHY por chave
+        configurada", nunca latency fixa, nunca quota ficticia.
         """
+        from ..odds_snapshots import OddsSnapshotStore
+
         odds = self.odds_service()
         health = odds.health_snapshot()      # real: HealthTracker
         credits = odds.credits_snapshot()    # real: CreditController
+        try:
+            store = OddsSnapshotStore()
+            persisted_health = store.load_provider_health()
+            persisted_credits = store.load_provider_credits()
+        except Exception:  # noqa: BLE001 - store ilegivel nao derruba a rota
+            persisted_health, persisted_credits = {}, {}
+        health = _merge_latest(health, persisted_health, "updated_at")
+        credits = _merge_latest(credits, persisted_credits, "last_updated")
+
         configured = available_providers()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -918,7 +959,7 @@ class BetgsnService:
                 away=fx.away,
                 league=fx.league,
                 round_label=fx.division,
-                kickoff=utc_key(fx.kickoff, fx.timezone),
+                kickoff=utc_key(fx.kickoff, fx.timezone) if fx.has_kickoff else "",
                 kickoff_local=fx.kickoff,
                 timezone=fx.timezone,
                 has_odds=has_odds,
@@ -958,6 +999,9 @@ class BetgsnService:
         for fx in fixtures[:20]:
             if not fx.has_odds:
                 continue
+            if not fx.has_kickoff:
+                # Sem horario publicado nao existe corte temporal possivel.
+                continue
             # Cotacoes persistidas para esta partida, se houver. Sem historico
             # o movimento e NO_DATA — nunca zero, que se confundiria com
             # "o preco nao se moveu".
@@ -974,9 +1018,9 @@ class BetgsnService:
             # `fx.odds` e {mercado: {casa: {resultado: odd}}}; iterar as
             # chaves internas daria NOMES DE CASA como outcome. As linhas
             # reais sao mercado + resultado.
-            # O kickoff entra convertido para UTC com o fuso da liga:
-            # `fx.kickoff` e hora LOCAL da competicao, e tratar local
-            # como UTC deslocaria o cutoff temporal pelo fuso.
+            # O kickoff entra convertido para UTC com o fuso de publicacao
+            # do site (FIXTURES_TZ): tratar a hora publicada com outro fuso
+            # deslocaria o cutoff temporal.
             kickoff_utc = utc_key(fx.kickoff, fx.timezone)
             for market, best in fx.best_odds.items():
                 for oc in list(best.keys())[:3]:
@@ -1051,7 +1095,7 @@ class BetgsnService:
         bets = [
             {"match_key": fx.event_key, "market": market, "outcome": oc, "odd": odd}
             for fx in fixtures_raw
-            if fx.has_odds
+            if fx.has_odds and fx.has_kickoff
             for market, best in fx.best_odds.items()
             for oc, odd in best.items()
             if odd
@@ -1115,6 +1159,9 @@ class BetgsnService:
 
         for fx in fixtures_raw[:50]:
             if not fx.has_odds:
+                continue
+            if not fx.has_kickoff:
+                # Sem horario publicado nao existe fechamento mensuravel.
                 continue
             # `fx.odds` e {mercado: {casa: {resultado: odd}}}. O outcome e a
             # chave interna e o valor e a odd float. A odd de entrada e a

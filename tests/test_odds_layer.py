@@ -697,7 +697,7 @@ def test_service_uses_primary_provider():
         providers=[("The Odds API", primary), ("ParlayAPI", secondary)],
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    result = service.fetch("soccer_epl", persist=False)
+    result = service.fetch("soccer_epl")
     assert result.ok is True
     assert result.provider == "The Odds API"
     assert result.fallback_used is False
@@ -714,7 +714,7 @@ def test_service_falls_back_on_rate_limit():
         providers=[("The Odds API", primary), ("ParlayAPI", secondary)],
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    result = service.fetch("soccer_epl", persist=False)
+    result = service.fetch("soccer_epl")
     assert result.ok is True
     assert result.provider == "ParlayAPI"
     assert result.fallback_used is True
@@ -730,12 +730,12 @@ def test_service_skips_provider_after_hard_auth_failure():
         providers=[("The Odds API", primary), ("ParlayAPI", secondary)],
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    first = service.fetch("soccer_epl", persist=False)
+    first = service.fetch("soccer_epl")
     assert first.provider == "ParlayAPI"
     assert service.health_snapshot()["The Odds API"]["state"] == "UNAVAILABLE"
 
     calls_before = primary.calls
-    second = service.fetch("soccer_epl", persist=False)
+    second = service.fetch("soccer_epl")
     assert second.provider == "ParlayAPI"
     assert primary.calls == calls_before  # nao tentou de novo
     assert second.attempts[0].status == "SKIPPED"
@@ -749,7 +749,7 @@ def test_service_handles_timeout_with_fallback():
         providers=[("The Odds API", primary), ("ParlayAPI", secondary)],
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    result = service.fetch("soccer_epl", persist=False)
+    result = service.fetch("soccer_epl")
     assert result.provider == "ParlayAPI"
     assert result.attempts[0].kind == "TIMEOUT"
     assert service.health_snapshot()["The Odds API"]["state"] == "DEGRADED"
@@ -762,7 +762,7 @@ def test_service_no_coverage_tries_next_provider():
         providers=[("The Odds API", primary), ("ParlayAPI", secondary)],
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    result = service.fetch("soccer_epl", persist=False)
+    result = service.fetch("soccer_epl")
     assert result.provider == "ParlayAPI"
     assert result.attempts[0].status == "NO_COVERAGE"
     assert service.health_snapshot()["The Odds API"]["state"] == "NO_COVERAGE"
@@ -774,7 +774,7 @@ def test_service_all_no_coverage_returns_no_coverage_state():
                    ("ParlayAPI", FakeProvider([]))],
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    result = service.fetch("soccer_epl", persist=False)
+    result = service.fetch("soccer_epl")
     assert result.quotes == []
     assert result.state == ProviderState.NO_COVERAGE
     assert result.ok is False
@@ -785,7 +785,7 @@ def test_service_all_fail_without_cache_is_unavailable():
         providers=[("The Odds API", FakeProvider([], exc=ProviderError("boom")))],
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    result = service.fetch("soccer_epl", persist=False)
+    result = service.fetch("soccer_epl")
     assert result.quotes == []
     assert result.state == ProviderState.UNAVAILABLE
     assert result.ok is False
@@ -799,13 +799,13 @@ def test_service_returns_stale_cache_never_as_current():
         now=clock,
         stale_after_seconds=900.0,
     )
-    fresh = service.fetch("soccer_epl", persist=False)
+    fresh = service.fetch("soccer_epl")
     assert fresh.ok is True
 
     # 20 minutos depois o provider cai: o dado ja e velho
     primary.exc = ProviderError("503", status=503, kind=FAILURE_SERVER, retryable=True)
     clock.value = "2029-12-31T12:20:00Z"
-    stale = service.fetch("soccer_epl", persist=False)
+    stale = service.fetch("soccer_epl")
     assert stale.stale is True
     assert stale.ok is False
     assert stale.state == ProviderState.STALE
@@ -817,11 +817,11 @@ def test_service_fresh_cache_is_degraded_not_healthy():
     clock = Clock("2029-12-31T12:00:00Z")
     primary = FakeProvider(_events())
     service = OddsService(providers=[("The Odds API", primary)], now=clock)
-    service.fetch("soccer_epl", persist=False)
+    service.fetch("soccer_epl")
 
     primary.exc = ProviderError("boom")
     clock.value = "2029-12-31T12:05:00Z"  # 5 min < 15 min
-    result = service.fetch("soccer_epl", persist=False)
+    result = service.fetch("soccer_epl")
     assert result.stale is False
     assert result.state == ProviderState.DEGRADED
     assert result.ok is False
@@ -833,10 +833,10 @@ def test_service_respects_credit_exhaustion():
         now=Clock("2029-12-31T12:00:00Z"),
     )
     service._credits.register("The Odds API", daily_limit=1)
-    first = service.fetch("soccer_epl", persist=False)
+    first = service.fetch("soccer_epl")
     assert first.provider == "The Odds API"
 
-    second = service.fetch("soccer_epl", persist=False)
+    second = service.fetch("soccer_epl")
     assert second.attempts[0].status == "SKIPPED"
     assert second.attempts[0].kind == "NO_CREDITS"
 
@@ -847,22 +847,28 @@ def test_service_updates_credits_from_headers():
         providers=[("The Odds API", primary)],
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    result = service.fetch("soccer_epl", persist=False)
+    result = service.fetch("soccer_epl")
     assert result.credits_remaining == 17
     assert service.credits_snapshot()["The Odds API"]["remaining"] == 17
 
 
-def test_service_persists_snapshots(tmp_path):
-    store = OddsSnapshotStore(tmp_path / "odds.db")
-    service = OddsService(
-        providers=[("The Odds API", FakeProvider(_events()))],
-        now=Clock("2029-12-31T12:00:00Z"),
-        store=store,
-    )
-    result = service.fetch("soccer_epl", persist=True)
-    assert result.snapshots_saved == len(result.quotes)
-    assert store.stats()["observations"] == len(result.quotes)
-    assert store.stats()["providers"] == {"The Odds API": len(result.quotes)}
+def test_odds_service_has_no_persistence_path():
+    """I-04: o OddsService NAO persiste odds — writer unico e a captura.
+
+    A persistencia operacional do store SQLite pertence exclusivamente ao
+    `LiveOddsCapture` (CLI `--capture-odds`). O contrato deste teste impede
+    o retorno de um caminho de escrita paralelo no OddsService.
+    """
+    import inspect
+
+    from betgsn.odds_service import OddsService
+
+    init_params = inspect.signature(OddsService.__init__).parameters
+    assert "store" not in init_params, "OddsService nao deve aceitar store"
+
+    fetch_params = inspect.signature(OddsService.fetch).parameters
+    assert "persist" not in fetch_params, "fetch nao deve ter flag de persistencia"
+    assert not hasattr(OddsService, "_persist"), "sem metodo de persistencia"
 
 
 def test_service_status_has_no_secret():
@@ -870,7 +876,7 @@ def test_service_status_has_no_secret():
         providers=[("The Odds API", FakeProvider(_events()))],
         now=Clock("2029-12-31T12:00:00Z"),
     )
-    service.fetch("soccer_epl", persist=False)
+    service.fetch("soccer_epl")
     payload = json.dumps(service.status())
     assert "apiKey" not in payload
 

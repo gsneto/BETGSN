@@ -71,9 +71,11 @@ ODD_BANDS: tuple[tuple[float, float], ...] = (
     (1.30, 1.40), (1.40, 1.60), (1.60, 2.00), (2.00, 3.00), (3.00, 99.0),
 )
 
-VALIDATION_CACHE = (
-    Path(__file__).resolve().parent.parent / "output" / "value_validation.json"
-)
+def _validation_cache_path() -> Path:
+    """Caminho do cache de validacao (respeita BETGSN_OUTPUT_DIR)."""
+    from .config import output_root
+
+    return output_root() / "value_validation.json"
 
 BOOTSTRAP_RESAMPLES = 4000
 BOOTSTRAP_SEED = 424242
@@ -203,9 +205,10 @@ def validate(
     progress: Any = None,
 ) -> StrategyValidation:
     """Valida a regra sobre o cache historico inteiro."""
-    if use_cache and VALIDATION_CACHE.exists():
+    cache_path = _validation_cache_path()
+    if use_cache and cache_path.exists():
         try:
-            payload = json.loads(VALIDATION_CACHE.read_text(encoding="utf-8"))
+            payload = json.loads(cache_path.read_text(encoding="utf-8"))
             if payload.get("max_odd") == max_odd and payload.get("min_books") == min_books:
                 return StrategyValidation.from_json(payload)
         except (json.JSONDecodeError, TypeError):
@@ -262,8 +265,9 @@ def validate(
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
     )
     try:
-        VALIDATION_CACHE.parent.mkdir(parents=True, exist_ok=True)
-        VALIDATION_CACHE.write_text(
+        cache_path = _validation_cache_path()
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(
             json.dumps(result.to_json(), ensure_ascii=False, indent=1),
             encoding="utf-8",
         )

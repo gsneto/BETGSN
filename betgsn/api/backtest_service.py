@@ -603,4 +603,18 @@ def corpus_fingerprint_key(summary: dict) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
-backtest_service = BacktestService()
+_backtest_service: BacktestService | None = None
+
+
+def get_backtest_service() -> BacktestService:
+    """Acessor lazy do singleton do backtest.
+
+    Nao instancia no import: criar o BacktestService cria o banco SQLite
+    de runs, e importar o app da API (ex.: em testes) nao pode escrever
+    em `output/` de producao. O caminho do banco e resolvido no momento
+    da criacao e respeita BETGSN_OUTPUT_DIR (isolamento de testes).
+    """
+    global _backtest_service
+    if _backtest_service is None:
+        _backtest_service = BacktestService()
+    return _backtest_service
