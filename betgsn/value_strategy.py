@@ -52,6 +52,9 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .backtest_data import MatchResult, settle_outcome
+from .odds_normalize import group_by_event, group_by_market
+from .odds_provider import OddsFetchRequest, divisions_for
+from .odds_registry import default_odds_registry
 from .providers import ProviderError
 from .strategy import StrategyEvidence
 
@@ -437,6 +440,75 @@ def _median(values: list[float]) -> float:
     return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2.0
 
 
+def _opportunities_from_books(
+    books: dict[str, dict[str, dict[str, float]]],
+    home: str,
+    away: str,
+    commence_time: str,
+    max_odd: float,
+    min_books: int,
+    markets: Sequence[str],
+) -> list[Opportunity]:
+    """Favoritos curtos num evento ja no formato interno do BETGSN.
+
+    `books` e `{mercado: {casa: {resultado: odd}}}` — o MESMO formato que
+    `providers.odds_event_to_internal` produzia e que `group_by_market`
+    produz das quotes normalizadas. Um unico algoritmo para os dois
+    caminhos (legado e contrato): nao existe uma segunda versao da
+    regra divergindo com o tempo.
+    """
+    out: list[Opportunity] = []
+    for market, by_book in books.items():
+        if market not in markets:
+            continue
+
+        outcomes: set[str] = set()
+        for b in by_book.values():
+            outcomes.update(b)
+
+        # mediana por resultado (consenso robusto a uma casa atrasada)
+        medians: dict[str, float] = {}
+        counts: dict[str, int] = {}
+        for oc in outcomes:
+            vals = [b[oc] for b in by_book.values() if b.get(oc)]
+            if not vals:
+                continue
+            medians[oc] = _median(vals)
+            counts[oc] = len(vals)
+
+        # remove o vig do consenso: normaliza as implicitas das medianas.
+        # Sem isso a "odd justa" carregaria a margem da casa e toda
+        # comparacao sairia artificialmente favoravel.
+        implied = {oc: 1.0 / od for oc, od in medians.items() if od > 0}
+        total = sum(implied.values()) or 1.0
+        fair = {oc: total / p for oc, p in implied.items() if p > 0}
+
+        for oc, med in medians.items():
+            if counts[oc] < min_books:
+                continue
+            vals = [b[oc] for b in by_book.values() if b.get(oc)]
+            best = max(vals)
+            if best >= max_odd:
+                continue
+            best_book = next(b for b, m in by_book.items() if m.get(oc) == best)
+            fair_odd = fair.get(oc, med)
+            out.append(Opportunity(
+                match=f"{home} vs {away}",
+                commence_time=commence_time,
+                outcome=oc,
+                best_odd=best,
+                best_book=best_book,
+                fair_odd=fair_odd,
+                median_odd=med,
+                n_books=counts[oc],
+                edge=(best / fair_odd - 1.0) if fair_odd > 0 else 0.0,
+                is_home=(oc == "1"),
+                book_count=counts[oc],
+                consensus_limited=counts[oc] < MIN_CONSENSUS_BOOKS,
+            ))
+    return out
+
+
 def scan_events(
     events: Sequence[dict],
     max_odd: float = MAX_ODD,
@@ -447,6 +519,8 @@ def scan_events(
 
     Reutiliza `providers.odds_event_to_internal` — o mesmo parser do
     Scanner — para nao existir uma segunda conversao divergindo.
+    Caminho LEGADO: eventos crus que ja existem em maos (o scanner ao
+    vivo, `scan_live`, hoje consome quotes do contrato de providers).
     """
     from .providers import odds_event_to_internal
 
@@ -456,57 +530,40 @@ def scan_events(
         home = event.get("home_team", "")
         away = event.get("away_team", "")
         commence = event.get("commence_time", "")
-
-        for market, by_book in books.items():
-            if market not in markets:
-                continue
-
-            outcomes: set[str] = set()
-            for b in by_book.values():
-                outcomes.update(b)
-
-            # mediana por resultado (consenso robusto a uma casa atrasada)
-            medians: dict[str, float] = {}
-            counts: dict[str, int] = {}
-            for oc in outcomes:
-                vals = [b[oc] for b in by_book.values() if b.get(oc)]
-                if not vals:
-                    continue
-                medians[oc] = _median(vals)
-                counts[oc] = len(vals)
-
-            # remove o vig do consenso: normaliza as implicitas das medianas.
-            # Sem isso a "odd justa" carregaria a margem da casa e toda
-            # comparacao sairia artificialmente favoravel.
-            implied = {oc: 1.0 / od for oc, od in medians.items() if od > 0}
-            total = sum(implied.values()) or 1.0
-            fair = {oc: total / p for oc, p in implied.items() if p > 0}
-
-            for oc, med in medians.items():
-                if counts[oc] < min_books:
-                    continue
-                vals = [b[oc] for b in by_book.values() if b.get(oc)]
-                best = max(vals)
-                if best >= max_odd:
-                    continue
-                best_book = next(b for b, m in by_book.items() if m.get(oc) == best)
-                fair_odd = fair.get(oc, med)
-                out.append(Opportunity(
-                    match=f"{home} vs {away}",
-                    commence_time=commence,
-                    outcome=oc,
-                    best_odd=best,
-                    best_book=best_book,
-                    fair_odd=fair_odd,
-                    median_odd=med,
-                    n_books=counts[oc],
-                    edge=(best / fair_odd - 1.0) if fair_odd > 0 else 0.0,
-                    is_home=(oc == "1"),
-                    book_count=counts[oc],
-                    consensus_limited=counts[oc] < MIN_CONSENSUS_BOOKS,
-                ))
+        out.extend(_opportunities_from_books(
+            books, home, away, commence, max_odd, min_books, markets,
+        ))
     # mais curto primeiro: o ROI historico e melhor nas odds menores
     out.sort(key=lambda o: o.best_odd)
+    return out
+
+
+def _utcnow() -> str:
+    """Instante da observacao em chave canonica UTC (timeutil.UTC_FORMAT)."""
+    from .timeutil import now_utc
+
+    return now_utc()
+
+
+def _opportunities_from_quotes(
+    quotes: Sequence,
+    max_odd: float,
+    min_books: int,
+    markets: Sequence[str] = MARKETS,
+) -> list[Opportunity]:
+    """Opportunities a partir de quotes JA normalizadas, por evento.
+
+    Nao parseia payload cru e nao fabrica jogo: mandante, visitante e
+    kickoff vem da propria quote (o adapter ja garantiu que existe).
+    """
+    out: list[Opportunity] = []
+    for _event_id, event_quotes in group_by_event(quotes).items():
+        first = event_quotes[0]
+        books = group_by_market(event_quotes)
+        out.extend(_opportunities_from_books(
+            books, first.home_team, first.away_team, first.kickoff,
+            max_odd, min_books, markets,
+        ))
     return out
 
 
@@ -515,11 +572,16 @@ def scan_live(
     max_odd: float = MAX_ODD,
     min_books: int = MIN_BOOKS,
 ) -> tuple[list[Opportunity], dict[str, Any]]:
-    """Busca oportunidades nas odds ao vivo (The Odds API, plano gratuito)."""
-    from .providers import OddsApiProvider
+    """Busca oportunidades nas odds ao vivo (providers do registry, FASE B).
 
-    provider = OddsApiProvider.from_env()
-    if provider is None:
+    Cada esporte e atendido pelo primeiro provider CONFIGURADO que devolve
+    odds utilizaveis — o mesmo fallback do OddsService, sem health tracker
+    (o scanner e uma leitura pontual, nao uma coleta persistida). Provider
+    que falha ou nao cobre o esporte registra e segue para o proximo; sem
+    NENHUM provider configurado, o erro explicito de sempre.
+    """
+    providers = default_odds_registry().available_providers()
+    if not providers:
         raise ProviderError(
             "BETGSN_ODDS_API_KEY nao configurada. O scanner ao vivo precisa "
             "da chave (plano gratuito serve). Configure no .env."
@@ -528,16 +590,44 @@ def scan_live(
     found: list[Opportunity] = []
     meta: dict[str, Any] = {"sports": {}, "credits_remaining": None}
     for sport in sport_keys:
-        try:
-            events, headers = provider.live_odds_with_meta(sport, markets="h2h")
-        except ProviderError as exc:
-            meta["sports"][sport] = {"error": str(exc)}
-            continue
-        ops = scan_events(events, max_odd, min_books)
-        found.extend(ops)
-        meta["sports"][sport] = {"events": len(events), "opportunities": len(ops)}
-        if headers.get("x-requests-remaining"):
-            meta["credits_remaining"] = headers["x-requests-remaining"]
+        fetched_at = _utcnow()
+        sport_error: str | None = None
+        served_events = 0
+        sport_ops: list[Opportunity] = []
+        for _name, provider in providers:
+            request = OddsFetchRequest(
+                divisions=divisions_for(provider, sport),
+                markets=MARKETS,
+                fetched_at=fetched_at,
+            )
+            try:
+                fetched = provider.fetch_odds(request)
+            except ProviderError as exc:
+                sport_error = str(exc)
+                continue
+            # saldo do contrato quando informado; None permanece None
+            if fetched.credits is not None and fetched.credits.remaining is not None:
+                meta["credits_remaining"] = fetched.credits.remaining
+            if fetched.no_coverage:
+                continue
+            quotes = [q for q in fetched.quotes if q.usable]
+            if not quotes:
+                continue
+            sport_ops = _opportunities_from_quotes(quotes, max_odd, min_books)
+            served_events = len({q.event_id for q in quotes})
+            found.extend(sport_ops)
+            break
+
+        if sport_ops or served_events:
+            meta["sports"][sport] = {
+                "events": served_events,
+                "opportunities": len(sport_ops),
+            }
+        elif sport_error is not None:
+            meta["sports"][sport] = {"error": sport_error}
+        else:
+            # respondeu sem cobertura utilizavel: ausencia, nao doenca
+            meta["sports"][sport] = {"events": 0, "opportunities": 0}
 
     found.sort(key=lambda o: o.best_odd)
     return found, meta

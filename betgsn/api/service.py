@@ -24,6 +24,7 @@ from ..data import BOOKMAKERS, LEAGUE_AVG_GOALS, LEAGUE_HOME_ADVANTAGE, SEED, bu
 from ..engine import implied_prob, scan_arbitrage, consensus_fair_probs
 from ..model import RHO_DEFAULT, TeamRating
 from ..pipeline import FixtureAnalysis, RunResult, run
+from ..odds_registry import default_odds_registry
 from ..providers import available_providers
 from ..signals import EV_FORTE, EV_FRACA, EV_MEDIA, MAX_SPREAD, MIN_BOOKS, Signal as CoreSignal
 from ..timeutil import now_utc, utc_key
@@ -106,14 +107,36 @@ _DOMAIN_TO_API_STATUS: dict[str, S.ProviderAvailability] = {
     "NO_COVERAGE": "NO_COVERAGE",
 }
 
-#: Capacidades DECLARADAS de cada provider (documentadas em providers.py).
-#: Nao e health observado: e o que cada fonte oferece quando configurada.
+#: Capacidades de providers FORA do registry de odds (documentadas em
+#: providers.py). Nao e health observado: e o que cada fonte oferece
+#: quando configurada. Para providers de odds, as features vivem no
+#: registry (`ProviderSpec.features`) — este dicionario e o FALLBACK de
+#: nomes nao registrados e de specs sem features declaradas, para que o
+#: DTO da API nao mude (FASE B, strangler).
 _PROVIDER_FEATURES: dict[str, list[str]] = {
     "The Odds API": ["odds"],
     "ParlayAPI": ["odds"],
     "API-Football": ["fixtures", "historical", "statistics"],
     "Football-Data.org": ["fixtures", "historical"],
 }
+
+
+def _provider_features(name: str) -> list[str]:
+    """Features de um provider: registry primeiro, dicionario historico depois.
+
+    Providers de odds declaram suas features no registry (FASE B); nomes
+    fora dele (API-Football, Football-Data.org) e specs sem features
+    declaradas caem no mapeamento historico — o valor servido pela API
+    permanece exatamente o de sempre.
+    """
+    spec = None
+    try:
+        spec = default_odds_registry().metadata(name)
+    except KeyError:
+        spec = None
+    if spec is not None and spec.features:
+        return list(spec.features)
+    return list(_PROVIDER_FEATURES.get(name, []))
 
 
 def api_provider_status(state) -> S.ProviderAvailability:
@@ -182,7 +205,7 @@ def _provider_health_dto(
         error=(record.get("last_error") or None) if record else None,
         quota_used=credit.get("used") if credit else None,
         quota_remaining=credit.get("known_remaining") if credit else None,
-        features=list(_PROVIDER_FEATURES.get(name, [])) if configured else [],
+        features=_provider_features(name) if configured else [],
         message=message,
     )
 

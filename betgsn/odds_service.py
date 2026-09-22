@@ -41,7 +41,12 @@ from .odds_normalize import (
     dedupe_quotes,
     normalize_events,
 )
-from .odds_provider import CreditUpdate, OddsFetchRequest, divisions_for
+from .odds_provider import (
+    CreditUpdate,
+    OddsFetchRequest,
+    divisions_for,
+    estimated_cost,
+)
 from .providers import FAILURE_NO_COVERAGE
 from .timeutil import KickoffError, parse_kickoff
 
@@ -214,12 +219,21 @@ class OddsService:
         attempts: list[ProviderAttempt] = []
 
         for index, (name, provider) in enumerate(self._providers):
+            # Pedido canonico ANTES do gate: providers do contrato estimam o
+            # proprio custo (`odds_provider.estimated_cost`); legado usa o
+            # custo passado como sempre usou.
+            request = self._build_request(
+                provider, sport_key, markets, regions, fetched_at
+            )
+            spend_cost = (
+                estimated_cost(provider, request) if request is not None else cost
+            )
             if not self._health.is_available(name):
                 attempts.append(
                     ProviderAttempt(name, "SKIPPED", kind="UNAVAILABLE")
                 )
                 continue
-            if not self._credits.can_spend(name, cost):
+            if not self._credits.can_spend(name, spend_cost):
                 attempts.append(
                     ProviderAttempt(name, "SKIPPED", kind="NO_CREDITS")
                 )
@@ -228,7 +242,7 @@ class OddsService:
             try:
                 call_started = self._perf()
                 gathered = self._gather(
-                    provider, sport_key, markets, regions, fetched_at
+                    provider, sport_key, markets, regions, fetched_at, request
                 )
             except Exception as exc:  # noqa: BLE001 - queremos classificar tudo
                 kind, _retryable = classify_exception(exc)
@@ -247,11 +261,11 @@ class OddsService:
 
             if gathered.credits is not None:
                 credits_remaining = self._apply_credit_update(
-                    name, gathered.credits, cost
+                    name, gathered.credits, spend_cost
                 )
             else:
                 credits_remaining = self._apply_credits(
-                    name, gathered.headers, cost
+                    name, gathered.headers, spend_cost
                 )
             events = gathered.events
             if not events:
@@ -304,6 +318,24 @@ class OddsService:
 
     # ---------------------------------------------------------------- interno
 
+    def _build_request(
+        self,
+        provider: object,
+        sport_key: str,
+        markets: str,
+        regions: Optional[str],
+        fetched_at: str,
+    ) -> Optional[OddsFetchRequest]:
+        """Pedido canonico para providers do contrato; None para o legado."""
+        if not callable(getattr(provider, "fetch_odds", None)):
+            return None
+        return OddsFetchRequest(
+            divisions=divisions_for(provider, sport_key),
+            markets=_internal_market_labels(markets),
+            regions=regions,
+            fetched_at=fetched_at,
+        )
+
     def _gather(
         self,
         provider: object,
@@ -311,6 +343,7 @@ class OddsService:
         markets: str,
         regions: Optional[str],
         fetched_at: str,
+        request: Optional[OddsFetchRequest] = None,
     ) -> _Gathered:
         """Chama o provider pelo caminho disponivel (strangler).
 
@@ -321,12 +354,10 @@ class OddsService:
         """
         fetch_odds = getattr(provider, "fetch_odds", None)
         if callable(fetch_odds):
-            request = OddsFetchRequest(
-                divisions=divisions_for(provider, sport_key),
-                markets=_internal_market_labels(markets),
-                regions=regions,
-                fetched_at=fetched_at,
-            )
+            if request is None:
+                request = self._build_request(
+                    provider, sport_key, markets, regions, fetched_at
+                )
             fetched = fetch_odds(request)
             return _Gathered(
                 events=list(fetched.raw_events),
