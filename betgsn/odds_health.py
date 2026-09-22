@@ -270,6 +270,25 @@ class CreditController:
         state.last_updated = self._now()
         return state.remaining
 
+    def apply_update(self, provider: str, update) -> Optional[int]:
+        """Aplica um `CreditUpdate` do contrato de providers (FASE B).
+
+        `update` None e no-op: creditos desconhecidos NAO sao inventados.
+        A transferencia espelha `update_from_headers` — o saldo informado
+        pelo provider e a fonte da verdade. Devolve o remaining informado
+        ou None quando o update nao o carrega.
+        """
+        if update is None:
+            return None
+        state = self.get(provider)
+        if update.used is not None:
+            state.used = update.used
+        if update.remaining is not None:
+            state.remaining = update.remaining
+            state.exhausted = state.remaining <= 0
+        state.last_updated = self._now()
+        return state.remaining
+
     def record_spend(self, provider: str, amount: int = 1) -> CreditState:
         state = self.get(provider)
         state.used += max(0, int(amount))

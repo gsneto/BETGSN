@@ -35,7 +35,13 @@ from .odds_health import (
     ProviderState,
     classify_exception,
 )
-from .odds_normalize import NormalizedQuote, dedupe_quotes, normalize_events
+from .odds_normalize import (
+    MARKET_MAP,
+    NormalizedQuote,
+    dedupe_quotes,
+    normalize_events,
+)
+from .odds_provider import CreditUpdate, OddsFetchRequest, divisions_for
 from .providers import FAILURE_NO_COVERAGE
 from .timeutil import KickoffError, parse_kickoff
 
@@ -45,6 +51,36 @@ DEFAULT_STALE_AFTER_SECONDS = 900.0
 
 def _utcnow() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _internal_market_labels(markets: str) -> tuple[str, ...]:
+    """Chaves de mercado Odds API -> rotulos internos (MARKET_MAP).
+
+    `OddsService.fetch` recebe mercados no formato do provider (parametro
+    publico invariante); o contrato `OddsFetchRequest` fala rotulo interno.
+    Chave sem mapeamento e ignorada — quando nao sobra rotulo, o adapter
+    aplica o default dele.
+    """
+    labels: list[str] = []
+    for key in str(markets or "").split(","):
+        label = MARKET_MAP.get(key.strip())
+        if label is not None and label not in labels:
+            labels.append(label)
+    return tuple(labels)
+
+
+@dataclass
+class _Gathered:
+    """Saida unificada de um provider: contrato (FASE B) ou legado duck.
+
+    `quotes` None significa caminho legado: a normalizacao acontece
+    depois, no nivel do servico, como sempre aconteceu.
+    """
+
+    events: list = field(default_factory=list)
+    headers: Optional[dict] = None
+    quotes: Optional[list] = None
+    credits: Optional[CreditUpdate] = None
 
 
 @dataclass
@@ -191,7 +227,9 @@ class OddsService:
 
             try:
                 call_started = self._perf()
-                events, headers = self._call(provider, sport_key, markets, regions)
+                gathered = self._gather(
+                    provider, sport_key, markets, regions, fetched_at
+                )
             except Exception as exc:  # noqa: BLE001 - queremos classificar tudo
                 kind, _retryable = classify_exception(exc)
                 self._health.record_failure(
@@ -207,15 +245,26 @@ class OddsService:
             # valor fixo. Sem chamada, o campo permanece None no tracker.
             latency_ms = (self._perf() - call_started) * 1000.0
 
-            credits_remaining = self._apply_credits(name, headers, cost)
+            if gathered.credits is not None:
+                credits_remaining = self._apply_credit_update(
+                    name, gathered.credits, cost
+                )
+            else:
+                credits_remaining = self._apply_credits(
+                    name, gathered.headers, cost
+                )
+            events = gathered.events
             if not events:
                 self._health.record_no_coverage(name)
                 attempts.append(ProviderAttempt(name, "NO_COVERAGE"))
                 continue
 
-            quotes = dedupe_quotes(
-                normalize_events(events, name, fetched_at, sport_key=sport_key)
-            )
+            if gathered.quotes is not None:
+                quotes = gathered.quotes
+            else:
+                quotes = dedupe_quotes(
+                    normalize_events(events, name, fetched_at, sport_key=sport_key)
+                )
             if not quotes:
                 self._health.record_no_coverage(name)
                 attempts.append(
@@ -255,6 +304,39 @@ class OddsService:
 
     # ---------------------------------------------------------------- interno
 
+    def _gather(
+        self,
+        provider: object,
+        sport_key: str,
+        markets: str,
+        regions: Optional[str],
+        fetched_at: str,
+    ) -> _Gathered:
+        """Chama o provider pelo caminho disponivel (strangler).
+
+        Provider com `fetch_odds` (contrato FASE B) recebe um pedido
+        canonico — divisoes do sport key, mercados em rotulos internos —
+        e devolve quotes JA normalizadas e creditos do contrato. Provider
+        legado (so `live_odds_with_meta`) segue o caminho duck de sempre.
+        """
+        fetch_odds = getattr(provider, "fetch_odds", None)
+        if callable(fetch_odds):
+            request = OddsFetchRequest(
+                divisions=divisions_for(provider, sport_key),
+                markets=_internal_market_labels(markets),
+                regions=regions,
+                fetched_at=fetched_at,
+            )
+            fetched = fetch_odds(request)
+            return _Gathered(
+                events=list(fetched.raw_events),
+                headers=None,
+                quotes=dedupe_quotes(list(fetched.quotes)),
+                credits=fetched.credits,
+            )
+        events, headers = self._call(provider, sport_key, markets, regions)
+        return _Gathered(events=events, headers=headers, quotes=None, credits=None)
+
     def _call(
         self,
         provider: object,
@@ -276,6 +358,16 @@ class OddsService:
             remaining = self._credits.update_from_headers(provider, headers)
             if remaining is not None:
                 return remaining
+        self._credits.record_spend(provider, cost)
+        return self._credits.get(provider).known_remaining
+
+    def _apply_credit_update(
+        self, provider: str, update: CreditUpdate, cost: int
+    ) -> Optional[int]:
+        """Aplica um CreditUpdate do contrato; espelha `_apply_credits`."""
+        remaining = self._credits.apply_update(provider, update)
+        if remaining is not None:
+            return remaining
         self._credits.record_spend(provider, cost)
         return self._credits.get(provider).known_remaining
 

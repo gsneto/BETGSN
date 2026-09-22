@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import socket
 import subprocess
 import time
@@ -460,12 +461,184 @@ def sport_keys_for_divisions(
     return sports, unmapped
 
 
+# --------------------------------------------------------------------------
+# Contrato OddsProvider (FASE B): helpers compartilhados pelos adapters
+# --------------------------------------------------------------------------
+
+#: Mercados pedidos ao provider quando o pedido nao especifica nenhum.
+#: E o default historico de `OddsApiProvider.markets`.
+DEFAULT_ODDS_API_MARKETS = "h2h,totals,btts"
+
+#: Rejeicao de mercado pela The Odds API. Duplicado de
+#: `backtest_sources._UNSUPPORTED_RE` de proposito: a Task 5 decide se a
+#: captura legada delega aqui (nao se pode tocar backtest_sources agora).
+_UNSUPPORTED_MARKETS_RE = re.compile(
+    r"Markets not supported by this endpoint:\s*([a-zA-Z0-9_,\s]+)"
+)
+
+
+def _unsupported_markets(message: str) -> list[str]:
+    """Extrai os mercados rejeitados da mensagem de erro da API."""
+    match = _UNSUPPORTED_MARKETS_RE.search(message)
+    if not match:
+        return []
+    return [m.strip() for m in match.group(1).split(",") if m.strip()]
+
+
+def _api_market_keys(markets: Iterable[str]) -> list[str]:
+    """Rotulos internos -> chaves de mercado da Odds API (reverse MARKET_MAP).
+
+    Rotulo sem mapeamento e ignorado: chutar uma chave parecida seria pior
+    que pedir a menos.
+    """
+    from .odds_normalize import MARKET_MAP
+
+    reverse = {label: key for key, label in MARKET_MAP.items()}
+    keys: list[str] = []
+    for label in markets:
+        key = reverse.get(str(label).strip())
+        if key is not None and key not in keys:
+            keys.append(key)
+    return keys
+
+
+def _default_api_market_keys(provider) -> list[str]:
+    """Mercados default: os do provider, ou o da familia de formato."""
+    default = getattr(provider, "markets", None) or DEFAULT_ODDS_API_MARKETS
+    return [m.strip() for m in default.split(",") if m.strip()]
+
+
+def _fetch_dropping_unsupported(
+    provider,
+    sport_key: str,
+    regions: Optional[str],
+    api_keys: list[str],
+) -> tuple[Optional[list[dict]], dict[str, str], list[str], Optional[ProviderError]]:
+    """Busca odds removendo mercados nao suportados, um a um.
+
+    Espelha `LiveOddsCapture._fetch_with_fallback` (backtest_sources):
+    mesma regra, agora dentro do adapter do contrato. Devolve
+    `(events, headers, errors, erro)` — `erro` None quando a busca deu
+    certo; `events` None quando falhou (o erro e a falha real).
+    """
+    markets = [m.strip() for m in api_keys if m.strip()]
+    errors: list[str] = []
+    last_error: Optional[ProviderError] = None
+    for _ in range(len(markets) + 1):
+        if not markets:
+            errors.append(f"{sport_key}: nenhum mercado valido restou")
+            return None, {}, errors, last_error
+        try:
+            events, headers = provider.live_odds_with_meta(
+                sport_key, regions=regions, markets=",".join(markets)
+            )
+            return events, headers, errors, None
+        except ProviderError as exc:
+            last_error = exc
+            unsupported = _unsupported_markets(str(exc))
+            if not unsupported:
+                return None, {}, errors, exc
+            for bad in unsupported:
+                if bad in markets:
+                    markets.remove(bad)
+                    errors.append(
+                        f"{sport_key}: mercado '{bad}' nao suportado neste "
+                        f"endpoint — removido e tentando de novo"
+                    )
+    return None, {}, errors, last_error
+
+
+def _fetch_odds_api_format(
+    provider,
+    request,
+    name: str,
+    snapshot_label: str,
+):
+    """`fetch_odds` compartilhado pela familia de formato Odds API.
+
+    OddsApiProvider e ParlayApiProvider falam o mesmo formato (sport key
+    + eventos no shape The Odds API + headers de quota), entao existem
+    UM parser e UM fluxo de contrato — o que muda e o label do snapshot.
+
+    Sem fabricacao: divisao sem sport key e ignorada; escopo sem
+    divisao mapeada e `no_coverage` explicito; creditos ausentes ficam
+    None; evento sem kickoff nao gera quote (regra do parser canonico).
+    """
+    from .odds_normalize import normalize_events
+    from .odds_provider import OddsProviderFetch
+
+    sport_keys, _unmapped = sport_keys_for_divisions(request.divisions)
+    if not sport_keys:
+        return OddsProviderFetch(no_coverage=True)
+
+    api_keys = _api_market_keys(request.markets) or _default_api_market_keys(
+        provider
+    )
+    regions = request.regions or getattr(provider, "regions", None)
+
+    quotes: list = []
+    raw_events: list[dict] = []
+    errors: list[str] = []
+    last_credits: dict[str, int] = {}
+    for sport_key in sport_keys:
+        events, headers, sport_errors, error = _fetch_dropping_unsupported(
+            provider, sport_key, regions, api_keys
+        )
+        if error is not None:
+            raise error  # falha alta: quem chama decide o fallback
+        errors.extend(sport_errors)
+        raw_events.extend(events)
+        quotes.extend(
+            normalize_events(events, name, request.fetched_at, sport_key=sport_key)
+        )
+        parsed = parse_credit_headers(headers)
+        if parsed:
+            last_credits = parsed  # fica com a medicao mais recente
+
+    credits = None
+    if last_credits:
+        from .odds_provider import CreditUpdate
+
+        credits = CreditUpdate(
+            last=last_credits.get("last"),
+            used=last_credits.get("used"),
+            remaining=last_credits.get("remaining"),
+        )
+    return OddsProviderFetch(
+        quotes=tuple(quotes),
+        raw_events=tuple(raw_events),
+        snapshot_provider=snapshot_label,
+        credits=credits,
+        errors=tuple(errors),
+    )
+
+
+def _estimated_odds_cost(provider, request) -> int:
+    """Custo estimado: mercados x regioes por sport key; total e a soma.
+
+    Espelha `odds_health.estimated_request_cost` (o modelo de orcamento
+    local) sem inventar credito real — e estimativa ANTES da chamada.
+    """
+    from .odds_health import estimated_request_cost
+
+    sport_keys, _unmapped = sport_keys_for_divisions(request.divisions)
+    api_keys = _api_market_keys(request.markets) or _default_api_market_keys(
+        provider
+    )
+    regions = request.regions or getattr(provider, "regions", "") or ""
+    n_regions = len([r for r in regions.split(",") if r.strip()])
+    return sum(
+        estimated_request_cost(len(api_keys), n_regions) for _ in sport_keys
+    )
+
+
 @dataclass
 class OddsApiProvider:
     api_key: str
     regions: str = "eu,uk"        # eu inclui Pinnacle; uk inclui casas gordas
     markets: str = "h2h,totals,btts"
     odds_format: str = "decimal"
+    name: str = "The Odds API"
 
     @classmethod
     def from_env(cls) -> "OddsApiProvider | None":
@@ -543,6 +716,24 @@ class OddsApiProvider:
     def to_odds_by_book(self, event: dict) -> dict[str, dict[str, dict[str, float]]]:
         """Converte um evento da API no formato interno do BETGSN."""
         return odds_event_to_internal(event)
+
+    # ------------------------------------------------ contrato (FASE B)
+
+    def available(self) -> bool:
+        """True: a instancia so existe com chave (ou construida a mao)."""
+        return True
+
+    def fetch_odds(self, request):
+        """Busca odds pelo contrato provider-agnostic (`odds_provider`)."""
+        return _fetch_odds_api_format(
+            self, request, self.name, "the-odds-api-live"
+        )
+
+    def estimated_cost(self, request) -> int:
+        return _estimated_odds_cost(self, request)
+
+    def divisions_for(self, scope: str) -> tuple[str, ...]:
+        return tuple(SPORT_KEY_TO_DIVISIONS.get(scope, ()))
 
 
 def odds_event_to_internal(event: dict) -> dict[str, dict[str, dict[str, float]]]:
@@ -643,6 +834,27 @@ class ParlayApiProvider:
 
     def to_odds_by_book(self, event: dict) -> dict[str, dict[str, dict[str, float]]]:
         return odds_event_to_internal(event)
+
+    # ------------------------------------------------ contrato (FASE B)
+
+    def available(self) -> bool:
+        """True: a instancia so existe com chave E base configuradas."""
+        return True
+
+    def fetch_odds(self, request):
+        """Busca odds pelo contrato provider-agnostic (`odds_provider`).
+
+        Mesma familia de formato da The Odds API (helper compartilhado);
+        o label de snapshot e proprio porque ainda nao existe snapshot
+        historico de Parlay — label novo, nunca o de outro provider.
+        """
+        return _fetch_odds_api_format(self, request, self.name, "parlayapi-live")
+
+    def estimated_cost(self, request) -> int:
+        return _estimated_odds_cost(self, request)
+
+    def divisions_for(self, scope: str) -> tuple[str, ...]:
+        return tuple(SPORT_KEY_TO_DIVISIONS.get(scope, ()))
 
 
 # --------------------------------------------------------------------------
