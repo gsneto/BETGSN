@@ -292,3 +292,91 @@ def test_registry_separates_validated_from_production_eligible():
     assert PRODUCTION_ELIGIBLE["Ensemble"] is False
     assert MEASURED_ERROR_MARGIN == 0.05
     assert PRODUCTION_MODEL == "BASELINE_V1"
+
+
+# ==========================================================================
+# M7: CLV prospectivo no gate — incompleto nao passa, retrospectivo nao
+#     e evidencia
+# ==========================================================================
+
+from betgsn.models.promotion import MIN_CLV_SAMPLE  # noqa: E402
+
+
+def test_clv_with_insufficient_sample_does_not_pass_silently():
+    """CLV positivo sobre poucas linhas e ruido, nao evidencia.
+
+    Mean de +3% sobre 2 linhas nao prova nada — sem o tamanho de amostra
+    o criterio passaria silenciosamente e um modelo ganharia "evidencia
+    de CLV" com meia duzia de observacoes.
+    """
+    d = evaluate_promotion(
+        "X", _good_segments(),
+        clv={"mean": 0.03, "ci_low": None, "n": 2},
+    )
+    assert "clv_nao_negativo" in d.blocking_failures
+
+
+def test_clv_with_declared_sample_passes_when_adequate():
+    d = evaluate_promotion(
+        "X", _good_segments(),
+        clv={"mean": 0.03, "ci_low": 0.01, "n": MIN_CLV_SAMPLE,
+             "prospective": True},
+    )
+    assert "clv_nao_negativo" not in d.blocking_failures
+
+
+def test_clv_retrospective_is_not_prospective_evidence():
+    """Entrada reconstruida depois do fechamento nao e evidencia.
+
+    CLV retrospectivo e validacao disfarçada: a decisao nao tinha aquela
+    odd disponivel. Declarar prospective=False reprova mesmo com media
+    positiva e amostra grande.
+    """
+    d = evaluate_promotion(
+        "X", _good_segments(),
+        clv={"mean": 0.03, "ci_low": 0.01, "n": 500,
+             "prospective": False},
+    )
+    assert "clv_nao_negativo" in d.blocking_failures
+
+
+def test_clv_without_sample_info_keeps_backward_compatible_evaluation():
+    """Chamadores que nao medem n continuam avaliados como antes.
+
+    O contrato novo e aditivo: sem "n"/"prospective", o criterio segue
+    avaliando mean/ci (e o detail explicita que a amostra nao foi
+    informada).
+    """
+    d = evaluate_promotion(
+        "X", _good_segments(), clv={"mean": 0.02, "ci_low": 0.005},
+    )
+    assert "clv_nao_negativo" not in d.blocking_failures
+    criterion = next(
+        c for c in d.criteria if c.name == "clv_nao_negativo")
+    assert "amostra nao informada" in criterion.detail
+
+
+def test_clv_negative_with_large_sample_still_blocks():
+    d = evaluate_promotion(
+        "X", _good_segments(),
+        clv={"mean": -0.01, "ci_low": -0.02, "n": 500,
+             "prospective": True},
+    )
+    assert "clv_nao_negativo" in d.blocking_failures
+
+
+def test_clv_never_promotes_alone():
+    """CLV positivo e amostrado nao promove sem o resto do gate.
+
+    Segmentos ruins + CLV otimo = NO_BET continua sendo a saida segura:
+    CLV e um criterio ENTRE outros, nunca atalho para VALIDATED.
+    """
+    bad_segments = [
+        _segment(league="E0", season="2025", logloss=1.10, base_logloss=1.00),
+    ]
+    d = evaluate_promotion(
+        "X", bad_segments,
+        clv={"mean": 0.05, "ci_low": 0.02, "n": 500, "prospective": True},
+    )
+    assert d.recommended_status is ModelStatus.EXPERIMENTAL
+    assert d.blocking_failures

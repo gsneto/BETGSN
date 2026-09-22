@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from typing import Sequence
 
 # --------------------------------------------------------------------------
@@ -363,6 +363,15 @@ MIN_EVIDENCE_BETS = 1000
 #: Status de evidencia aceitos para apostar dinheiro real.
 TRUSTED_EVIDENCE = ("validated", "timestamped", "real")
 
+#: Vocabulario CANONICO de status de evidencia do dominio. Existe para
+#: que data/source -> sinal -> decisao -> API falem a MESMA lingua: um
+#: status novo precisa entrar aqui (e no Literal da API) por decisao de
+#: contrato, nunca ser string solta. "synthetic" e o dataset de
+#: demonstracao; "exploratory" e dado real sem timestamp de publicacao.
+EVIDENCE_STATUSES: tuple[str, ...] = (
+    "exploratory", "validated", "timestamped", "real", "synthetic",
+)
+
 
 def conservative_roi(roi: float, se: float, z: float = Z_CONSERVATIVE) -> float:
     """Limite inferior da vantagem (ROI - z*erro-padrao).
@@ -378,7 +387,13 @@ def conservative_roi(roi: float, se: float, z: float = Z_CONSERVATIVE) -> float:
 
 @dataclass(frozen=True)
 class BetDecision:
-    """Decisao explicita de apostar ou nao apostar, com o motivo."""
+    """Decisao explicita de apostar ou nao apostar, com o motivo.
+
+    Contrato (I-13): NO_BET e resultado de primeira classe. Uma decisao
+    NO_BET com fracao de banca positiva e uma INCONSISTENCIA, nao um
+    estado intermediario — o construtor recusa, em vez de normalizar em
+    silencio. Quem precisa da forma normalizada usa `with_zero_stake`.
+    """
 
     action: str                      # "BET" | "NO_BET"
     reason: str
@@ -387,9 +402,33 @@ class BetDecision:
     kelly_full: float | None = None
     checks: tuple[tuple[str, bool, str], ...] = ()
 
+    def __post_init__(self) -> None:
+        if self.action not in ("BET", "NO_BET"):
+            raise ValueError(
+                f"action precisa ser BET ou NO_BET, recebi {self.action!r}"
+            )
+        if self.action == "NO_BET" and self.fraction != 0.0:
+            raise ValueError(
+                "NO_BET nao cria stake: fraction precisa ser 0.0 "
+                f"(recebi {self.fraction})"
+            )
+
     @property
     def should_bet(self) -> bool:
         return self.action == "BET"
+
+    def with_zero_stake(self) -> "BetDecision":
+        """A mesma decisao com a fracao normalizada para zero.
+
+        Para chamadores que recebem a decisao de fora (serializacao,
+        transporte) e precisam garantir o contrato sem recusar o dado.
+        Para NO_BET a fracao JA deveria ser zero; se nao for, isso e
+        bug do produtor — normalizar aqui e a rede de seguranca, nao
+        a regra.
+        """
+        if self.action == "NO_BET" and self.fraction != 0.0:
+            return replace(self, fraction=0.0)
+        return self
 
     def to_dict(self) -> dict:
         return {

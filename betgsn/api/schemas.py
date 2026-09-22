@@ -19,6 +19,14 @@ from .prediction_schemas import Provenance
 
 ConfidenceLevel = Literal["FORTE", "MEDIA", "FRACA", "DESCARTE"]
 
+#: Vocabulario CANONICO de status de evidencia — o mesmo enum do
+#: dominio (`betgsn.staking.EVIDENCE_STATUSES`). A decisao carrega o
+#: status que a fundamentou; "exploratory" nunca vira "validated"
+#: porque existe uma previsao: sao estados de EVIDENCIA, nao de output.
+EvidenceStatus = Literal[
+    "exploratory", "validated", "timestamped", "real", "synthetic",
+]
+
 # --------------------------------------------------------------------------
 # Status de provider (observabilidade)
 # --------------------------------------------------------------------------
@@ -360,6 +368,12 @@ class BetDecision(BaseModel):
     A decisao vem do Quant (`staking.decide_bet`); a API so traduz.
     NO_BET e resultado de primeira classe: nao vira aposta, nao ganha
     stake inventado — `fraction` e 0.0 e o `reason` preserva o motivo.
+
+    `evidence_status` e o vocabulario canonico do dominio
+    (`staking.EVIDENCE_STATUSES`): o status da evidencia que fundamentou
+    a decisao atravessa explicito, em vez de virar texto de detail de
+    um check. Nao existe promocao implicita de "exploratory" para
+    "validated": o valor chega intacto ou a roda falha.
     """
 
     action: Literal["BET", "NO_BET"]
@@ -367,6 +381,7 @@ class BetDecision(BaseModel):
     fraction: float = 0.0
     conservative_roi: float | None = None
     kelly_full: float | None = None
+    evidence_status: EvidenceStatus = "exploratory"
     checks: list[DecisionCheck] = Field(default_factory=list)
 
     @property

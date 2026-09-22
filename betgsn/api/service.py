@@ -10,7 +10,6 @@ requisicoes HTTP leiam o mesmo estado sem recalcular.
 
 from __future__ import annotations
 
-import json
 import platform
 import sys
 import threading
@@ -349,26 +348,24 @@ class BetgsnService:
         A decisao vem de `staking.decide_bet` sobre a vantagem validada
         (`value_strategy`), com o status de evidencia da fonte de odds.
         A API NUNCA fabrica NO_BET nem inventa stake: so traduz o que o
-        Quant decidiu, preservando o motivo e as verificacoes.
+        Quant decidiu, preservando o motivo, as verificacoes e o status
+        de evidencia que fundamentou a decisao.
         """
         from ..staking import EDGE_ODD, EDGE_ROI, EDGE_SE, decide_bet
-        from ..value_strategy import StrategyValidation, _validation_cache_path
+        from ..value_strategy import cached_validation
 
-        # Vantagem medida: usa a validacao em cache quando existe; sem
-        # cache, os parametros validados constantes do modulo staking.
+        # Vantagem medida: usa a validacao em cache QUANDO o fingerprint
+        # bate com a regra atual sobre o corpus atual (I-14); sem cache
+        # valido, os parametros validados constantes do modulo staking.
         # Nao roda a validacao aqui: percorrer 195 mil partidas num
-        # request HTTP nao e lugar para isso.
+        # request HTTP nao e lugar para isso. Um cache de outro corpus
+        # ou de outros parametros NAO e evidencia desta regra: volta
+        # para as constantes, nunca para numeros de outra medicao.
         roi, se, odd, n_bets = EDGE_ROI, EDGE_SE, EDGE_ODD, None
-        try:
-            cache_path = _validation_cache_path()
-            if cache_path.exists():
-                payload = json.loads(
-                    cache_path.read_text(encoding="utf-8"))
-                val = StrategyValidation.from_json(payload)
-                roi, se, odd, n_bets = (
-                    val.roi, val.se, val.avg_odd or EDGE_ODD, val.n_bets)
-        except (OSError, ValueError, TypeError):
-            pass  # cache ausente/ilegivel: usa os parametros constantes
+        val = cached_validation()
+        if val is not None:
+            roi, se, odd, n_bets = (
+                val.roi, val.se, val.avg_odd or EDGE_ODD, val.n_bets)
 
         core = decide_bet(
             roi, se, odd, evidence_status=evidence_status, n_bets=n_bets)
@@ -378,6 +375,7 @@ class BetgsnService:
             fraction=core.fraction,
             conservative_roi=core.conservative_roi,
             kelly_full=core.kelly_full,
+            evidence_status=evidence_status,
             checks=[S.DecisionCheck(name=name, passed=passed, detail=detail)
                     for name, passed, detail in core.checks],
         )
@@ -1089,12 +1087,19 @@ class BetgsnService:
                     feat = movement_features(points, market, oc, now, kickoff_utc)
                     delta = feat.get("price_delta")
                     observed = feat.get("n_observations")
+                    # `current_odd` sem historico observado: o preco ATUAL
+                    # do fixture (dado real de hoje, sem timestamp), com o
+                    # status declarando NO_DATA — a ausencia de historico
+                    # e EXPLICITA, nunca mascarada como movimento. Os
+                    # campos de MOVIMENTO (opening/delta/consenso) seguem
+                    # None: nada e calculado sobre o que nao foi observado.
+                    current = feat.get("current_odds") or best.get(oc)
                     movements.append(S.OddsMovement(
                         match=fx.match,
                         market=market,
                         outcome=oc,
                         opening_odd=feat.get("opening_odds"),
-                        current_odd=feat.get("current_odds") or best.get(oc),
+                        current_odd=current,
                         price_delta=delta,
                         price_delta_pct=feat.get("price_delta_pct"),
                         book_consensus_move=feat.get("book_consensus_move"),

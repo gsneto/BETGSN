@@ -74,6 +74,14 @@ MAX_ACCEPTABLE_DRAWDOWN = 0.50
 #: Segmentos minimos para estimar a dispersao entre segmentos.
 MIN_SEGMENTS_FOR_NOISE = 3
 
+#: Amostra minima de linhas apostadas para CLV DECLARADO contar como
+#: evidencia (M7). Abaixo disso a media de CLV e ruido puro: com ~30
+#: linhas o erro-padrao tipico (~1-2pp) ainda e da ordem do proprio CLV,
+#: e a media nao se distingue de zero. CLV declarado com amostra menor
+#: reprova o criterio — evidencia insuficiente declarada e declaracao
+#: que falhou, nao ausencia que passa.
+MIN_CLV_SAMPLE = 30
+
 
 @dataclass(frozen=True)
 class SegmentResult:
@@ -220,8 +228,19 @@ def evaluate_promotion(
 
     - `improvement_ci`: IC 95% da melhora media (ex.: bootstrap pareado).
       Se informado, substitui o teste t entre segmentos.
-    - `clv`: {"mean": float, "ci_low": float, "ci_high": float}. CLV
-      prospectivo: a unica evidencia que preco real bateu o preco de fecho.
+    - `clv`: {"mean": float, "ci_low": float, "ci_high": float,
+      "n": int (opcional), "prospective": bool (opcional)}. CLV
+      prospectivo: a unica evidencia de que o preco batido no momento da
+      decisao venceu o fechamento. Contrato (M7):
+        * `n`, quando informado, e o numero de linhas COM CLV valido
+          (ex.: `CLVCoverage.bets_with_clv`). Abaixo de MIN_CLV_SAMPLE
+          o criterio REPROVA: amostra insuficiente nao passa
+          silenciosamente.
+        * `prospective`, quando informado e False, REPROVA: CLV
+          retrospectivo (entrada reconstruida depois do fechamento) nao
+          e evidencia prospectiva — e validacao disfarçada.
+        * sem `n`/`prospective` o criterio avalia mean/ci como antes
+          (compatibilidade com chamadores que nao os medem).
     - `max_drawdown`: pior queda da banca no periodo (fracao, ex.: 0.35).
     - `n_windows`: numero de janelas walk-forward OOS testadas.
     - `tuned_on_test`: declarar True quando hiperparametro foi ajustado no
@@ -414,12 +433,33 @@ def evaluate_promotion(
         clv_mean = float(clv.get("mean", 0.0))
         clv_low = clv.get("ci_low")
         clv_passed = clv_mean > 0 and (clv_low is None or clv_low > 0)
+        detail = (
+            f"CLV medio {clv_mean:+.4%}"
+            + (f", IC low {clv_low:+.4%}" if clv_low is not None else "")
+        )
+        # M7: CLV declarado precisa ser prospectivo e amostrado. Sem
+        # isso, uma media positiva sobre meia duzia de linhas entraria
+        # como "evidencia" — e CLV reconstruido depois do fechamento
+        # seria validacao retrospectiva disfarçada de prospectiva.
+        prospective = clv.get("prospective")
+        if prospective is False:
+            clv_passed = False
+            detail += "; RETROSPECTIVO: entrada apos o fechamento, nao " \
+                      "e evidencia prospectiva"
+        n_clv = clv.get("n")
+        if clv_passed and n_clv is not None:
+            if int(n_clv) < MIN_CLV_SAMPLE:
+                clv_passed = False
+                detail += (
+                    f"; amostra insuficiente: {int(n_clv)} linha(s) com CLV "
+                    f"valido (minimo {MIN_CLV_SAMPLE})"
+                )
+            else:
+                detail += f"; n={int(n_clv)} linhas com CLV valido"
+        elif n_clv is None:
+            detail += "; amostra nao informada"
         criteria.append(PromotionCriterion(
-            name="clv_nao_negativo", passed=clv_passed,
-            detail=(
-                f"CLV medio {clv_mean:+.4%}"
-                + (f", IC low {clv_low:+.4%}" if clv_low is not None else "")
-            ),
+            name="clv_nao_negativo", passed=clv_passed, detail=detail,
         ))
 
     if max_drawdown is None:

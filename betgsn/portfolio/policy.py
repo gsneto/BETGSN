@@ -18,14 +18,31 @@ Verificacoes (todas explicitas, todas bloqueantes):
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Sequence
 
+from ..staking import BetDecision
 from .risk import ExposureLimits, check_exposure
 from .simulation import PortfolioBet, apply_haircut, simulate_portfolio
 
-#: Status de evidencia aceitos para dinheiro real.
+#: Status de evidencia aceitos para dinheiro real. Vem do modulo do
+#: Quant (staking): um unico vocabulario, nao duas listas que divergem.
 TRUSTED_EVIDENCE = ("validated", "timestamped", "real")
+
+
+def enforce_decision(
+    bets: Sequence[PortfolioBet], decision: BetDecision | None
+) -> list[PortfolioBet]:
+    """Stakes EFETIVAS sob a decisao do Quant (I-13).
+
+    NO_BET zera TODAS as stakes: a decisao e upstream do portfolio, e o
+    portfolio nao pode consumir stake positiva associada a NO_BET. BET
+    mantem as stakes como estao — o portfolio continua com suas próprias
+    verificacoes (EV, ruina, exposicao).
+    """
+    if decision is not None and decision.action == "NO_BET":
+        return [replace(b, stake=0.0) for b in bets]
+    return list(bets)
 
 
 @dataclass(frozen=True)
@@ -64,6 +81,7 @@ def decide_portfolio(
     *,
     bankroll: float = 1000.0,
     evidence_status: str = "exploratory",
+    decision: BetDecision | None = None,
     min_conservative_ev: float = 0.0,
     max_ruin: float = 0.05,
     max_drawdown: float = 0.50,
@@ -72,8 +90,31 @@ def decide_portfolio(
     seed: int = 6767,
     limits: ExposureLimits | None = None,
 ) -> PortfolioDecision:
-    """Decide se o portfolio deve ser apostado. NO_BET e sempre uma opcao."""
+    """Decide se o portfolio deve ser apostado. NO_BET e sempre uma opcao.
+
+    `decision` (opcional) e a decisao do Quant sobre a evidencia
+    (`staking.BetDecision`). Ela e UPSTREAM: um NO_BET do Quant
+    interrompe o portfolio imediatamente, sem simulacao e sem exposicao
+    — nenhuma verificacao local pode transformar NO_BET em BET. Um BET
+    do Quant nao aprova sozinho: o portfolio ainda passa por todas as
+    verificacoes proprias.
+    """
     checks: list[tuple[str, bool, str]] = []
+
+    if decision is not None:
+        quant_ok = decision.action == "BET"
+        checks.append((
+            "decisao_do_quant", quant_ok,
+            (
+                f"Quant decidiu {decision.action}"
+                + ("" if quant_ok else f": {decision.reason}")
+            ),
+        ))
+        if not quant_ok:
+            return _decision(
+                "NO_BET", checks, 0.0, 0.0, 0.0, 0.0,
+                reason="falhou: decisao_do_quant",
+            )
 
     trusted = evidence_status in TRUSTED_EVIDENCE
     checks.append((

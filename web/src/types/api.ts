@@ -272,6 +272,12 @@ export interface BetDecision {
   fraction: number;
   conservative_roi: number | null;
   kelly_full: number | null;
+  /**
+   * Status da evidência que fundamentou a decisão — vocabulário canônico
+   * do domínio (staking). "exploratory" nunca vira "validated" porque
+   * existe uma previsão: são estados de evidência, não de output.
+   */
+  evidence_status: "exploratory" | "validated" | "timestamped" | "real" | "synthetic";
   checks: DecisionCheck[];
 }
 

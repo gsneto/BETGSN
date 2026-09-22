@@ -190,6 +190,7 @@ describe("SignalsSourceBanner — decisão do Quant (BET | NO_BET)", () => {
       fraction: 0.0191,
       conservative_roi: 0.0071,
       kelly_full: 0.0762,
+      evidence_status: "timestamped",
       checks: betDecisionNoBet.checks.map((c) => ({ ...c, passed: true })),
     };
     setup("real", bet);
@@ -204,6 +205,16 @@ describe("SignalsSourceBanner — decisão do Quant (BET | NO_BET)", () => {
     expect(
       screen.queryByText(/Nenhuma aposta é criada/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("exibe o status de evidência que fundamentou a decisão", () => {
+    // I-12: evidence_status atravessa data/source -> decisão -> API ->
+    // frontend INTACTO. "exploratory" não vira "validated" porque existe
+    // uma previsão — são estados de evidência, não de output.
+    setup("real", betDecisionNoBet);
+    expect(screen.getByTestId("quant-decision-evidence")).toHaveTextContent(
+      "exploratory",
+    );
   });
 
   it("sem decisão (backend antigo), não renderiza o painel", () => {

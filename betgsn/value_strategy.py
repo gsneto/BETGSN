@@ -42,6 +42,7 @@ vantagem real e modesta.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import random
@@ -77,8 +78,51 @@ def _validation_cache_path() -> Path:
 
     return output_root() / "value_validation.json"
 
+#: Versao do ESQUEMA do cache (nao do modelo): muda quando os campos
+#: persistidos ou a semantica do fingerprint mudam. Caches sem essa
+#: versao sao invalidados — nunca lidos como se fossem atuais.
+CACHE_SCHEMA_VERSION = 2
+
 BOOTSTRAP_RESAMPLES = 4000
 BOOTSTRAP_SEED = 424242
+
+
+def validation_cache_fingerprint(
+    *,
+    max_odd: float,
+    min_books: int,
+    markets: Sequence[str] = MARKETS,
+    closing: bool = False,
+    corpus_signature: str = "",
+) -> str:
+    """Fingerprint deterministico do que a validacao mede (I-14).
+
+    O cache so pode ser reaproveitado quando TUDO o que define a
+    medicao e o mesmo:
+
+    - `max_odd`/`min_books`: parametros da regra;
+    - `markets`: mercados validados;
+    - `closing`: odds de abertura (False) ou fechamento (True);
+    - `corpus_signature`: assinatura do corpus (arquivos/mtime via
+      `FootballDataClient.corpus_signature`) — muda quando um CSV novo
+      chega ou um existente e atualizado.
+
+    Sem o corpus na chave, uma validacao feita sobre 2000-2025 seria
+    servida como se valesse para um corpus que ganhou a temporada 2026:
+    cache misturando corpora. Sem os mercados/fechamento, mudancas de
+    configuracao silenciosas reutilizariam numeros de outra medicao.
+    """
+    payload = {
+        "schema": CACHE_SCHEMA_VERSION,
+        "max_odd": float(max_odd),
+        "min_books": int(min_books),
+        "markets": list(markets),
+        "closing": bool(closing),
+        "corpus": corpus_signature,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()[:16]
 
 
 @dataclass
@@ -104,6 +148,9 @@ class StrategyValidation:
     by_band: dict[str, float] = field(default_factory=dict)
     band_counts: dict[str, int] = field(default_factory=dict)
     generated_at: str = ""
+    #: Fingerprint do cache (I-14): identifica corpus + parametros da
+    #: medicao. Vazio em resultados antigos — cache assim e invalido.
+    cache_fingerprint: str = ""
 
     @property
     def significant(self) -> bool:
@@ -152,17 +199,20 @@ def collect_bets(
     max_odd: float = MAX_ODD,
     min_books: int = MIN_BOOKS,
     markets: Sequence[str] = MARKETS,
+    closing: bool = False,
     progress: Any = None,
 ) -> list[dict]:
     """Percorre o cache do football-data.co.uk e devolve as apostas da regra.
 
     Cada aposta e um dicionario com data, liga, odd e retorno (stake 1).
+    `closing=False` usa odds de ABERTURA (o preco que existia quando a
+    rodada foi publicada); `closing=True` usa as de fechamento.
     """
     from .backtest_engine import csv_odds_store
     from .football_data_uk import FootballDataClient
 
     matches = FootballDataClient().load_matches()
-    store = csv_odds_store(closing=False)   # odds de abertura
+    store = csv_odds_store(closing=closing)
 
     bets: list[dict] = []
     for i, m in enumerate(matches, 1):
@@ -202,19 +252,34 @@ def validate(
     max_odd: float = MAX_ODD,
     min_books: int = MIN_BOOKS,
     use_cache: bool = True,
+    closing: bool = False,
     progress: Any = None,
 ) -> StrategyValidation:
-    """Valida a regra sobre o cache historico inteiro."""
+    """Valida a regra sobre o cache historico inteiro.
+
+    O cache (I-14) so e reaproveitado quando o fingerprint da medicao —
+    parametros da regra + mercados + tipo de odd + assinatura do corpus
+    — bate com o da validacao pedida. Qualquer mudanca relevante e cache
+    miss: a validacao roda de novo em vez de servir numeros de outro
+    corpus/configuracao.
+    """
+    from .football_data_uk import FootballDataClient
+
+    corpus = FootballDataClient().corpus_signature()
+    fingerprint = validation_cache_fingerprint(
+        max_odd=max_odd, min_books=min_books, markets=MARKETS,
+        closing=closing, corpus_signature=corpus,
+    )
     cache_path = _validation_cache_path()
     if use_cache and cache_path.exists():
         try:
             payload = json.loads(cache_path.read_text(encoding="utf-8"))
-            if payload.get("max_odd") == max_odd and payload.get("min_books") == min_books:
+            if payload.get("cache_fingerprint") == fingerprint:
                 return StrategyValidation.from_json(payload)
         except (json.JSONDecodeError, TypeError):
             pass
 
-    bets = collect_bets(99.0, min_books, progress=progress)
+    bets = collect_bets(99.0, min_books, closing=closing, progress=progress)
     rets = [b["ret"] for b in bets if b["odd"] < max_odd]
     roi, se, t = _stats(rets)
     lo, hi = _bootstrap_ci(rets)
@@ -263,6 +328,7 @@ def validate(
         by_band={k: round(v, 6) for k, v in band_roi.items()},
         band_counts=band_counts,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        cache_fingerprint=fingerprint,
     )
     try:
         cache_path = _validation_cache_path()
@@ -274,6 +340,39 @@ def validate(
     except OSError:
         pass
     return result
+
+
+def cached_validation(
+    max_odd: float = MAX_ODD,
+    min_books: int = MIN_BOOKS,
+    closing: bool = False,
+) -> StrategyValidation | None:
+    """Cache de validacao LEGIVEL para a regra pedida, ou None.
+
+    Diferente de `validate`, nunca roda a validacao (percorrer 195 mil
+    partidas nao e lugar para um request HTTP). Tambem diferente de ler
+    o JSON cru: o cache so e devolvido quando o fingerprint bate com a
+    regra ATUAL sobre o corpus ATUAL — um cache de outro corpus ou de
+    outros parametros nao e evidencia desta regra e volta como None.
+    """
+    from .football_data_uk import FootballDataClient
+
+    try:
+        cache_path = _validation_cache_path()
+        if not cache_path.exists():
+            return None
+        payload = json.loads(cache_path.read_text(encoding="utf-8"))
+        val = StrategyValidation.from_json(payload)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+    expected = validation_cache_fingerprint(
+        max_odd=max_odd, min_books=min_books, markets=MARKETS,
+        closing=closing,
+        corpus_signature=FootballDataClient().corpus_signature(),
+    )
+    if val.cache_fingerprint != expected:
+        return None
+    return val
 
 
 # --------------------------------------------------------------------------

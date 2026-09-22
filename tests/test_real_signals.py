@@ -233,3 +233,65 @@ def test_report_kickoff_is_canonical_utc_instant(monkeypatch):
     assert report.signals
     for signal in report.signals:
         assert signal.kickoff == "2026-01-17T14:00:00Z", signal.kickoff
+
+
+# --------------------------------------------------------------------------
+# I-08: calibrate_ev e diagnostico — o EV exibido permanece o BRUTO
+# --------------------------------------------------------------------------
+
+
+def test_signal_ev_is_raw_not_calibrated(monkeypatch):
+    """O EV dos sinais NAO passa por calibrate_ev por baixo.
+
+    Aplicar a correcao de populacao silenciosamente trocaria um numero
+    inflado por um numero que finge ser calibrado — a dispersao do gap
+    por sinal nunca foi medida. O aviso viaja SEPARADO
+    (ModelCalibrationInfo -> API -> UI). Ver docstring de calibrate_ev.
+    """
+    from betgsn.real_signals import RealSnapshot
+
+    fx = _fixture("Arsenal", "Chelsea")
+    for book in fx.odds["Resultado Final (1X2)"].values():
+        book["1"] = 10.0  # edge enorme: o sinal aparece com EV alto
+    snap = RealSnapshot(
+        fixtures=[fx],
+        ratings={"Arsenal": _rating("Arsenal"), "Chelsea": _rating("Chelsea")},
+        league_goals=2.7, teams=["Arsenal", "Chelsea"], n_history=100,
+        history_window=("2025-01-01", "2026-01-01"),
+        generated_at="2026-09-19T00:00:00Z",
+        computed_in_ms=0.0, sources=["controlled-test"],
+    )
+    svc = RealSignalsService()
+    monkeypatch.setattr(svc, "snapshot", lambda: snap)
+    report, _ = svc.report(market_keys=("1x2",))
+    assert report.signals
+    for signal in report.signals:
+        # o EV transportado e o calculo bruto do motor: mp*odd - 1
+        assert signal.ev == pytest.approx(
+            signal.model_prob * signal.best_odd - 1.0)
+        # e a correcao diagnostica mudaria materialmente o numero
+        # (o gap medido e grande) — por isso ela nao pode ser aplicada
+        # sem ter sido validada por segmento
+        assert calibrate_ev(signal.ev) < signal.ev - 0.10
+
+
+def test_decision_path_does_not_consume_calibrate_ev():
+    """O caminho de decisao usa a vantagem VALIDADA, nao o EV do modelo.
+
+    O hardening de calibracao (quando existir) tera que entrar pelo
+    value_strategy/staking com evidencia propria — nunca pelo EV
+    inflado do modelo. Este teste protege o contrato: enquanto
+    calibrate_ev for diagnostico, decide_bet nao o consome.
+    """
+    import inspect
+
+    from betgsn import staking
+    from betgsn.api import service as api_service
+
+    src_staking = inspect.getsource(staking)
+    assert "calibrate_ev" not in src_staking
+    assert "MODEL_CALIBRATION" not in src_staking
+
+    src_api = inspect.getsource(api_service)
+    assert "decide_bet" in src_api
+    assert "calibrate_ev" not in src_api

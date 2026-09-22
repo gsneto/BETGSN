@@ -98,6 +98,7 @@ export const betDecisionNoBet = {
   fraction: 0,
   conservative_roi: 0.0071,
   kelly_full: 0.0762,
+  evidence_status: "exploratory" as const,
   checks: [
     {
       name: "evidencia_confiavel",

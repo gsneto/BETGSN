@@ -85,6 +85,31 @@ def calibrate_ev(raw_ev: float, gap_pp: float = MODEL_CALIBRATION["gap_pp"]) -> 
     modelo bom — apenas evita que o numero exibido minta na mesma direcao
     sempre. Um EV de +80% vira ~+56%, que ainda e otimista, mas nao
     absurdo.
+
+    CONTRATO — diagnostico, NAO entrada de decisao (I-08):
+
+    Esta funcao NAO entra no caminho de decisao de producao, e isso e
+    deliberado:
+
+    1. Quem decide e `staking.decide_bet`, sobre a vantagem VALIDADA da
+       regra de mercado (`value_strategy`) — ROI medido em odds reais,
+       nao o EV do modelo. O EV inflado do modelo nao contamina a
+       decisao porque a decisao nao o consome.
+    2. O gap e uma MEDIA de populacao (top-5 europeu, 2018-2025) medida
+       contra odds de fechamento SEM timestamp de publicacao. Aplica-lo
+       por sinal como se fosse calibracao por sinal trocaria um vies
+       conhecido por outro desconhecido: a dispersao do gap por
+       mercado/liga/faixa de odd nunca foi medida.
+    3. Integrar calibracao de verdade exige: fonte com timestamp
+       (OddsSnapshotStore), recalibracao por segmento fora do cutoff
+       (PIT), validacao OOS e verificacao via CLV prospectivo. Nada
+       disso existe ainda para o EV por sinal.
+
+    Enquanto esses requisitos nao existirem, o EV exibido nos sinais e
+    o BRUTO e o aviso de inflacao viaja separado
+    (`ModelCalibrationInfo` -> API -> UI). Ocultar o bruto e aplicar
+    esta correcao por baixo seria trocar um numero mentiroso por um
+    numero que finge ser calibrado.
     """
     return raw_ev - gap_pp
 

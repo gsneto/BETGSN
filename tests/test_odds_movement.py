@@ -590,3 +590,51 @@ def test_odds_features_never_sees_future_quotes():
     ]
     features = odds_features(quotes, "2025-05-05T11:00:00Z", KICKOFF)
     assert features["1x2_1"]["best"] == 2.0
+
+
+# --------------------------------------------------- contrato de suficiencia
+
+
+def test_single_observation_yields_no_movement_not_zero():
+    """I-11: uma observacao so nao mede movimento.
+
+    price_delta 0.0 leria-se como "preco estavel" — uma afirmacao forte
+    sem evidencia. Os campos de MOVIMENTO ficam None; o dado observado
+    (abertura/atual, janelas, contagens) continua presente.
+    """
+    points = [point(2.00, "2025-05-05T10:00:00Z")]
+    features = movement_features(
+        points, MARKET, "1", "2025-05-05T13:00:00Z", KICKOFF
+    )
+    assert features["n_observations"] == 1.0
+    assert features["opening_odds"] == 2.00
+    assert features["current_odds"] == 2.00
+    for name in ("price_delta", "price_delta_pct", "implied_probability_delta",
+                 "book_consensus_move", "best_price_move", "market_direction",
+                 "movement_velocity"):
+        assert features[name] is None, name
+
+
+def test_line_is_median_across_books_like_the_store():
+    """I-11: a linha canônica e a MEDIANA entre casas.
+
+    A mesma definicao de `OddsSnapshotStore.movement` (primeira/ultima
+    observacao de cada casa, mediana entre elas) — nunca a primeira e a
+    ultima cotacao crua, que deixar uma casa atrasada ditar o preco.
+    """
+    points = [
+        # casa A: 2.00 -> 2.10 (atrasada)
+        point(2.00, "2025-05-05T10:00:00Z", bookmaker="bet365"),
+        point(2.10, "2025-05-05T12:00:00Z", bookmaker="bet365"),
+        # casa B: 2.20 -> 2.40
+        point(2.20, "2025-05-05T10:00:00Z", bookmaker="pinnacle"),
+        point(2.40, "2025-05-05T12:00:00Z", bookmaker="pinnacle"),
+    ]
+    features = movement_features(
+        points, MARKET, "1", "2025-05-05T13:00:00Z", KICKOFF
+    )
+    # mediana das aberturas: median(2.00, 2.20) = 2.10
+    assert features["opening_odds"] == 2.10
+    # mediana das atuais: median(2.10, 2.40) = 2.25
+    assert features["current_odds"] == 2.25
+    assert features["price_delta"] == pytest.approx(0.15)

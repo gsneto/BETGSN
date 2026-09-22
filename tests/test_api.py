@@ -831,3 +831,188 @@ def test_decision_schema_rejects_unknown_action():
 
     with pytest.raises(pydantic.ValidationError):
         S.BetDecision(action="TALVEZ", reason="x")
+
+# --------------------------------------------------------------------------
+# I-12: evidence_status atravessa data/source -> decisao -> API intacto
+# --------------------------------------------------------------------------
+
+
+def test_decision_carries_evidence_status_synthetic(client):
+    """O status da evidencia viaja como campo, nao como texto de check."""
+    r = client.get("/api/signals", params={"source": "synthetic"})
+    assert r.status_code == 200
+    decision = r.json()["decision"]
+    assert decision is not None
+    assert decision["evidence_status"] == "synthetic"
+    # e o mesmo status que fundamentou o NO_BET
+    assert decision["action"] == "NO_BET"
+
+
+def test_decision_carries_evidence_status_real_exploratory(client):
+    """Odds reais sem timestamp de publicacao: exploratory chega exploratory.
+
+    A existencia de uma previsao NAO promove "exploratory" a
+    "validated": sao estados de evidencia, nao de output.
+    """
+    r = client.get("/api/signals", params={"source": "real"})
+    if r.status_code != 200:
+        pytest.skip("sem jogos futuros em cache neste ambiente")
+    decision = r.json()["decision"]
+    assert decision is not None
+    assert decision["evidence_status"] == "exploratory"
+    assert decision["action"] == "NO_BET"
+
+
+def test_decision_evidence_status_is_the_one_given(svc_snapshot):
+    """O tradutor nao inventa status: o que entra e o que sai."""
+    svc, _ = svc_snapshot
+    for status in ("exploratory", "validated", "timestamped", "real",
+                   "synthetic"):
+        assert svc._quant_decision(status).evidence_status == status
+
+
+def test_decision_schema_rejects_unknown_evidence_status():
+    """Literal fechado: status fora do vocabulario canonico e erro."""
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        S.BetDecision(action="BET", reason="x",
+                      evidence_status="quase_validated")
+
+
+def test_frontend_types_mirror_evidence_status_union():
+    """O enum de evidence_status e o mesmo no schema e no types/api.ts."""
+    from pathlib import Path
+
+    ts_path = (
+        Path(__file__).resolve().parents[1]
+        / "web" / "src" / "types" / "api.ts"
+    )
+    ts = ts_path.read_text(encoding="utf-8")
+    assert "evidence_status:" in ts
+    for status in ("exploratory", "validated", "timestamped", "real",
+                   "synthetic"):
+        assert f'"{status}"' in ts
+
+
+# --------------------------------------------------------------------------
+# I-15: provenance transporta origem real ate a API
+# --------------------------------------------------------------------------
+
+
+def test_provenance_carries_real_source_and_data_version(monkeypatch):
+    """source/prediction_timestamp/data_version sao os do dominio.
+
+    `data_version` para fonte real e a assinatura do corpus — a MESMA
+    que invalida caches. `odds_timestamp` fica None: odds do
+    football-data.co.uk nao tem timestamp de publicacao, e ausencia
+    explícita é mais honesta que um carimbo fabricado.
+    """
+    from types import SimpleNamespace
+
+    from betgsn.football_data_uk import FootballDataClient
+
+    monkeypatch.setattr(
+        FootballDataClient, "corpus_signature", lambda self: "sig-abc")
+    svc = BetgsnService()
+    snap = SimpleNamespace(source="real",
+                           generated_at="2026-09-22T10:00:00Z")
+    prov = svc.provenance(snap)
+    assert prov.source == "real"
+    assert prov.prediction_timestamp == "2026-09-22T10:00:00Z"
+    assert prov.data_version == "sig-abc"
+    assert prov.xg_status == "UNAVAILABLE"
+    assert prov.odds_timestamp is None
+
+
+def test_provenance_synthetic_marks_demo_dataset(svc_snapshot):
+    svc, snap = svc_snapshot
+    prov = svc.provenance(snap)
+    assert prov.source == "synthetic"
+    assert prov.xg_status == "ESTIMATED"
+    assert prov.data_version
+
+
+def test_signal_carries_kickoff_provider_and_odd(svc_snapshot, core):
+    """Timestamp do jogo e casa da melhor odd chegam ao consumidor."""
+    from betgsn.timeutil import utc_key
+
+    svc, snap = svc_snapshot
+    rep = svc.signal_report(snap)
+    for api_sig, core_sig in zip(rep.signals, core.report.signals):
+        assert api_sig.kickoff == utc_key(core_sig.kickoff)
+        assert api_sig.best_book == core_sig.best_book
+        assert api_sig.best_odd == core_sig.best_odd
+
+
+# --------------------------------------------------------------------------
+# I-13: endpoints de portfolio respeitam a decisao do Quant
+# --------------------------------------------------------------------------
+
+
+def _patch_server_service(monkeypatch):
+    """Troca o service global do servidor por um sintetico isolado."""
+    from betgsn.api import server
+
+    synthetic = BetgsnService(source="synthetic")
+    monkeypatch.setattr(server, "service", synthetic)
+    return synthetic
+
+
+def test_portfolio_exposure_no_bet_creates_no_exposure(monkeypatch):
+    """NO_BET chegando ao portfolio: nenhuma exposicao e criada."""
+    _patch_server_service(monkeypatch)
+    with TestClient(app) as c:
+        r = c.get("/api/portfolio/exposure")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["decision_action"] == "NO_BET"
+    assert body["total_exposure"] == 0.0
+    assert body["total_exposure_pct"] == 0.0
+    assert body["within_limits"] is True
+    assert all(v == 0.0 for v in body["by_match"].values())
+
+
+def test_portfolio_parlays_empty_under_no_bet(monkeypatch):
+    """Uma multipla e uma aposta: NO_BET nao construi nenhuma."""
+    _patch_server_service(monkeypatch)
+    with TestClient(app) as c:
+        r = c.get("/api/portfolio/best-parlays")
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+def test_portfolio_exposure_uses_stakes_only_when_quant_approves(monkeypatch):
+    """Com BET do Quant, a exposicao volta a ser a soma das stakes."""
+    _patch_server_service(monkeypatch)
+    approved = S.BetDecision(action="BET", reason="evidencia confiavel",
+                             fraction=0.01, evidence_status="timestamped")
+    monkeypatch.setattr(
+        BetgsnService, "_quant_decision", lambda self, ev: approved)
+    with TestClient(app) as c:
+        r = c.get("/api/portfolio/exposure")
+        signals = c.get("/api/signals", params={"source": "synthetic"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["decision_action"] == "BET"
+    expected = sum(s["stake"] for s in signals.json()["signals"])
+    assert body["total_exposure"] == pytest.approx(expected)
+
+
+def test_portfolio_parlays_available_when_quant_approves(monkeypatch):
+    """O caminho BET nao foi destruido pelo hardening."""
+    from betgsn.portfolio.parlay import best_parlays
+
+    _patch_server_service(monkeypatch)
+    approved = S.BetDecision(action="BET", reason="evidencia confiavel",
+                             fraction=0.01, evidence_status="timestamped")
+    monkeypatch.setattr(
+        BetgsnService, "_quant_decision", lambda self, ev: approved)
+    with TestClient(app) as c:
+        r = c.get("/api/portfolio/best-parlays")
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body, list)
+    # mesmo com BET, as multiplas vem do mesmo gerador do dominio
+    for parlay in body:
+        assert parlay["n_legs"] >= 2

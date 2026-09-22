@@ -406,6 +406,14 @@ def backtest_compare(
 # portfolio
 # --------------------------------------------------------------------------
 
+#: Teto computacional do endpoint de multiplas: so os N melhores
+#: candidatos por EV entram nas combinacoes. `best_parlays` e
+#: combinatorio exaustivo (C(n, k)); com ~180 sinais seriam ~47 milhoes
+#: de combinacoes. Os sinais ja vem ordenados por EV (desc), entao o
+#: corte remove apenas a cauda — multiplas continuam construidas sobre
+#: os melhores candidatos, e a decisao de apostar continua upstream.
+PARLAY_CANDIDATE_CAP = 20
+
 
 @app.get("/api/portfolio/best-parlays", tags=["portfolio"])
 def portfolio_best_parlays(
@@ -413,18 +421,25 @@ def portfolio_best_parlays(
     min_ev: float = Query(0.0, ge=-1.0),
     max_same_match: int = Query(2, ge=1, le=4),
 ) -> list[dict]:
-    """Melhores múltiplas a partir dos sinais atuais."""
+    """Melhores múltiplas a partir dos sinais atuais.
+
+    I-13: uma múltipla é uma aposta. Se o Quant decidiu NO_BET, nenhuma
+    é construída — a lista vem vazia em vez de trazer stakes que a
+    decisão já rejeitou.
+    """
     from ..portfolio.parlay import ParlayLeg, best_parlays
     snap = _snapshot()
     svc = _svc()
     rep = svc.signal_report(snap)
+    if rep.decision is not None and rep.decision.action == "NO_BET":
+        return []
     legs = [
         ParlayLeg(
             match=s.match, market=s.market, outcome=s.outcome,
             model_prob=s.model_prob, odd=s.best_odd, bookmaker=s.best_book,
             ev=s.ev, edge=s.edge,
         )
-        for s in rep.signals
+        for s in rep.signals[:PARLAY_CANDIDATE_CAP]
     ]
     results = best_parlays(
         legs, max_legs=max_legs, min_ev=min_ev,
@@ -453,14 +468,31 @@ def portfolio_best_parlays(
 
 @app.get("/api/portfolio/exposure", tags=["portfolio"])
 def portfolio_exposure() -> dict:
-    """Exposição atual do portfólio."""
+    """Exposição atual do portfólio.
+
+    I-13: a exposição é derivada da DECISÃO, não apenas das stakes dos
+    sinais. Com NO_BET do Quant, toda stake vira zero — nenhuma
+    exposição é criada — e a resposta carrega a ação da decisão para a
+    UI explicar o motivo.
+    """
+    from ..portfolio.policy import enforce_decision
     from ..portfolio.risk import ExposureLimits, check_exposure
+    from ..portfolio.simulation import PortfolioBet
     snap = _snapshot()
     svc = _svc()
     rep = svc.signal_report(snap)
-    stakes = [
-        {"match": s.match, "league": "", "stake": s.stake, "type": "single"}
+    bets = [
+        PortfolioBet(
+            label=s.id, probability=s.model_prob, odd=s.best_odd,
+            stake=s.stake, match=s.match, league=s.league, market=s.market,
+        )
         for s in rep.signals
+    ]
+    effective = enforce_decision(bets, rep.decision)
+    stakes = [
+        {"match": b.match or b.label, "league": b.league or "-",
+         "stake": b.stake, "type": "single"}
+        for b in effective
     ]
     limits = ExposureLimits(
         max_total_exposure=snap.config.max_exposure,
@@ -468,6 +500,7 @@ def portfolio_exposure() -> dict:
     )
     report = check_exposure(stakes, snap.config.bankroll, limits)
     return {
+        "decision_action": rep.decision.action if rep.decision else None,
         "total_exposure": report.total_exposure,
         "total_exposure_pct": round(report.total_exposure_pct, 4),
         "n_bets": report.n_bets,

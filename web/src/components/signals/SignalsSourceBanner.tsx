@@ -120,6 +120,9 @@ export default function SignalsSourceBanner({
             <p className="text-[12px] leading-relaxed text-ink-2" data-testid="quant-decision-reason">
               {decision.reason}
             </p>
+            <p className="text-[11.5px] leading-relaxed text-ink-4" data-testid="quant-decision-evidence">
+              Evidência: <span className="mono">{decision.evidence_status}</span>
+            </p>
             <ul className="flex flex-col gap-1">
               {decision.checks
                 .filter((c) => !c.passed)
@@ -147,6 +150,9 @@ export default function SignalsSourceBanner({
             </p>
             <p className="text-[12px] leading-relaxed text-ink-2" data-testid="quant-decision-reason">
               {decision.reason}
+            </p>
+            <p className="text-[11.5px] leading-relaxed text-ink-4" data-testid="quant-decision-evidence">
+              Evidência: <span className="mono">{decision.evidence_status}</span>
             </p>
           </div>
         )

@@ -68,6 +68,20 @@ def movement_features(
     deve converter com o fuso da liga ANTES de chamar — uma hora local
     passada aqui seria tratada como UTC e deslocaria o cutoff.
 
+    Contrato canônico de "linha" (I-11): a abertura e a atual sao a
+    MEDIANA entre casas — a primeira observacao de cada casa para a
+    abertura, a ultima para a atual — exatamente como
+    `OddsSnapshotStore.movement`. Uma unica definicao de movimento no
+    projeto: max/consenso continuam expostos como features separadas
+    (`best_price_move`, `book_consensus_move`), nao como a linha.
+
+    Contrato de suficiencia (I-11): zero observacoes -> tudo None
+    (NO_DATA); UMA observacao -> INSUFFICIENT_DATA: os campos de
+    MOVIMENTO (delta, direcao, velocidade, consenso) ficam None — uma
+    cotacao so nao prova que o preco parou, e delta 0.0 seria
+    exatamente essa mentira. Abertura/atual, janelas e contagens seguem
+    preenchidos (o dado observado existe; o que falta e o movimento).
+
     Devolve None — nunca zero — quando nao ha dado suficiente. Zero seria
     indistinguivel de "o preco nao se moveu", o que e uma afirmacao forte.
 
@@ -101,17 +115,16 @@ def movement_features(
     kickoff_dt = parse_kickoff(kickoff)
     minutes_to_kickoff = (kickoff_dt - cutoff_dt).total_seconds() / 60.0
 
-    first = history[0]
-    last = history[-1]
-    opening = first.odd
-    current = last.odd
-
     per_book: dict[str, list[PricePoint]] = {}
     for point in history:
         per_book.setdefault(point.bookmaker, []).append(point)
 
     latest_per_book = [pts[-1].odd for pts in per_book.values()]
     first_per_book = [pts[0].odd for pts in per_book.values()]
+
+    # linha canonica: mediana entre casas (mesma definicao do store)
+    opening = statistics.median(first_per_book)
+    current = statistics.median(latest_per_book)
 
     consensus_move = statistics.fmean(latest_per_book) - statistics.fmean(first_per_book)
     dispersion = (
@@ -120,8 +133,29 @@ def movement_features(
     best_move = max(latest_per_book) - max(first_per_book)
 
     minutes_since_open = (
-        parse_kickoff(last.timestamp) - parse_kickoff(first.timestamp)
+        parse_kickoff(history[-1].timestamp) - parse_kickoff(history[0].timestamp)
     ).total_seconds() / 60.0
+
+    if len(history) < 2:
+        # UMA observacao: nao ha movimento a medir. Os campos de
+        # movimento ficam None — nunca 0.0, que se leria como
+        # "preco estavel" (ver contrato de suficiencia acima).
+        return {
+            "opening_odds": round(opening, 4),
+            "current_odds": round(current, 4),
+            "price_delta": None,
+            "price_delta_pct": None,
+            "implied_probability_delta": None,
+            "minutes_since_open": round(minutes_since_open, 2),
+            "minutes_to_kickoff": round(minutes_to_kickoff, 2),
+            "book_consensus_move": None,
+            "book_dispersion": None,
+            "best_price_move": None,
+            "market_direction": None,
+            "movement_velocity": None,
+            "n_observations": float(len(history)),
+            "n_books": float(len(per_book)),
+        }
 
     delta = current - opening
     velocity = delta / minutes_since_open if minutes_since_open > 0 else None
