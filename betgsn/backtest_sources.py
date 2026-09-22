@@ -742,6 +742,33 @@ def corpus_fingerprint(matches: Iterable[HistoricalMatch]) -> str:
 # --------------------------------------------------------------------------
 
 
+@dataclass(frozen=True)
+class CaptureAccounting:
+    """Contabilizacao explicita de chaves físicas duplicadas na captura.
+
+    A chave física e a MESMA UNIQUE do store
+    `(match_key, market, outcome, bookmaker, timestamp)` — comparada no
+    espaco canonico de `utc_key`, como o store canonicaliza no `add`.
+
+    `action`:
+      - "ignored"   — a linha ja existia no store antes deste lote;
+      - "deduped"   — repetida no lote pelo MESMO provider;
+      - "collision" — repetida no lote por provider DIFERENTE.
+    `kept_by` e o provider dono da linha que ficou persistida (primeira
+    ocorrencia; no "ignored", o provider da linha pre-existente quando
+    conhecido, senao vazio).
+    """
+
+    provider: str
+    match_key: str
+    market: str
+    outcome: str
+    bookmaker: str
+    timestamp: str
+    action: str
+    kept_by: str = ""
+
+
 @dataclass
 class CaptureReport:
     """Resultado de uma captura de odds ao vivo."""
@@ -767,9 +794,187 @@ class CaptureReport:
     #: mercados efetivamente usados por esporte (pode diferir do pedido)
     markets_used: dict[str, list[str]] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    #: contabilizacao de chaves físicas duplicadas (TODAS as nao mantidas)
+    accounting: tuple[CaptureAccounting, ...] = ()
+    #: labels dos providers efetivamente usados nesta captura, em ordem
+    providers_used: list[str] = field(default_factory=list)
+    #: contadores por provider (quotes, observacoes gravadas, casamentos)
+    per_provider: dict[str, dict[str, int]] = field(default_factory=dict)
+    #: observacoes recebidas dos providers (brutas, antes da contabilizacao)
+    observations_received: int = 0
+    #: observacoes descartadas por duplicacao (= len(accounting))
+    observations_dropped: int = 0
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def _normalize_providers(
+    provider: Any,
+    providers: Any,
+) -> list:
+    """Aceita UM provider (legado ou de contrato) OU uma sequencia.
+
+    Compat total: os call-sites atuais passam um unico objeto em
+    `provider` (posicional OU keyword); a FASE B pode passar a lista
+    inteira ou usar `providers=`. Um objeto que fala qualquer um dos
+    contratos (`live_odds_with_meta`/`fetch_odds`) NUNCA e tratado como
+    sequencia, mesmo que seja iteravel.
+    """
+    if providers is not None:
+        if provider is not None:
+            raise ValueError(
+                "informe 'provider' (um) OU 'providers' (varios), nunca ambos"
+            )
+        return list(providers)
+    if provider is None:
+        return []
+    if callable(getattr(provider, "live_odds_with_meta", None)) or callable(
+        getattr(provider, "fetch_odds", None)
+    ):
+        return [provider]
+    if not isinstance(provider, (str, bytes)) and isinstance(provider, Sequence):
+        return list(provider)
+    return [provider]
+
+
+def _uses_odds_contract(provider: Any) -> bool:
+    """True quando o provider fala o contrato `fetch_odds` (FASE B).
+
+    Sem `fetch_odds` e um provider legado (`live_odds_with_meta`) — cai
+    no caminho de hoje, preservado de proposito.
+    """
+    return callable(getattr(provider, "fetch_odds", None))
+
+
+def _physical_key(observation: Any) -> tuple[str, str, str, str, str]:
+    """Chave física da linha: a MESMA UNIQUE do store, no espaco canonico.
+
+    O store canonicaliza timestamps com `utc_key` no `add`; a comparacao
+    precisa acontecer nesse mesmo espaco, senao "+00:00" e "Z" pareceriam
+    chaves diferentes.
+    """
+    return (
+        observation.match_key,
+        observation.market,
+        observation.outcome,
+        observation.bookmaker,
+        utc_key(observation.timestamp),
+    )
+
+
+#: Contadores por provider no `CaptureReport.per_provider`.
+_PROVIDER_COUNT_KEYS = (
+    "quotes", "observations_saved",
+    "events_matched", "events_unmatched", "events_ambiguous",
+)
+
+
+def _provider_counts(report: CaptureReport, name: str) -> dict[str, int]:
+    """Contadores do provider `name`, criados zerados na primeira vista."""
+    counts = report.per_provider.setdefault(
+        name, dict.fromkeys(_PROVIDER_COUNT_KEYS, 0)
+    )
+    return counts
+
+
+class _BatchAccounter:
+    """Contabilizacao de chaves físicas duplicadas num lote de captura.
+
+    O lote e a captura INTEIRA (todos os providers, todos os esportes):
+    uma chave repetida por outro provider e "collision" (dono = primeira
+    ocorrencia), pelo mesmo provider e "deduped". O pre-check de
+    existencia le o store UMA vez por match_key ANTES de qualquer
+    gravacao deste lote — o cache garante que linhas gravadas AQUI caiam
+    na contabilizacao in-batch, e nao no "ignored" (que e reservado ao
+    que ja existia antes do lote).
+
+    So as primeiras ocorrencias vão ao `store.add`; toda entrada nao
+    mantida vira `CaptureAccounting` para auditoria. Divergencia entre o
+    que foi enviado e o que o store gravou e ERRO no report — nunca
+    contagem silenciosa.
+    """
+
+    def __init__(self, store: OddsSnapshotStore | None) -> None:
+        self._store = store
+        self._existing: dict[str, dict[tuple[str, str, str, str, str], str]] = {}
+        self._seen: dict[tuple[str, str, str, str, str], str] = {}
+        self.entries: list[CaptureAccounting] = []
+        self.received: int = 0
+
+    def _existing_keys(
+        self, match_key: str
+    ) -> dict[tuple[str, str, str, str, str], str]:
+        """Chaves já persistidas do match_key -> provider dono (cache)."""
+        cached = self._existing.get(match_key)
+        if cached is None:
+            cached = {}
+            if self._store is not None:
+                for row in self._store.all_observations(match_key):
+                    cached[_physical_key(row)] = row.provider or ""
+            self._existing[match_key] = cached
+        return cached
+
+    def commit(
+        self,
+        observations: Sequence,
+        provider: str,
+        report: CaptureReport,
+    ) -> int:
+        """Classifica duplicatas e grava apenas as primeiras ocorrencias.
+
+        Devolve o numero de linhas efetivamente gravadas pelo store.
+        """
+        self.received += len(observations)
+        if not observations:
+            return 0
+
+        submitted: list = []
+        for obs in observations:
+            key = _physical_key(obs)
+            existing = self._existing_keys(obs.match_key)
+            if key in existing:
+                self._record(obs, provider, "ignored", existing[key])
+                continue
+            first = self._seen.get(key)
+            if first is not None:
+                action = "deduped" if first == provider else "collision"
+                self._record(obs, provider, action, first)
+                continue
+            self._seen[key] = provider
+            submitted.append(obs)
+
+        try:
+            saved = self._store.add(submitted)
+        except Exception:  # noqa: BLE001 - persistencia nao derruba a captura
+            saved = 0
+        if saved != len(submitted):
+            report.errors.append(
+                f"contabilizacao: store.add gravou {saved} de "
+                f"{len(submitted)} linhas enviadas — divergencia sem "
+                f"explicacao, nada foi mascarado"
+            )
+        return saved
+
+    def _record(
+        self,
+        obs: Any,
+        provider: str,
+        action: str,
+        kept_by: str,
+    ) -> None:
+        self.entries.append(
+            CaptureAccounting(
+                provider=provider,
+                match_key=obs.match_key,
+                market=obs.market,
+                outcome=obs.outcome,
+                bookmaker=obs.bookmaker,
+                timestamp=obs.timestamp,
+                action=action,
+                kept_by=kept_by or "",
+            )
+        )
 
 
 class LiveOddsCapture:
@@ -794,7 +999,7 @@ class LiveOddsCapture:
 
     def __init__(
         self,
-        provider: OddsApiProvider,
+        provider: "OddsApiProvider | Sequence[OddsApiProvider] | None" = None,
         cache: OddsHistoryCache | None = None,
         regions: str = "eu,uk",
         markets: str = "h2h,totals,btts",
@@ -802,8 +1007,14 @@ class LiveOddsCapture:
         fixtures: Sequence | None = None,
         aliases: Mapping[tuple[str, str], str] | None = None,
         perf: "Callable[[], float]" = time.perf_counter,
+        providers: "Sequence[OddsApiProvider] | None" = None,
     ) -> None:
-        self.provider = provider
+        #: um provider legado OU uma sequencia (contrato da FASE B). O
+        #: nome do parametro `provider` e preservado: todos os call-sites
+        #: atuais (posicional OU keyword) continuam funcionando sem edicao.
+        self.providers = _normalize_providers(provider, providers)
+        #: compat: o primeiro provider segue exposto como `provider`
+        self.provider = self.providers[0] if self.providers else None
         self.cache = cache or OddsHistoryCache()
         self.regions = regions
         self.markets = markets
@@ -837,12 +1048,26 @@ class LiveOddsCapture:
         endpoint ao vivo), o mercado e removido e a captura segue com os
         demais — em vez de perder a captura inteira.
 
-        Health do provider (I-06): cada chamada ao provider registra
+        Dual-path (FASE B): providers de contrato (`fetch_odds`) entram
+        pelo caminho novo, por esporte e por provider, com health/creditos
+        por NOME do provider; providers legados (`live_odds_with_meta`)
+        seguem no caminho de hoje. A ordem dos providers injetados decide
+        quem fica dono das chaves físicas em caso de colisao.
+
+        Health do provider (I-06): cada chamada registra
         sucesso/falha/cobertura num `HealthTracker` local com latencia
-        REALmente medida e quota dos headers. Ao final, o registro e
+        REALmente medida e quota observada. Ao final, o registro e
         persistido no store operacional — o processo da API le o mesmo
         banco e deixa de reportar UNKNOWN eterno. So dados observados:
         sem chamada nao ha latencia, sem header nao ha quota.
+
+        Contabilizacao de colisoes (Task 5): antes de gravar, cada
+        observacao e classificada por chave física — ja existente no
+        store ("ignored"), repetida no lote pelo mesmo provider
+        ("deduped") ou por outro provider ("collision") — e somente as
+        primeiras ocorrencias vão ao `store.add`. Toda entrada não
+        mantida vai para `report.accounting` (auditoria), nunca para o
+        store.
         """
         from .odds_health import (
             CreditController,
@@ -855,67 +1080,22 @@ class LiveOddsCapture:
         report = CaptureReport(captured_at=stamp, sport_keys=list(sport_keys))
         health = HealthTracker(now=lambda: stamp)
         credits = CreditController(now=lambda: stamp)
+        accounter = _BatchAccounter(self.store)
 
         for sport in sport_keys:
-            call_started = self._perf()
-            events, headers, used_markets, failure = self._fetch_with_fallback(
-                sport, report
-            )
-            # latencia REAL da chamada que acabou de acontecer — nunca um
-            # valor fixo. Sem chamada concluida, o campo permanece None.
-            latency_ms = (self._perf() - call_started) * 1000.0
+            for provider in self.providers:
+                if _uses_odds_contract(provider):
+                    self._capture_contract(
+                        provider, sport, stamp, report, health, credits, accounter
+                    )
+                else:
+                    self._capture_legacy(
+                        provider, sport, stamp, report, health, credits, accounter
+                    )
 
-            if failure is not None:
-                kind, _retryable = classify_exception(failure)
-                health.record_failure(
-                    LIVE_ODDS_PROVIDER, kind, str(failure)[:300],
-                    status=getattr(failure, "status", None),
-                )
-                continue
-
-            if headers:
-                credits.update_from_headers(LIVE_ODDS_PROVIDER, headers)
-            if events is None:
-                continue
-
-            report.credits_last = _int_or_none(headers.get("x-requests-last"))
-            report.credits_used = _int_or_none(headers.get("x-requests-used"))
-            report.credits_remaining = _int_or_none(headers.get("x-requests-remaining"))
-            report.markets_used[sport] = used_markets
-
-            with_odds = [e for e in events if e.get("bookmakers")]
-            if not events or not with_odds:
-                # resposta sem cobertura: nao e falha do provider —
-                # apenas nao ha jogos com odds neste esporte agora.
-                health.record_no_coverage(LIVE_ODDS_PROVIDER)
-                report.events += len(events)
-                report.events_with_odds += len(with_odds)
-                continue
-
-            health.record_success(
-                LIVE_ODDS_PROVIDER,
-                observations=len(with_odds),
-                credits_remaining=credits.get(LIVE_ODDS_PROVIDER).known_remaining,
-                latency_ms=latency_ms,
-            )
-            report.events += len(events)
-            report.events_with_odds += len(with_odds)
-
-            self.cache.save(OddsSnapshot(
-                sport_key=sport,
-                requested_date=stamp,
-                timestamp=stamp,
-                events=tuple(with_odds),
-                provider="the-odds-api-live",
-            ))
-            report.snapshots_saved += 1
-            saved, matched, unmatched, ambiguous = self._persist_observations(
-                with_odds, sport, stamp
-            )
-            report.observations_saved += saved
-            report.events_matched += matched
-            report.events_unmatched += unmatched
-            report.events_ambiguous += ambiguous
+        report.accounting = tuple(accounter.entries)
+        report.observations_received = accounter.received
+        report.observations_dropped = len(accounter.entries)
 
         if self.store is not None:
             try:
@@ -928,18 +1108,275 @@ class LiveOddsCapture:
         _append_manifest(self.cache.root.parent / "manifest.json", "capture", report)
         return report
 
+    # ------------------------------------------------------------ caminhos
+
+    def _capture_legacy(
+        self,
+        provider: OddsApiProvider,
+        sport: str,
+        stamp: str,
+        report: CaptureReport,
+        health: "HealthTracker",
+        credits: "CreditController",
+        accounter: "_BatchAccounter",
+    ) -> None:
+        """Caminho legado (`live_odds_with_meta`): o codigo de hoje.
+
+        Providers sem `fetch_odds` (fakes de teste e qualquer adapter
+        pre-FASE B) caem aqui — headers `x-requests-*`, label de snapshot
+        "the-odds-api-live" e health sob `LIVE_ODDS_PROVIDER` sao
+        legado compat, preservados de proposito.
+        """
+        from .odds_health import classify_exception
+
+        if LIVE_ODDS_PROVIDER not in report.providers_used:
+            report.providers_used.append(LIVE_ODDS_PROVIDER)
+
+        call_started = self._perf()
+        events, headers, used_markets, failure = self._fetch_with_fallback(
+            sport, report
+        )
+        # latencia REAL da chamada que acabou de acontecer — nunca um
+        # valor fixo. Sem chamada concluida, o campo permanece None.
+        latency_ms = (self._perf() - call_started) * 1000.0
+
+        if failure is not None:
+            kind, _retryable = classify_exception(failure)
+            health.record_failure(
+                LIVE_ODDS_PROVIDER, kind, str(failure)[:300],
+                status=getattr(failure, "status", None),
+            )
+            return
+
+        if headers:
+            credits.update_from_headers(LIVE_ODDS_PROVIDER, headers)
+        if events is None:
+            return
+
+        report.credits_last = _int_or_none(headers.get("x-requests-last"))
+        report.credits_used = _int_or_none(headers.get("x-requests-used"))
+        report.credits_remaining = _int_or_none(headers.get("x-requests-remaining"))
+        report.markets_used[sport] = used_markets
+
+        with_odds = [e for e in events if e.get("bookmakers")]
+        if not events or not with_odds:
+            # resposta sem cobertura: nao e falha do provider —
+            # apenas nao ha jogos com odds neste esporte agora.
+            health.record_no_coverage(LIVE_ODDS_PROVIDER)
+            report.events += len(events)
+            report.events_with_odds += len(with_odds)
+            return
+
+        health.record_success(
+            LIVE_ODDS_PROVIDER,
+            observations=len(with_odds),
+            credits_remaining=credits.get(LIVE_ODDS_PROVIDER).known_remaining,
+            latency_ms=latency_ms,
+        )
+        report.events += len(events)
+        report.events_with_odds += len(with_odds)
+
+        self.cache.save(OddsSnapshot(
+            sport_key=sport,
+            requested_date=stamp,
+            timestamp=stamp,
+            events=tuple(with_odds),
+            provider="the-odds-api-live",
+        ))
+        report.snapshots_saved += 1
+        saved, matched, unmatched, ambiguous = self._persist_observations(
+            with_odds, sport, stamp, report, accounter
+        )
+        report.observations_saved += saved
+        report.events_matched += matched
+        report.events_unmatched += unmatched
+        report.events_ambiguous += ambiguous
+
+    def _capture_contract(
+        self,
+        provider,
+        sport: str,
+        stamp: str,
+        report: CaptureReport,
+        health: "HealthTracker",
+        credits: "CreditController",
+        accounter: "_BatchAccounter",
+    ) -> None:
+        """Caminho de contrato (`fetch_odds`): providers da FASE B.
+
+        Por provider e por sport key: as divisoes vêm do ADAPTER
+        (`divisions_for`) — nunca do mapa legado; os mercados sao pedidos
+        nos rotulos internos; a latencia e medida com o perf injetado.
+        Health e creditos ficam no HealthTracker/CreditController LOCAL,
+        por NOME do provider (creditos via `apply_update` do contrato).
+        Snapshot so existe quando o provider fornece raw_events E label.
+
+        Falha de um provider nao contamina os demais: excecao vira
+        `report.errors` + health record_failure, e o lote segue.
+        """
+        from .odds_health import classify_exception
+        from .odds_provider import OddsFetchRequest, divisions_for
+
+        name = str(getattr(provider, "name", "") or "")
+        if name and name not in report.providers_used:
+            report.providers_used.append(name)
+
+        request = OddsFetchRequest(
+            divisions=divisions_for(provider, sport),
+            markets=self._contract_market_labels(),
+            regions=self.regions,
+            fetched_at=stamp,
+        )
+        call_started = self._perf()
+        try:
+            result = provider.fetch_odds(request)
+        except Exception as exc:  # noqa: BLE001 - um provider nao aborta os demais
+            kind, _retryable = classify_exception(exc)
+            health.record_failure(
+                name, kind, str(exc)[:300],
+                status=getattr(exc, "status", None),
+            )
+            report.errors.append(f"{name}/{sport}: {exc}")
+            return
+        # latencia REAL da chamada que acabou de acontecer
+        latency_ms = (self._perf() - call_started) * 1000.0
+
+        for message in result.errors:
+            report.errors.append(f"{name}/{sport}: {message}")
+
+        if result.credits is not None:
+            credits.apply_update(name, result.credits)
+            if result.credits.last is not None:
+                report.credits_last = result.credits.last
+            if result.credits.used is not None:
+                report.credits_used = result.credits.used
+            if result.credits.remaining is not None:
+                report.credits_remaining = result.credits.remaining
+
+        report.events += len(result.raw_events)
+        report.events_with_odds += len({q.event_id for q in result.quotes})
+
+        if result.no_coverage or not result.quotes:
+            # sem cobertura e sinal explicito do provider, nao erro:
+            # health NO_COVERAGE e nada gravado — nunca dado sintetico.
+            health.record_no_coverage(name)
+            return
+
+        health.record_success(
+            name,
+            observations=len(result.quotes),
+            credits_remaining=credits.get(name).known_remaining,
+            latency_ms=latency_ms,
+        )
+
+        if result.raw_events and result.snapshot_provider:
+            with_odds = [
+                e for e in result.raw_events
+                if isinstance(e, dict) and e.get("bookmakers")
+            ]
+            if with_odds:
+                self.cache.save(OddsSnapshot(
+                    sport_key=sport,
+                    requested_date=stamp,
+                    timestamp=stamp,
+                    events=tuple(with_odds),
+                    provider=result.snapshot_provider,
+                ))
+                report.snapshots_saved += 1
+
+        if self.store is None:
+            return
+
+        from .odds_normalize import dedupe_quotes
+
+        quotes = dedupe_quotes(result.quotes)
+        observations, matched, unmatched, ambiguous = self._resolve_and_observe(
+            quotes, request.divisions
+        )
+        counts = _provider_counts(report, name)
+        counts["quotes"] += len(quotes)
+        saved = accounter.commit(observations, name, report)
+        counts["observations_saved"] += saved
+        counts["events_matched"] += matched
+        counts["events_unmatched"] += unmatched
+        counts["events_ambiguous"] += ambiguous
+        report.observations_saved += saved
+        report.events_matched += matched
+        report.events_unmatched += unmatched
+        report.events_ambiguous += ambiguous
+
+    def _contract_market_labels(self) -> tuple[str, ...]:
+        """Rotulos internos equivalentes aos mercados pedidos na captura.
+
+        `self.markets` usa as chaves da Odds API (h2h, totals, btts); o
+        contrato `fetch_odds` fala rotulos internos. Rotulo ja interno
+        passa direto; rotulo desconhecido tambem passa — o adapter decide
+        o que pedir (nunca adivinhamos por aqui).
+        """
+        from .odds_normalize import MARKET_MAP
+
+        labels: list[str] = []
+        for raw in (m.strip() for m in self.markets.split(",")):
+            if not raw:
+                continue
+            label = MARKET_MAP.get(raw, raw)
+            if label not in labels:
+                labels.append(label)
+        return tuple(labels)
+
+    def _resolve_and_observe(
+        self,
+        quotes: Sequence,
+        divisions: Sequence[str],
+    ) -> tuple[list, int, int, int]:
+        """Resolve identidade e converte quotes em observacoes.
+
+        Com um indice de fixtures, cada evento e casado contra os
+        fixtures das divisoes do escopo (alias + normalizacao exata +
+        kickoff UTC exato). Casado: gravado sob a `event_key` DO FIXTURE.
+        Nao casado (UNKNOWN/AMBIGUOUS): preservado sob a chave canonica
+        do provider. Nunca ha falso positivo.
+
+        Devolve (observacoes, eventos_casados, eventos_nao_casados,
+        eventos_ambiguos).
+        """
+        match_keys: dict[str, str] = {}
+        seen_events: set[str] = set()
+        matched = unmatched = ambiguous = 0
+        if self._match_index is not None:
+            for quote in quotes:
+                if quote.event_id in seen_events:
+                    continue  # mesmo evento ja resolvido (1/X/2 = 1 evento)
+                seen_events.add(quote.event_id)
+                result = self._match_index.resolve(
+                    quote.home_team, quote.away_team, quote.kickoff, divisions
+                )
+                if result.ok:
+                    match_keys[quote.event_id] = result.match_key or ""
+                    matched += 1
+                elif result.status == "AMBIGUOUS":
+                    ambiguous += 1
+                else:
+                    unmatched += 1
+
+        observations = observations_from_quotes(quotes, match_keys=match_keys)
+        return observations, matched, unmatched, ambiguous
+
     def _persist_observations(
         self,
         events: Sequence[dict],
         sport: str,
         stamp: str,
+        report: CaptureReport,
+        accounter: "_BatchAccounter",
     ) -> tuple[int, int, int, int]:
         """Grava as cotacoes normalizadas no store canonico (SQLite).
 
         E a MESMA fonte que a API consome em movement/CLV/coverage: o
         snapshot cru alimenta o backtest; a observacao por linha alimenta a
         operacao. A conversao reusa `odds_normalize.normalize_events` — nao
-        existe um segundo parser.
+        existe um segundo parser. A contabilizacao de colisoes acontece no
+        `accounter` (chave física canonica), ANTES do `store.add`.
 
         Resolucao de identidade (I-01): com um indice de fixtures, cada
         evento de provider e casado contra os fixtures da divisao coberta
@@ -966,34 +1403,17 @@ class LiveOddsCapture:
         quotes = dedupe_quotes(
             normalize_events(events, LIVE_ODDS_PROVIDER, stamp, sport_key=sport)
         )
-
-        match_keys: dict[str, str] = {}
-        seen_events: set[str] = set()
-        matched = unmatched = ambiguous = 0
-        if self._match_index is not None:
-            divisions = SPORT_KEY_TO_DIVISIONS.get(sport, [])
-            for quote in quotes:
-                if quote.event_id in seen_events:
-                    continue  # mesmo evento ja resolvido (1/X/2 = 1 evento)
-                seen_events.add(quote.event_id)
-                result = self._match_index.resolve(
-                    quote.home_team, quote.away_team, quote.kickoff, divisions
-                )
-                if result.ok:
-                    match_keys[quote.event_id] = result.match_key or ""
-                    matched += 1
-                elif result.status == "AMBIGUOUS":
-                    ambiguous += 1
-                else:
-                    unmatched += 1
-
-        observations = observations_from_quotes(quotes, match_keys=match_keys)
-        if not observations:
-            return 0, matched, unmatched, ambiguous
-        try:
-            saved = self.store.add(observations)
-        except Exception:  # noqa: BLE001 - persistencia nao derruba a captura
-            saved = 0
+        divisions = SPORT_KEY_TO_DIVISIONS.get(sport, [])
+        observations, matched, unmatched, ambiguous = self._resolve_and_observe(
+            quotes, divisions
+        )
+        counts = _provider_counts(report, LIVE_ODDS_PROVIDER)
+        counts["quotes"] += len(quotes)
+        saved = accounter.commit(observations, LIVE_ODDS_PROVIDER, report)
+        counts["observations_saved"] += saved
+        counts["events_matched"] += matched
+        counts["events_unmatched"] += unmatched
+        counts["events_ambiguous"] += ambiguous
         return saved, matched, unmatched, ambiguous
 
     def _fetch_with_fallback(

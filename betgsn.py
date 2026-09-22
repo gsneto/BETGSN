@@ -337,11 +337,15 @@ def capture_odds_cli(args: list[str]) -> int:
     Agende para rodar 1x/dia (ex.: Agendador de Tarefas do Windows).
     """
     from betgsn.backtest_sources import LiveOddsCapture, OddsHistoryCache
+    from betgsn.odds_registry import default_odds_registry
     from betgsn.odds_snapshots import OddsSnapshotStore
-    from betgsn.providers import OddsApiProvider, sport_keys_for_divisions
+    from betgsn.providers import sport_keys_for_divisions
 
-    provider = OddsApiProvider.from_env()
-    if provider is None:
+    # providers de odds via registry (FASE B): todos os CONFIGURADOS, em
+    # ordem de prioridade — a captura e multi-provider, com contabilizacao
+    # de colisoes no store canonico.
+    providers = default_odds_registry().available_providers()
+    if not providers:
         print("ERRO: BETGSN_ODDS_API_KEY nao configurada.")
         print("Configure no .env ou no ambiente para capturar odds.")
         return 1
@@ -387,7 +391,7 @@ def capture_odds_cli(args: list[str]) -> int:
     # em movement/CLV/coverage. Sem injeta-lo aqui, a captura produziria
     # historico para o backtest mas a operacao leria um banco vazio.
     capture = LiveOddsCapture(
-        provider, cache, regions=regions, markets=markets,
+        [p for _name, p in providers], cache, regions=regions, markets=markets,
         store=OddsSnapshotStore(),
         fixtures=fixtures or None,
         aliases=aliases,
