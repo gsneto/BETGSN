@@ -45,6 +45,7 @@ from pathlib import Path
 from typing import Iterable, Mapping, Optional
 
 from .envconfig import env_file_candidates, resolve_env_file
+from .odds_registry import default_odds_registry
 
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
@@ -744,23 +745,14 @@ def available_providers() -> dict[str, bool]:
     }
 
 
-#: Ordem de preferencia dos providers de ODDS. O primeiro saudavel atende;
-#: se falhar, o proximo assume (ver betgsn.odds_service).
-ODDS_PROVIDER_PRIORITY = ("The Odds API", "ParlayAPI")
-
-
 def configured_odds_providers() -> list[tuple[str, object]]:
     """Providers de odds configurados, na ordem de prioridade.
 
     Nunca levanta erro por falta de chave: devolve so o que esta pronto.
     Nenhum provider e obrigatorio para o funcionamento global.
+
+    Delega ao registry padrao (`odds_registry`): a ordem e os labels
+    continuam exatamente os de sempre ("The Odds API", "ParlayAPI") —
+    este ponto e so a costura da migracao strangler da FASE B.
     """
-    available = {
-        "The Odds API": OddsApiProvider.from_env(),
-        "ParlayAPI": ParlayApiProvider.from_env(),
-    }
-    return [
-        (name, available[name])
-        for name in ODDS_PROVIDER_PRIORITY
-        if available.get(name) is not None
-    ]
+    return default_odds_registry().available_providers()
