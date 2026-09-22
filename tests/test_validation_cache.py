@@ -222,7 +222,7 @@ def test_decision_ignores_stale_cache(monkeypatch):
     saida segura.
     """
     from betgsn.api.service import BetgsnService
-    from betgsn.staking import EDGE_ROI
+    from betgsn.value_strategy import EDGE_ROI
 
     _patch_corpus(monkeypatch, "corpus-1")
     _write_cache(_validation_payload(_fp()))

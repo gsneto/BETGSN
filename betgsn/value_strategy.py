@@ -53,6 +53,10 @@ from typing import Any, Sequence
 
 from .backtest_data import MatchResult, settle_outcome
 from .providers import ProviderError
+from .strategy import StrategyEvidence
+
+#: Identificacao da estrategia no StrategyRegistry (FASE A).
+STRATEGY_NAME = "value_short_favourites"
 
 #: Odd maxima da regra validada.
 MAX_ODD = 1.30
@@ -63,6 +67,25 @@ MIN_BOOKS = 3
 MIN_CONSENSUS_BOOKS = 3
 #: Mercado com validacao estatistica. "Total de Gols" nao teve amostra.
 MARKETS = ("Resultado Final (1X2)",)
+
+# --------------------------------------------------------------------------
+# Parametros VALIDADOS da regra (snapshot da ultima validacao historica)
+# --------------------------------------------------------------------------
+#
+# Estes numeros pertencem a ESTRATEGIA, nao ao core de staking: sao a
+# fotografia constante da medicao cuja forma viva e o
+# `StrategyValidation` em cache (fingerprint I-14). O caminho de decisao
+# consome-os via `ValueStrategy.evidence()` — nunca como conhecimento
+# permanente de `staking`.
+
+#: ROI por aposta, validado em 195.672 jogos (2000-2026).
+EDGE_ROI = 0.0160
+#: Erro-padrao do ROI (t = +2,97 em 6.748 apostas).
+EDGE_SE = 0.0054
+#: Odd media da regra (favoritos curtos).
+EDGE_ODD = 1.21
+#: Apostas por ano que a regra gera (38 competicoes).
+BETS_PER_YEAR = 250
 
 #: Faixas usadas para reportar o ROI historico por odd.
 #: O ROI cai monotonicamente conforme a odd sobe — e essa a assinatura do
@@ -518,3 +541,49 @@ def scan_live(
 
     found.sort(key=lambda o: o.best_odd)
     return found, meta
+
+
+# --------------------------------------------------------------------------
+# Contrato Strategy (FASE A)
+# --------------------------------------------------------------------------
+
+
+class ValueStrategy:
+    """A regra de favoritos curtos como estrategia do contrato `Strategy`.
+
+    Esta classe NAO decide nada e NAO produz `BetDecision`: expoe a
+    identificacao e a EVIDENCIA validada da regra para o runner
+    (`strategy_runner.run_strategy_decision`), que leva ao decision gate
+    (`staking.decide_bet`, o unico produtor). A decisao continua tendo
+    um caminho so.
+    """
+
+    name = STRATEGY_NAME
+    markets = MARKETS
+    description = (
+        "Favoritos curtos (odd < 1,30) com a melhor odd entre casas: "
+        "exploracao do favourite-longshot validada em 195.672 jogos."
+    )
+
+    def evidence(self) -> StrategyEvidence:
+        """Parametros validados da regra para o decision gate.
+
+        Vantagem medida: usa a validacao em cache QUANDO o fingerprint
+        bate com a regra atual sobre o corpus atual (I-14); sem cache
+        valido, as constantes validadas deste modulo. Nao roda a
+        validacao aqui: percorrer 195 mil partidas num request HTTP
+        nao e lugar para isso. Um cache de outro corpus ou de outros
+        parametros NAO e evidencia desta regra: volta para as
+        constantes, nunca para numeros de outra medicao.
+        """
+        val = cached_validation()
+        if val is not None:
+            return StrategyEvidence(
+                roi=val.roi, roi_se=val.se,
+                odd=val.avg_odd or EDGE_ODD, n_bets=val.n_bets,
+            )
+        return StrategyEvidence(roi=EDGE_ROI, roi_se=EDGE_SE, odd=EDGE_ODD)
+
+
+#: Instancia da estrategia (imutavel e sem estado — uma so por processo).
+value_strategy = ValueStrategy()

@@ -27,6 +27,7 @@ from ..pipeline import FixtureAnalysis, RunResult, run
 from ..providers import available_providers
 from ..signals import EV_FORTE, EV_FRACA, EV_MEDIA, MAX_SPREAD, MIN_BOOKS, Signal as CoreSignal
 from ..timeutil import now_utc, utc_key
+from ..value_strategy import STRATEGY_NAME as OPERATIONAL_STRATEGY
 from . import schemas as S
 
 MODEL_DOC_FALLBACK = "Documentacao do modelo indisponivel."
@@ -345,30 +346,22 @@ class BetgsnService:
     def _quant_decision(self, evidence_status: str) -> S.BetDecision:
         """Decisao de apostar ou nao, produzida pelo Quant.
 
-        A decisao vem de `staking.decide_bet` sobre a vantagem validada
-        (`value_strategy`), com o status de evidencia da fonte de odds.
+        A decisao vem de `staking.decide_bet` (o UNICO produtor de
+        BetDecision) sobre a evidencia da estrategia OPERACIONAL,
+        encadeada pelo runner (`strategy_runner.run_strategy_decision`:
+        registry -> evidencia validada -> decide_bet). A vantagem vem do
+        cache de validacao QUANDO o fingerprint bate com a regra atual
+        sobre o corpus atual (I-14); sem cache valido, as constantes
+        validadas da estrategia — nunca numeros de outra medicao.
+
         A API NUNCA fabrica NO_BET nem inventa stake: so traduz o que o
         Quant decidiu, preservando o motivo, as verificacoes e o status
         de evidencia que fundamentou a decisao.
         """
-        from ..staking import EDGE_ODD, EDGE_ROI, EDGE_SE, decide_bet
-        from ..value_strategy import cached_validation
+        from ..strategy_runner import run_strategy_decision
 
-        # Vantagem medida: usa a validacao em cache QUANDO o fingerprint
-        # bate com a regra atual sobre o corpus atual (I-14); sem cache
-        # valido, os parametros validados constantes do modulo staking.
-        # Nao roda a validacao aqui: percorrer 195 mil partidas num
-        # request HTTP nao e lugar para isso. Um cache de outro corpus
-        # ou de outros parametros NAO e evidencia desta regra: volta
-        # para as constantes, nunca para numeros de outra medicao.
-        roi, se, odd, n_bets = EDGE_ROI, EDGE_SE, EDGE_ODD, None
-        val = cached_validation()
-        if val is not None:
-            roi, se, odd, n_bets = (
-                val.roi, val.se, val.avg_odd or EDGE_ODD, val.n_bets)
-
-        core = decide_bet(
-            roi, se, odd, evidence_status=evidence_status, n_bets=n_bets)
+        core = run_strategy_decision(
+            OPERATIONAL_STRATEGY, evidence_status=evidence_status)
         return S.BetDecision(
             action=core.action,
             reason=core.reason,

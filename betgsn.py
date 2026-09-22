@@ -671,24 +671,35 @@ def staking_plan_cli(args: list[str]) -> int:
     import math
 
     from betgsn.staking import (
-        BETS_PER_YEAR,
-        EDGE_ODD,
-        EDGE_ROI,
         PLANS,
         annual_growth,
+        flat_plan,
         full_kelly,
         kelly_table,
         recommend,
         simulate,
         win_prob,
     )
+    from betgsn.value_strategy import (
+        BETS_PER_YEAR,
+        EDGE_ODD,
+        EDGE_ROI,
+        EDGE_SE,
+    )
 
     years = float(_arg(args, "years", "3"))
     paths = int(_arg(args, "paths", "20000"))
     banca = float(_arg(args, "bankroll", "1000"))
 
+    # A vantagem e da ESTRATEGIA validada (value_strategy); o staking e
+    # generico e recebe os parametros explicitamente (FASE A).
     p = win_prob(EDGE_ROI, EDGE_ODD)
-    fk = full_kelly()
+    fk = full_kelly(EDGE_ROI, EDGE_ODD)
+
+    # O plano "Kelly cheio" depende da vantagem: construido aqui, com a
+    # evidencia da estrategia — nao nasce pronto no core de staking.
+    plans = dict(PLANS)
+    plans["kelly"] = flat_plan("Kelly cheio", fk)
 
     print("=" * 82)
     print("ALAVANCAGEM — quanto apostar, quanto cresce, quanto arrisca")
@@ -707,7 +718,7 @@ def staking_plan_cli(args: list[str]) -> int:
     print(f"  {'% da banca':>11}  {'x Kelly':>7}  {'cresc. ano':>11}  "
           f"{'P(metade)':>10}  {'P(perda 90%)':>12}")
     print("  " + "-" * 74)
-    for row in kelly_table():
+    for row in kelly_table(EDGE_ROI, EDGE_ODD, BETS_PER_YEAR):
         tag = ""
         if row["kelly_multiple"] == 1.0:
             tag = "  <- otimo"
@@ -720,13 +731,13 @@ def staking_plan_cli(args: list[str]) -> int:
     # onde o crescimento vira negativo
     f, neg = 0.01, None
     while f < 0.5:
-        if annual_growth(f) < 0:
+        if annual_growth(f, EDGE_ROI, EDGE_ODD, BETS_PER_YEAR) < 0:
             neg = f
             break
         f += 0.005
     print()
     print(f"  TETO: em {fk * 100:.2f}% por aposta o crescimento e maximo "
-          f"({math.expm1(annual_growth(fk)) * 100:.1f}%/ano).")
+          f"({math.expm1(annual_growth(fk, EDGE_ROI, EDGE_ODD, BETS_PER_YEAR)) * 100:.1f}%/ano).")
     if neg:
         print(f"  Acima de {neg * 100:.1f}% por aposta o crescimento vira NEGATIVO:")
         print("  voce nao esta alavancando, esta perdendo mais rapido.")
@@ -741,7 +752,9 @@ def staking_plan_cli(args: list[str]) -> int:
     print("  " + "-" * 88)
     for key in ("conservador", "moderado", "agressivo", "kelly", "sobrekelly",
                 "faseado", "faseado_disjuntor"):
-        r = simulate(PLANS[key], years=years, n_paths=paths)
+        r = simulate(plans[key], years=years, n_paths=paths,
+                     bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI,
+                     edge_se=EDGE_SE, odd=EDGE_ODD)
         print(f"  {r.plan[:36]:36} {r.median_multiple:7.2f}x "
               f"{r.median_annual_pct:+6.1f}% {r.p_profit * 100:6.1f}% "
               f"{r.p_double * 100:5.1f}% {r.p_halve * 100:6.1f}% "
@@ -749,7 +762,9 @@ def staking_plan_cli(args: list[str]) -> int:
 
     print()
     plan = recommend()
-    r = simulate(plan, years=years, n_paths=paths)
+    r = simulate(plan, years=years, n_paths=paths,
+                 bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI,
+                 edge_se=EDGE_SE, odd=EDGE_ODD)
     print("-" * 82)
     print(f"PLANO RECOMENDADO — {plan.name}")
     print("-" * 82)

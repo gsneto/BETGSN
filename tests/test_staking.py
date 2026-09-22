@@ -16,10 +16,6 @@ import math
 import pytest
 
 from betgsn.staking import (
-    BETS_PER_YEAR,
-    EDGE_ODD,
-    EDGE_ROI,
-    EDGE_SE,
     PLANS,
     Phase,
     StakingPlan,
@@ -36,6 +32,17 @@ from betgsn.staking import (
     simulate,
     win_prob,
 )
+from betgsn.value_strategy import (
+    BETS_PER_YEAR,
+    EDGE_ODD,
+    EDGE_ROI,
+    EDGE_SE,
+)
+
+# Parametros VALIDADOS da estrategia atual (value_strategy). O staking e
+# generico: os testes passam a evidencia explicitamente — provando que o
+# core de staking nao precisa conhecer nenhuma estrategia (FASE A).
+KELLY_PLAN = flat_plan("Kelly cheio", full_kelly(EDGE_ROI, EDGE_ODD))
 
 
 # --------------------------------------------------------------------------
@@ -65,18 +72,18 @@ def test_full_kelly_matches_classic_formula():
     from betgsn.engine import kelly_fraction
 
     p = win_prob(EDGE_ROI, EDGE_ODD)
-    assert full_kelly() == pytest.approx(kelly_fraction(p, EDGE_ODD))
+    assert full_kelly(EDGE_ROI, EDGE_ODD) == pytest.approx(kelly_fraction(p, EDGE_ODD))
 
 
 def test_full_kelly_is_plausible():
     """Com ROI de 1,6% a odd 1,21, Kelly fica perto de 7,6%."""
-    fk = full_kelly()
+    fk = full_kelly(EDGE_ROI, EDGE_ODD)
     assert 0.06 < fk < 0.09, f"Kelly fora do esperado: {fk}"
 
 
 def test_full_kelly_zero_without_edge():
-    assert full_kelly(roi=0.0) == pytest.approx(0.0)
-    assert full_kelly(roi=-0.05) == pytest.approx(0.0)
+    assert full_kelly(0.0, EDGE_ODD) == pytest.approx(0.0)
+    assert full_kelly(-0.05, EDGE_ODD) == pytest.approx(0.0)
 
 
 # --------------------------------------------------------------------------
@@ -86,53 +93,53 @@ def test_full_kelly_zero_without_edge():
 
 def test_growth_is_maximized_at_full_kelly():
     """Kelly completo e o ponto de crescimento maximo."""
-    fk = full_kelly()
-    g_kelly = growth_rate(fk)
+    fk = full_kelly(EDGE_ROI, EDGE_ODD)
+    g_kelly = growth_rate(fk, EDGE_ROI, EDGE_ODD)
     for mult in (0.5, 0.75, 0.9, 1.1, 1.25, 1.5):
-        assert growth_rate(fk * mult) < g_kelly, (
+        assert growth_rate(fk * mult, EDGE_ROI, EDGE_ODD) < g_kelly, (
             f"crescimento em {mult}x Kelly deveria ser menor"
         )
 
 
 def test_growth_is_positive_below_kelly():
-    fk = full_kelly()
+    fk = full_kelly(EDGE_ROI, EDGE_ODD)
     for mult in (0.1, 0.25, 0.5, 0.75, 1.0):
-        assert growth_rate(fk * mult) > 0
+        assert growth_rate(fk * mult, EDGE_ROI, EDGE_ODD) > 0
 
 
 def test_growth_goes_negative_above_double_kelly():
     """Acima do dobro do Kelly, apostar mais faz PERDER mais rapido."""
-    fk = full_kelly()
-    assert growth_rate(fk * 2.0) < 0
-    assert growth_rate(fk * 3.0) < 0
+    fk = full_kelly(EDGE_ROI, EDGE_ODD)
+    assert growth_rate(fk * 2.0, EDGE_ROI, EDGE_ODD) < 0
+    assert growth_rate(fk * 3.0, EDGE_ROI, EDGE_ODD) < 0
 
 
 def test_growth_is_monotonic_after_the_peak():
     """Depois do pico, mais aposta = menos crescimento, sempre."""
-    fk = full_kelly()
-    vals = [growth_rate(fk * m) for m in (1.0, 1.25, 1.5, 1.75, 2.0)]
+    fk = full_kelly(EDGE_ROI, EDGE_ODD)
+    vals = [growth_rate(fk * m, EDGE_ROI, EDGE_ODD) for m in (1.0, 1.25, 1.5, 1.75, 2.0)]
     assert vals == sorted(vals, reverse=True), f"nao monotonico: {vals}"
 
 
 def test_annual_growth_scales_with_bets():
-    fk = full_kelly()
-    g1 = annual_growth(fk, bets=100)
-    g2 = annual_growth(fk, bets=200)
+    fk = full_kelly(EDGE_ROI, EDGE_ODD)
+    g1 = annual_growth(fk, EDGE_ROI, EDGE_ODD, bets=100)
+    g2 = annual_growth(fk, EDGE_ROI, EDGE_ODD, bets=200)
     assert g2 == pytest.approx(g1 * 2)
 
 
 def test_growth_never_exceeds_kelly_ceiling():
     """O teto de crescimento e modesto — nao da para exagerar."""
-    fk = full_kelly()
-    anual = math.expm1(annual_growth(fk)) * 100
+    fk = full_kelly(EDGE_ROI, EDGE_ODD)
+    anual = math.expm1(annual_growth(fk, EDGE_ROI, EDGE_ODD, BETS_PER_YEAR)) * 100
     assert anual < 25.0, f"crescimento anual irreal: {anual}%"
     assert anual > 5.0, f"crescimento anual baixo demais: {anual}%"
 
 
 def test_growth_handles_total_loss_fraction():
     """Fracao >= 1 quebra a banca: crescimento -infinito."""
-    assert growth_rate(1.0) == float("-inf")
-    assert growth_rate(1.5) == float("-inf")
+    assert growth_rate(1.0, EDGE_ROI, EDGE_ODD) == float("-inf")
+    assert growth_rate(1.5, EDGE_ROI, EDGE_ODD) == float("-inf")
 
 
 # --------------------------------------------------------------------------
@@ -168,7 +175,7 @@ def test_drawdown_probability_bounds():
 
 
 def test_kelly_table_is_ordered_and_sane():
-    rows = kelly_table()
+    rows = kelly_table(EDGE_ROI, EDGE_ODD, BETS_PER_YEAR)
     assert len(rows) >= 6
     # o pico de crescimento esta em 1x Kelly
     peak = max(rows, key=lambda r: r["annual_pct"])
@@ -218,7 +225,7 @@ def test_recommended_plan_has_protections():
     plan = recommend()
     assert plan.drawdown_cut > 0, "precisa de disjuntor"
     assert plan.stop_loss > 0, "precisa de parada"
-    assert plan.max_fraction < full_kelly(), (
+    assert plan.max_fraction < full_kelly(EDGE_ROI, EDGE_ODD), (
         "o plano nao pode comecar acima do Kelly"
     )
 
@@ -230,23 +237,23 @@ def test_recommended_plan_has_protections():
 
 def test_simulation_is_deterministic():
     plan = PLANS["moderado"]
-    a = simulate(plan, years=1.0, n_paths=2000)
-    b = simulate(plan, years=1.0, n_paths=2000)
+    a = simulate(plan, years=1.0, n_paths=2000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
+    b = simulate(plan, years=1.0, n_paths=2000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert a == b
 
 
 def test_more_aggression_means_more_ruin():
     """O ponto central: agressao compra crescimento com ruina."""
-    cons = simulate(PLANS["conservador"], years=3.0, n_paths=8000)
-    agre = simulate(PLANS["agressivo"], years=3.0, n_paths=8000)
+    cons = simulate(PLANS["conservador"], years=3.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
+    agre = simulate(PLANS["agressivo"], years=3.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert agre.median_multiple > cons.median_multiple
     assert agre.p_halve > cons.p_halve
 
 
 def test_overkelly_is_worse_than_moderate():
     """Apostar 15% (o que quem persegue retorno faz) e PIOR que 4%."""
-    mod = simulate(PLANS["agressivo"], years=3.0, n_paths=8000)
-    over = simulate(PLANS["sobrekelly"], years=3.0, n_paths=8000)
+    mod = simulate(PLANS["agressivo"], years=3.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
+    over = simulate(PLANS["sobrekelly"], years=3.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert over.median_multiple < mod.median_multiple, (
         "sobre-apostar deveria render MENOS, nao mais"
     )
@@ -256,7 +263,7 @@ def test_overkelly_is_worse_than_moderate():
 
 def test_full_kelly_has_high_drawdown_risk():
     """Kelly cheio da o maximo crescimento e paga caro por isso."""
-    r = simulate(PLANS["kelly"], years=3.0, n_paths=8000)
+    r = simulate(KELLY_PLAN, years=3.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert r.p_halve > 0.10
     assert r.p_ruin > 0.0
 
@@ -265,8 +272,8 @@ def test_stop_loss_bounds_the_loss():
     """A parada impede perda catastrofica."""
     sem = StakingPlan("sem", (Phase(1e9, 0.10),))
     com = StakingPlan("com", (Phase(1e9, 0.10),), stop_loss=0.50)
-    a = simulate(sem, years=2.0, n_paths=8000)
-    b = simulate(com, years=2.0, n_paths=8000)
+    a = simulate(sem, years=2.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
+    b = simulate(com, years=2.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert b.p_ruin <= a.p_ruin
     assert b.p5 >= a.p5, "a parada deveria melhorar o pior caso"
 
@@ -274,8 +281,8 @@ def test_stop_loss_bounds_the_loss():
 def test_drawdown_cut_reduces_variance():
     sem = StakingPlan("sem", (Phase(1e9, 0.05),))
     com = StakingPlan("com", (Phase(1e9, 0.05),), drawdown_cut=0.25)
-    a = simulate(sem, years=3.0, n_paths=8000)
-    b = simulate(com, years=3.0, n_paths=8000)
+    a = simulate(sem, years=3.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
+    b = simulate(com, years=3.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert b.p_halve <= a.p_halve
 
 
@@ -291,9 +298,9 @@ def test_edge_uncertainty_increases_risk():
     para cima — efeito loteria. Mas o que voce VIVE nao e a media: e a
     mediana e o pior caso. Esses pioram.
     """
-    plan = PLANS["kelly"]
-    certo = simulate(plan, years=3.0, n_paths=8000, edge_se=0.0)
-    incerto = simulate(plan, years=3.0, n_paths=8000, edge_se=EDGE_SE)
+    plan = KELLY_PLAN
+    certo = simulate(plan, years=3.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=0.0, odd=EDGE_ODD)
+    incerto = simulate(plan, years=3.0, n_paths=8000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
 
     # o risco de ruina sobe
     assert incerto.p_ruin > certo.p_ruin
@@ -307,13 +314,13 @@ def test_edge_uncertainty_increases_risk():
 
 def test_simulation_without_edge_loses():
     """Sem vantagem real, qualquer fracao perde (a margem da casa)."""
-    r = simulate(PLANS["moderado"], years=3.0, n_paths=4000, edge=-0.02)
+    r = simulate(PLANS["moderado"], years=3.0, n_paths=4000, bets_per_year=BETS_PER_YEAR, edge=-0.02, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert r.p_profit < 0.30
     assert r.median_multiple < 1.0
 
 
 def test_simulation_metrics_are_consistent():
-    r = simulate(PLANS["faseado_disjuntor"], years=3.0, n_paths=4000)
+    r = simulate(PLANS["faseado_disjuntor"], years=3.0, n_paths=4000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert 0.0 <= r.p_profit <= 1.0
     assert 0.0 <= r.p_halve <= 1.0
     assert 0.0 <= r.p_ruin <= 1.0
@@ -322,8 +329,8 @@ def test_simulation_metrics_are_consistent():
 
 
 def test_simulation_years_affect_growth():
-    um = simulate(PLANS["moderado"], years=1.0, n_paths=4000)
-    tres = simulate(PLANS["moderado"], years=3.0, n_paths=4000)
+    um = simulate(PLANS["moderado"], years=1.0, n_paths=4000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
+    tres = simulate(PLANS["moderado"], years=3.0, n_paths=4000, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert tres.median_multiple > um.median_multiple
 
 
@@ -396,6 +403,6 @@ def test_no_bet_plan_never_stakes():
     plan = PLANS["no_bet"]
     assert plan.fraction_for(1000.0, 1000.0) == 0.0
     assert plan.max_fraction == 0.0
-    result = simulate(plan, years=1.0, n_paths=500)
+    result = simulate(plan, years=1.0, n_paths=500, bets_per_year=BETS_PER_YEAR, edge=EDGE_ROI, edge_se=EDGE_SE, odd=EDGE_ODD)
     assert result.median_multiple == pytest.approx(1.0)
     assert result.p_ruin == 0.0

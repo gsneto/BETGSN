@@ -16,9 +16,10 @@ mais rapido perde. Nao ha "alavancagem" que escape disso.
 Crescimento log por aposta:
     g(f) = p*ln(1 + f*(odd-1)) + (1-p)*ln(1 - f)
 
-Com a vantagem validada (ROI +1,60% a odd media 1,21), o maximo fica em
-f = 7,62% por aposta e rende ~15,6% ao ano. Acima de ~15% por aposta o
-crescimento vira negativo.
+Com a vantagem validada da estrategia atual (ROI +1,60% a odd media
+1,21, ver o modulo da estrategia), o maximo fica em f = 7,62% por aposta
+e rende ~15,6% ao ano. Acima de ~15% por aposta o crescimento vira
+negativo.
 
 Risco de ruina
 --------------
@@ -49,17 +50,13 @@ from dataclasses import asdict, dataclass, field, replace
 from typing import Sequence
 
 # --------------------------------------------------------------------------
-# Parametros da vantagem validada (ver value_strategy.py)
+# Parametros de entrada
 # --------------------------------------------------------------------------
-
-#: ROI por aposta, validado em 195.672 jogos (2000-2026).
-EDGE_ROI = 0.0160
-#: Erro-padrao do ROI (t = +2,97 em 6.748 apostas).
-EDGE_SE = 0.0054
-#: Odd media da regra (favoritos curtos).
-EDGE_ODD = 1.21
-#: Apostas por ano que a regra gera (38 competicoes).
-BETS_PER_YEAR = 250
+#
+# Este modulo e generico: a vantagem (ROI, erro-padrao, odd media) vem
+# SEMPRE de quem chama — hoje, da evidencia validada da estrategia
+# registrada, transportada pelo `strategy_runner`. O core de staking
+# NAO conhece constantes de nenhuma estrategia (FASE A).
 
 
 # --------------------------------------------------------------------------
@@ -83,7 +80,7 @@ def bet_variance(p: float, odd: float) -> float:
     return max(1e-12, second - mean * mean)
 
 
-def full_kelly(roi: float = EDGE_ROI, odd: float = EDGE_ODD) -> float:
+def full_kelly(roi: float, odd: float) -> float:
     """Fracao de Kelly completa: f* = (b*p - q) / b.
 
     Esta e a solucao EXATA para o crescimento logaritmico, nao a
@@ -98,8 +95,7 @@ def full_kelly(roi: float = EDGE_ROI, odd: float = EDGE_ODD) -> float:
     return kelly_fraction(win_prob(roi, odd), odd)
 
 
-def growth_rate(fraction: float, roi: float = EDGE_ROI,
-                odd: float = EDGE_ODD) -> float:
+def growth_rate(fraction: float, roi: float, odd: float) -> float:
     """Crescimento log esperado por aposta.
 
     Negativo quando a fracao passa do dobro do Kelly: apostar mais faz
@@ -114,9 +110,8 @@ def growth_rate(fraction: float, roi: float = EDGE_ROI,
     return p * math.log(win) + (1.0 - p) * math.log(lose)
 
 
-def annual_growth(fraction: float, roi: float = EDGE_ROI,
-                  odd: float = EDGE_ODD,
-                  bets: int = BETS_PER_YEAR) -> float:
+def annual_growth(fraction: float, roi: float, odd: float,
+                  bets: int) -> float:
     """Crescimento log anual (multiplique por 100 para %)."""
     return growth_rate(fraction, roi, odd) * bets
 
@@ -184,12 +179,14 @@ def flat_plan(name: str, fraction: float) -> StakingPlan:
                                                 fraction=fraction),))
 
 
-#: Planos comparados na simulacao.
+#: Planos comparados na simulacao. As fracoes sao GENERICAS (percentuais
+#: fixos da banca); o plano "Kelly cheio" depende da vantagem da
+#: estrategia e e construido por quem conhece a evidencia (ex.: CLI com
+#: os parametros validados da estrategia operacional).
 PLANS: dict[str, StakingPlan] = {
     "conservador": flat_plan("Conservador 1%", 0.01),
     "moderado": flat_plan("Moderado 2%", 0.02),
     "agressivo": flat_plan("Agressivo 4%", 0.04),
-    "kelly": flat_plan("Kelly cheio", full_kelly()),
     "sobrekelly": flat_plan("Sobre-Kelly 15% (erro comum)", 0.15),
     "faseado": StakingPlan(
         name="Faseado (agride no inicio, protege depois)",
@@ -242,10 +239,10 @@ def simulate(
     *,
     start: float = 1000.0,
     years: float = 3.0,
-    bets_per_year: int = BETS_PER_YEAR,
-    edge: float = EDGE_ROI,
-    edge_se: float = EDGE_SE,
-    odd: float = EDGE_ODD,
+    bets_per_year: int,
+    edge: float,
+    edge_se: float,
+    odd: float,
     n_paths: int = 20000,
     seed: int = 6767,
 ) -> SimulationResult:
@@ -324,16 +321,17 @@ def simulate(
     )
 
 
-def kelly_table() -> list[dict]:
-    """Curva crescimento x risco para varias fracoes."""
-    fk = full_kelly()
+def kelly_table(roi: float, odd: float, bets_per_year: int) -> list[dict]:
+    """Curva crescimento x risco para varias fracoes da vantagem informada."""
+    fk = full_kelly(roi, odd)
     out = []
     for mult in (0.10, 0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 2.00):
         f = fk * mult
         out.append({
             "fraction": f,
             "kelly_multiple": mult,
-            "annual_pct": math.expm1(annual_growth(f)) * 100.0,
+            "annual_pct": math.expm1(
+                annual_growth(f, roi, odd, bets_per_year)) * 100.0,
             "p_halve": drawdown_probability(mult, 0.5),
             "p_ruin": drawdown_probability(mult, 0.10),
         })
@@ -455,11 +453,23 @@ def decide_bet(
     min_lower_bound: float = 0.0,
     ruin_tolerance: float = 0.10,
     min_bets: int = MIN_EVIDENCE_BETS,
+    promotion_eligible: bool | None = None,
 ) -> BetDecision:
     """Decide se vale apostar, dado o intervalo de confianca da vantagem.
 
     NO_BET e a resposta sempre que qualquer verificacao falha. As
     verificacoes sao explicitas e ficam registradas na decisao.
+
+    `promotion_eligible` (FASE A) e o veredicto do promotion gate da
+    estrategia (`models.promotion`), transportado pelo runner:
+
+    - `None` (default): gate nao avaliado — comportamento anterior,
+      nenhuma verificacao extra;
+    - `False`: gate reprovou (estrategia nao elegivel a producao) —
+      NO_BET obrigatorio, mesmo com odds confiaveis;
+    - `True`: gate aprovou — NECESSARIO mas nao SUFICIENTE: as demais
+      verificacoes (evidencia, limite inferior, amostra, ruina) continu
+      valendo. Ninguem vira production-ready por declaracao.
     """
     lower = conservative_roi(roi, roi_se)
     kelly = full_kelly(roi, odd) if roi > 0 else 0.0
@@ -471,6 +481,14 @@ def decide_bet(
         f"status '{evidence_status}'"
         + ("" if trusted else ": odds sem timestamp/validacao nao sustentam dinheiro real"),
     ))
+
+    if promotion_eligible is not None:
+        checks.append((
+            "promocao_da_estrategia", promotion_eligible,
+            "gate de promocao aprovado (elegivel a producao)"
+            if promotion_eligible
+            else "gate de promocao reprovado: estrategia nao elegivel a producao",
+        ))
 
     checks.append((
         "limite_inferior_positivo", lower > min_lower_bound,
