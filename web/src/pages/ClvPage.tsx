@@ -28,6 +28,7 @@ const clvStatusLabel: Record<string, string> = {
   OK: "OK",
   NO_CLOSING_ODDS: "Sem fechamento",
   CLOSING_BEFORE_ENTRY: "Entrada pós-fechamento",
+  NO_ENTRY_ODDS: "Sem odd de entrada observada",
 };
 
 const clvStatusFilter: Array<{ value: string; label: string }> = [
@@ -35,6 +36,7 @@ const clvStatusFilter: Array<{ value: string; label: string }> = [
   { value: "OK", label: "OK" },
   { value: "NO_CLOSING_ODDS", label: "Sem fechamento" },
   { value: "CLOSING_BEFORE_ENTRY", label: "Entrada pós-fechamento" },
+  { value: "NO_ENTRY_ODDS", label: "Sem entrada" },
 ];
 
 export default function ClvPage() {
@@ -78,7 +80,7 @@ export default function ClvPage() {
 
       <Card
         title="Entradas de CLV"
-        hint={`${data.total_bets} bets · coverage ${fmtPct(data.coverage)} · atualizado ${data.generated_at}`}
+        hint={`${data.total_bets} bets · coverage ${data.coverage != null ? fmtPct(data.coverage) : "—"} · atualizado ${data.generated_at}`}
         padded={false}
         action={
           <div className="flex items-center gap-2">
@@ -101,7 +103,7 @@ export default function ClvPage() {
           {entries.length === 0 ? (
             <EmptyState
               title="Sem entradas de CLV"
-              hint="CLV requer odds de fechamento observadas antes do kickoff."
+              hint="CLV exige odd de entrada observada antes da decisão e fechamento observado antes do kickoff."
             />
           ) : (
             <TableShell className="max-h-[440px]">
@@ -111,6 +113,7 @@ export default function ClvPage() {
                     <Th align="start">Jogo</Th>
                     <Th align="start">Mercado</Th>
                     <Th align="center">Odd entrada</Th>
+                    <Th align="start">Entrada em</Th>
                     <Th align="center">Odd fechamento</Th>
                     <Th align="end">CLV %</Th>
                     <Th align="center">Status</Th>
@@ -121,9 +124,14 @@ export default function ClvPage() {
                     <Tr key={`${e.match}-${e.market}-${e.outcome}-${i}`}>
                       <Td align="start" className="font-medium text-ink">{e.match}</Td>
                       <Td mono className="text-ink-3">{e.market}</Td>
-                      <Td mono className="text-ink-2">{fmtOdd(e.entry_odd)}</Td>
                       <Td mono className="text-ink-2">
-                        {e.closing_odd ? fmtOdd(e.closing_odd) : "—"}
+                        {e.entry_odd != null ? fmtOdd(e.entry_odd) : "—"}
+                      </Td>
+                      <Td mono className="text-ink-3">
+                        {e.entry_timestamp ?? "—"}
+                      </Td>
+                      <Td mono className="text-ink-2">
+                        {e.closing_odd != null ? fmtOdd(e.closing_odd) : "—"}
                       </Td>
                       <Td mono className={e.clv_percentage != null && e.clv_percentage > 0 ? "text-pos-400" : "text-ink-2"}>
                         {e.clv_percentage != null ? fmtPct(e.clv_percentage) : "—"}

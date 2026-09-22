@@ -161,25 +161,43 @@ class ClvEntry(BaseModel):
     match: str
     market: str
     outcome: str
-    entry_odd: float
+    #: Odd de entrada: MEDIANA das casas observadas no instante da decisao
+    #: (OddsSnapshotStore.line_at). None = nenhuma observacao PIT valida
+    #: naquele instante — nunca odd sintetica, nunca fx.best_odds atual.
+    entry_odd: float | None = None
+    #: Timestamp REAL da observacao que produziu a entrada — nunca o
+    #: prediction_timestamp no lugar do timestamp da odd.
+    entry_timestamp: str | None = None
     closing_odd: float | None = None
     closing_bookmaker: str | None = None
     closing_timestamp: str | None = None
     clv_percentage: float | None = None
     clv_probability: float | None = None
-    #: Estados do dominio (CLVResult): OK = fechamento valido apos a
-    #: entrada; NO_CLOSING_ODDS = sem observacao de fechamento valida;
-    #: CLOSING_BEFORE_ENTRY = fechamento encontrado, mas ANTERIOR a entrada
-    #: (aposta pos-fechamento; CLV nao calculado).
-    status: Literal["OK", "NO_CLOSING_ODDS", "CLOSING_BEFORE_ENTRY"] = "NO_CLOSING_ODDS"
+    #: Estados do dominio (CLVResult) mais a ausencia de entrada:
+    #: OK = fechamento valido apos a entrada;
+    #: NO_CLOSING_ODDS = entrada registrada, sem observacao de
+    #:   fechamento valida;
+    #: CLOSING_BEFORE_ENTRY = fechamento encontrado, mas ANTERIOR a
+    #:   entrada (aposta pos-fechamento; CLV nao calculado);
+    #: NO_ENTRY_ODDS = sem observacao PIT valida no instante da decisao
+    #:   (nada foi registrado — ausencia explicita, nunca odd inventada).
+    status: Literal[
+        "OK", "NO_CLOSING_ODDS", "CLOSING_BEFORE_ENTRY", "NO_ENTRY_ODDS"
+    ] = "NO_CLOSING_ODDS"
 
 
 class ClvReport(BaseModel):
-    """Relatorio agregado de CLV."""
+    """Relatorio agregado de CLV.
+
+    `coverage` e None quando nenhuma entrada foi registrada: sem
+    entrada, a cobertura nao foi medida — 0.0 ficaria reservado para
+    "medido e zero". As medias/medianas sao medias de verdade sobre os
+    CLV validos (status OK); sem CLV valido, ficam None.
+    """
     generated_at: str
     total_bets: int
     bets_with_clv: int
-    coverage: float
+    coverage: float | None = None
     avg_clv_percentage: float | None = None
     median_clv_percentage: float | None = None
     positive_clv_rate: float | None = None

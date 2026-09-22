@@ -594,17 +594,65 @@ def test_movement_never_treats_market_or_book_as_kickoff(monkeypatch, tmp_path):
 
 
 def test_clv_entry_odd_is_numeric_and_matches_outcome(monkeypatch, tmp_path):
-    """CLV recebe odd float da linha correta; nunca um dict."""
+    """CLV expoe odd float da linha correta — a mediana REAL do store.
+
+    Sem entrada registrada a linha fica NO_ENTRY_ODDS com entry_odd None
+    (nunca um dict, nunca o best_odds atual do fixture). Com entrada,
+    entry_odd e a mediana PIT das casas observadas.
+    """
+    from betgsn.odds_snapshots import OddsObservation, OddsSnapshotStore
+
     fixture = _upcoming_fixture()
+    db = tmp_path / "odds.db"
+    store = OddsSnapshotStore(db)
+    store.add([
+        OddsObservation(
+            match_key=fixture.event_key,
+            market="Resultado Final (1X2)", outcome="1",
+            bookmaker="Pinnacle", odd=1.90, timestamp="2026-09-20T10:00:00Z",
+            kickoff="2026-09-20T13:00:00Z", provider="The Odds API",
+        ),
+        OddsObservation(
+            match_key=fixture.event_key,
+            market="Resultado Final (1X2)", outcome="1",
+            bookmaker="Bet365", odd=2.10, timestamp="2026-09-20T10:00:00Z",
+            kickoff="2026-09-20T13:00:00Z", provider="The Odds API",
+        ),
+    ])
     _patch_fixture_source(monkeypatch, tmp_path, [fixture])
 
+    # sem registro: todas as linhas NO_ENTRY_ODDS, entry_odd None
     report = BetgsnService().clv()
     assert report.entries
     assert report.total_bets == len(report.entries)
     for entry in report.entries:
-        assert isinstance(entry.entry_odd, float)
-        assert entry.outcome in fixture.best_odds[entry.market]
-        assert entry.entry_odd == fixture.best_odds[entry.market][entry.outcome]
+        assert entry.status == "NO_ENTRY_ODDS"
+        assert entry.entry_odd is None
+        assert entry.entry_timestamp is None
+
+    # registro real (line_at + register_entry — o caminho do fluxo live):
+    # mediana das duas casas (1.90, 2.10) = 2.00, nao o best_odds (1.95)
+    line = store.line_at(
+        fixture.event_key, "Resultado Final (1X2)", "1",
+        "2026-09-20T10:30:00Z",
+    )
+    assert line is not None and line.odd == 2.00
+    assert store.register_entry(
+        match_key=fixture.event_key, market="Resultado Final (1X2)",
+        outcome="1", entry_odd=line.odd, entry_timestamp=line.timestamp,
+        entry_n_books=line.n_books, kickoff="2026-09-20T13:00:00Z",
+        prediction_timestamp="2026-09-20T10:30:00Z",
+    )
+
+    report = BetgsnService().clv()
+    entry = next(
+        e for e in report.entries
+        if e.market == "Resultado Final (1X2)" and e.outcome == "1"
+    )
+    assert isinstance(entry.entry_odd, float)
+    assert entry.entry_odd == 2.00
+    assert entry.entry_odd != fixture.best_odds["Resultado Final (1X2)"]["1"]
+    assert entry.outcome in fixture.best_odds[entry.market]
 
 
 # --------------------------------------------------------------------------

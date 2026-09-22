@@ -122,25 +122,32 @@ export interface ClvEntry {
   match: string;
   market: string;
   outcome: string;
-  entry_odd: number;
+  /** null = sem observação PIT válida no instante da decisão (NO_ENTRY_ODDS) */
+  entry_odd: number | null;
+  /** Timestamp real da observação que produziu a entrada — nunca o prediction_timestamp */
+  entry_timestamp: string | null;
   closing_odd: number | null;
   closing_bookmaker: string | null;
   closing_timestamp: string | null;
   clv_percentage: number | null;
   clv_probability: number | null;
-  status: "OK" | "NO_CLOSING_ODDS" | "CLOSING_BEFORE_ENTRY";
+  status: "OK" | "NO_CLOSING_ODDS" | "CLOSING_BEFORE_ENTRY" | "NO_ENTRY_ODDS";
 }
 
 export interface ClvReport {
   generated_at: string;
   total_bets: number;
   bets_with_clv: number;
-  coverage: number;
+  /** null = cobertura não medida (nenhuma entrada registrada), nunca 0 fabricado */
+  coverage: number | null;
   avg_clv_percentage: number | null;
   median_clv_percentage: number | null;
   positive_clv_rate: number | null;
   avg_clv_probability: number | null;
-  by_market: Record<string, { n: number; avg_clv: number; with_clv: number }>;
+  by_market: Record<
+    string,
+    { n: number; with_clv: number; avg_clv_percentage: number | null }
+  >;
   entries: ClvEntry[];
   source: string;
 }

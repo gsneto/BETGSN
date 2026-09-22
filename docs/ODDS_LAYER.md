@@ -202,7 +202,7 @@ provider primário
 
 ## 9. Snapshots, movimento e CLV
 
-`OddsSnapshotStore` (SQLite append-only) agora oferece:
+`OddsSnapshotStore` (SQLite append-only, schema v3) agora oferece:
 
 - `observations_at_or_before` (consulta "as of", inclusive);
 - `opening_line` / `latest_observation` — mediana entre casas, com
@@ -216,6 +216,80 @@ provider primário
   `CLOSING_BEFORE_ENTRY` sem calcular CLV. Isso impede usar informação
   futura para justificar uma decisão de entrada.
 - `stats()` inclui a quebra por provider.
+
+### 9.1 CLV prospectivo real (I-02 / I-03 / I-07)
+
+O CLV **live** não usa `fx.best_odds` (FDUK) como entrada. A entrada é
+sempre uma observação REAL do próprio store, no instante da decisão:
+
+```
+/api/signals (real_signal_report)
+  → para cada linha apostável (fixture com odds + kickoff):
+      line_at(event_key, market, outcome, prediction_timestamp)
+        → somente observações timestamp <= decisão
+        → última observação por bookmaker
+        → odd = MEDIANA entre as casas
+        → timestamp = maior timestamp usado
+        → bookmaker representativo = casa mais próxima da mediana
+      se existir:  register_entry(...)   [INSERT OR IGNORE — FIRST-WINS]
+      se não existir: NÃO registra nada (ausência não vira odd)
+```
+
+Regras não negociáveis:
+
+- `entry_timestamp` é **timestamp real da observação** — nunca o
+  `prediction_timestamp`, nunca `now()`;
+- `entry_odd` é a **mediana** das casas no instante T — nunca o
+  `best_odds` atual (MAX);
+- **FIRST-WINS**: `clv_entries` tem `UNIQUE(match_key, market, outcome,
+  source)` e escrita `INSERT OR IGNORE`; o primeiro registro congela a
+  entrada e chamadas posteriores não a alteram;
+- `register_entry` valida a garantia point-in-time estruturalmente:
+  `entry_timestamp <= prediction_timestamp` e
+  `entry_timestamp < kickoff` — violação é erro, não silêncio;
+- `clv_prospective` só calcula CLV quando
+  `entry_timestamp < closing_timestamp < kickoff`.
+
+Metodologia (I-07): **mediana vs mediana, mesma fonte** — entrada =
+mediana das casas no instante T; fechamento = mediana das casas no
+fechamento (`closing_line`). CLV por bookmaker específico não é
+implementado nesta etapa. O `best_odds` do FDUK continua existindo para
+fixtures/line-shopping onde já era usado — mas não é entrada do CLV
+prospectivo.
+
+### 9.2 Status expostos em `/api/clv`
+
+| Status | Significado |
+|---|---|
+| `OK` | fechamento válido posterior à entrada (`entry < closing < kickoff`) |
+| `NO_CLOSING_ODDS` | entrada registrada, sem observação de fechamento válida na janela |
+| `CLOSING_BEFORE_ENTRY` | fechamento encontrado, mas anterior/igual à entrada (aposta pós-fechamento) |
+| `NO_ENTRY_ODDS` | sem observação PIT válida no instante da decisão — nada foi registrado |
+
+Agregações (I-03): `avg_clv_percentage` é **média** (nunca soma),
+`median_clv_percentage` e `avg_clv_probability` são calculados sobre os
+CLV válidos, `coverage` é `None` quando nenhuma entrada foi registrada
+(sem medição) e `by_market` segue a mesma semântica do store
+(`{n, avg_clv_percentage}`).
+
+### 9.3 Divergência live vs backtest (documentada, não unificada)
+
+O CLV **live prospectivo** (esta seção) e o **backtest histórico** usam
+populações metodológicas diferentes por design:
+
+- **Live**: entrada = mediana point-in-time das casas no instante da
+  decisão ( OddsSnapshotStore ); fechamento = mediana na janela final.
+  Mede a qualidade da decisão EM RELAÇÃO ao mercado observado.
+- **Backtest** (`backtest_engine`/`staking`/`value_strategy`): usa as
+  odds históricas do corpus FDUK (CSV de fechamento, sem timestamp de
+  publicação). Não há snapshot de entrada por bookmaker no histórico —
+  por isso o backtest não calcula CLV da mesma forma.
+
+Essa divergência é **intencional** nesta etapa: unificar live/backtest,
+criar entidade de aposta executada, P&L real, CLV por bookmaker ou CLV
+histórico FDUK opening→closing estão fora do escopo (e do princípio NO
+BET). O que NÃO muda: `backtest_engine`, `staking` e `value_strategy`
+permanecem com a semântica histórica intacta.
 
 ---
 
@@ -247,6 +321,10 @@ depende de MCP.
 - `tests/test_odds_snapshots.py` — as-of, abertura/atual, movimento,
   staleness, CLV prospectivo, stats por provider.
 - `tests/test_odds_movement.py` — book count, staleness, features de odds.
+- `tests/test_clv_prospective_real.py` — CLV prospectivo REAL: entrada
+  do store via fluxo live, FIRST-WINS, NO_ENTRY_ODDS, leakage (T-18),
+  mediana-vs-mediana, agregações médias/medianas e contrato PIT
+  (`entry < closing < kickoff`).
 
 Rodar:
 

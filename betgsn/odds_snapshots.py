@@ -14,9 +14,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
-from .timeutil import parse_kickoff, utc_key
+from .timeutil import now_utc, parse_kickoff, utc_key
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+
+#: Fonte canonica das entradas de CLV prospectivo: o registro acontece em
+#: `real_signal_report`, no instante da decisao, a partir de `line_at`.
+CLV_ENTRY_SOURCE = "real_signal_report"
 
 
 def _default_db() -> Path:
@@ -117,6 +121,44 @@ def observations_from_quotes(
         except ValueError:
             continue
     return out
+
+
+@dataclass(frozen=True)
+class LineSnapshot:
+    """Linha agregada num instante: MEDIANA entre as casas observadas.
+
+    Metodologia do CLV prospectivo (I-07): entrada e fechamento sao
+    MEDIANA vs MEDIANA, mesma fonte (este store), mesma populacao
+    metodologica (ultima observacao de cada casa). Nunca MAX na entrada
+    contra MEDIANA no fechamento.
+    """
+
+    odd: float
+    timestamp: str
+    bookmaker: str
+    n_books: int
+
+
+@dataclass(frozen=True)
+class ClvEntryRecord:
+    """Entrada de CLV congelada (FIRST-WINS) no store.
+
+    `entry_odd`/`entry_timestamp` vem SEMPRE de observacao real
+    (`line_at` no instante da decisao): nunca odd sintetica, nunca
+    `prediction_timestamp` no lugar do timestamp da odd.
+    """
+
+    id: int
+    match_key: str
+    market: str
+    outcome: str
+    entry_odd: float
+    entry_timestamp: str
+    entry_n_books: int
+    kickoff: str
+    prediction_timestamp: str
+    source: str
+    created_at: str
 
 
 @dataclass(frozen=True)
@@ -278,6 +320,22 @@ class OddsSnapshotStore:
                         credits_used INTEGER,
                         credits_remaining_known INTEGER
                     );
+                    CREATE TABLE IF NOT EXISTS clv_entries (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        match_key TEXT NOT NULL,
+                        market TEXT NOT NULL,
+                        outcome TEXT NOT NULL,
+                        entry_odd REAL NOT NULL,
+                        entry_timestamp TEXT NOT NULL,
+                        entry_n_books INTEGER NOT NULL,
+                        kickoff TEXT NOT NULL,
+                        prediction_timestamp TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        UNIQUE(match_key, market, outcome, source)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_clv_entries_line
+                        ON clv_entries(match_key, market, outcome);
                     """
                 )
                 conn.execute(
@@ -680,6 +738,135 @@ class OddsSnapshotStore:
         return (parse_kickoff(now) - parse_kickoff(last)).total_seconds()
 
     # ------------------------------------------------------------- CLV
+
+    def line_at(
+        self, match_key: str, market: str, outcome: str, at: str
+    ) -> Optional[LineSnapshot]:
+        """Linha (mediana entre casas) tal como existia no instante `at`.
+
+        Point-in-time estrito: so entram observacoes com timestamp <= at.
+        Para cada casa considera-se a ULTIMA observacao visivel; a odd e
+        a MEDIANA entre as casas utilizadas. O timestamp e o maior entre
+        as observacoes usadas e o bookmaker representativo e a casa cuja
+        odd esta mais proxima da mediana. `n_books` reflete as casas
+        realmente utilizadas.
+
+        Sem observacao valida devolve None — nunca odd sintetica, nunca
+        `at` no lugar do timestamp da observacao.
+        """
+        key = utc_key(at)
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    """SELECT bookmaker, odd, timestamp, id FROM odds_observations
+                       WHERE match_key = ? AND market = ? AND outcome = ?
+                         AND timestamp <= ?
+                       ORDER BY bookmaker, timestamp, id""",
+                    (match_key, market, outcome, key),
+                ).fetchall()
+            finally:
+                conn.close()
+        if not rows:
+            return None
+
+        # ultima observacao visivel de cada casa (rows ja ordenadas)
+        per_book: dict[str, sqlite3.Row] = {}
+        for row in rows:
+            per_book[row["bookmaker"]] = row
+        selected = list(per_book.values())
+        odds = [r["odd"] for r in selected]
+        median_odd = statistics.median(odds)
+        representative = min(selected, key=lambda r: abs(r["odd"] - median_odd))
+        return LineSnapshot(
+            odd=round(median_odd, 4),
+            timestamp=max(r["timestamp"] for r in selected),
+            bookmaker=representative["bookmaker"],
+            n_books=len(selected),
+        )
+
+    def register_entry(
+        self,
+        match_key: str,
+        market: str,
+        outcome: str,
+        entry_odd: float,
+        entry_timestamp: str,
+        entry_n_books: int,
+        kickoff: str,
+        prediction_timestamp: str,
+        source: str = CLV_ENTRY_SOURCE,
+    ) -> bool:
+        """Registra entrada de CLV, congelada FIRST-WINS.
+
+        Contrato da entrada (I-02): `entry_odd`/`entry_timestamp` sao
+        produzidos por `line_at` no instante da decisao — observacao
+        REAL, nunca `fx.best_odds` atual nem `prediction_timestamp` no
+        lugar do timestamp da odd. A garantia point-in-time e verificada
+        aqui: entry_timestamp NAO pode ser posterior ao instante da
+        decisao nem alcancar o kickoff.
+
+        UNIQUE(match_key, market, outcome, source) + INSERT OR IGNORE =
+        FIRST-WINS: o primeiro registro congela a entrada; chamadas
+        posteriores nao alteram entry_odd nem entry_timestamp. Devolve
+        True somente quando a linha foi inserida AGORA.
+        """
+        if entry_odd <= 1.0:
+            raise ValueError("entry_odd precisa ser > 1.0")
+        if entry_n_books < 1:
+            raise ValueError("entry_n_books precisa ser >= 1")
+        entry_key = utc_key(entry_timestamp)
+        prediction_key = utc_key(prediction_timestamp)
+        if entry_key > prediction_key:
+            raise ValueError(
+                "entry_timestamp posterior ao instante da decisao: "
+                "observacao pos-decisao nao pode definir a entrada (leakage)"
+            )
+        kickoff_key = utc_key(kickoff)
+        if entry_key >= kickoff_key:
+            raise ValueError("entry_timestamp precisa ser anterior ao kickoff")
+
+        with self._lock:
+            conn = self._conn()
+            try:
+                cur = conn.execute(
+                    """INSERT OR IGNORE INTO clv_entries
+                       (match_key, market, outcome, entry_odd, entry_timestamp,
+                        entry_n_books, kickoff, prediction_timestamp, source,
+                        created_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        match_key, market, outcome, entry_odd, entry_key,
+                        entry_n_books, kickoff_key, prediction_key, source,
+                        now_utc(),
+                    ),
+                )
+                conn.commit()
+                return cur.rowcount == 1
+            finally:
+                conn.close()
+
+    def clv_entries(self) -> list[ClvEntryRecord]:
+        """Entradas registradas, em ordem de criacao (FIRST-WINS primeiro)."""
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    "SELECT * FROM clv_entries ORDER BY created_at, id"
+                ).fetchall()
+            finally:
+                conn.close()
+        return [
+            ClvEntryRecord(
+                id=r["id"], match_key=r["match_key"], market=r["market"],
+                outcome=r["outcome"], entry_odd=r["entry_odd"],
+                entry_timestamp=r["entry_timestamp"],
+                entry_n_books=r["entry_n_books"], kickoff=r["kickoff"],
+                prediction_timestamp=r["prediction_timestamp"],
+                source=r["source"], created_at=r["created_at"],
+            )
+            for r in rows
+        ]
 
     def clv(
         self,

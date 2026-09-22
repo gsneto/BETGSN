@@ -28,7 +28,6 @@ from betgsn.api.service import clv_status_to_api, movement_status_to_api
 from betgsn.football_data_uk import UpcomingFixture
 from betgsn.odds_normalize import event_key
 from betgsn.odds_snapshots import (
-    CLOSING_WINDOW_MINUTES,
     OddsObservation,
     OddsSnapshotStore,
 )
@@ -173,6 +172,14 @@ def test_api_schemas_reject_invalid_statuses():
         S.ClvEntry(**base_clv, status="BEFORE_OPENING")
     with pytest.raises(ValidationError):
         S.ClvEntry(**base_clv, status="NO_DATA")
+    # NO_ENTRY_ODDS e valido e carrega entry_odd/entry_timestamp None:
+    # ausencia de observacao PIT e ausencia explicita, nunca odd sintetica
+    no_entry = S.ClvEntry(
+        match="x", market=MARKET, outcome="1",
+        entry_odd=None, entry_timestamp=None, status="NO_ENTRY_ODDS",
+    )
+    assert no_entry.status == "NO_ENTRY_ODDS"
+    assert no_entry.entry_odd is None
 
 
 # ==========================================================================
@@ -211,33 +218,33 @@ def test_movement_single_observation_is_insufficient_data(
 
 
 def test_clv_endpoint_carries_closing_before_entry(monkeypatch, tmp_path):
-    """O estado prospectivo do dominio chega inteiro ao consumidor da API."""
+    """O estado prospectivo do dominio chega inteiro ao consumidor da API.
+
+    Pelo caminho REAL (I-02): a entrada e registrada pelo proprio store
+    (`register_entry`, FIRST-WINS) a partir da observacao de 11:30 —
+    dentro da janela de 120min do kickoff 12:00. O fechamento encontrado
+    (11:30) NAO e posterior a entrada (11:30): o cenario exato que
+    `clv_prospective` protege — CLV nao pode ser atribuido. Nenhum
+    metodo do dominio e mockado.
+    """
     from betgsn.api.service import BetgsnService
-    import betgsn.odds_snapshots as snap_mod
 
     fixture = _fixture()
     db = tmp_path / "odds.db"
     store = OddsSnapshotStore(db)
-    # fechamento observado as 11h30 (dentro da janela de 120min do kickoff
-    # das 12h). A entrada as 11h45 e POSTERIOR a ele: o cenario exato que
-    # `clv_prospective` protege — CLV nao pode ser atribuido.
     store.add([_obs(fixture.event_key, 1.80, "2030-01-01T11:30:00Z")])
-    real_cls = snap_mod.OddsSnapshotStore
-    entry_ts = "2030-01-01T11:45:00Z"
-
-    class _ProspectiveStore(real_cls):
-        """clv com a semantica prospectiva do dominio."""
-
-        def clv(self, match_key, market, outcome, entry_odd,
-                window_minutes=CLOSING_WINDOW_MINUTES):
-            return self.clv_prospective(
-                match_key, market, outcome, entry_odd,
-                entry_timestamp=entry_ts,
-            )
-
     _patch_fixtures(monkeypatch, [fixture])
-    monkeypatch.setattr(
-        snap_mod, "OddsSnapshotStore", lambda *a, **k: _ProspectiveStore(db)
+    _patch_store(monkeypatch, db)
+
+    # registro real: line_at no instante da decisao (11:45) + congelamento
+    line = store.line_at(
+        fixture.event_key, MARKET, "1", "2030-01-01T11:45:00Z")
+    assert line is not None
+    assert store.register_entry(
+        match_key=fixture.event_key, market=MARKET, outcome="1",
+        entry_odd=line.odd, entry_timestamp=line.timestamp,
+        entry_n_books=line.n_books, kickoff=KICKOFF,
+        prediction_timestamp="2030-01-01T11:45:00Z",
     )
 
     report = BetgsnService().clv()

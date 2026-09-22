@@ -248,7 +248,21 @@ def test_t1_movement_and_clv_read_the_matched_key(monkeypatch, tmp_path):
     assert entry.opening_odd == 1.90
     assert entry.current_odd == 2.10
 
-    # CLV: fechamento real (2.10) contra a entrada do fixture (1.90)
+    # CLV (I-02): entrada registrada pelo caminho real — line_at no
+    # instante da decisao (10:00, quando a primeira captura existia) +
+    # congelamento FIRST-WINS. A entrada e a observacao REAL (1.90), nao
+    # o best_odds do fixture; o fechamento e a captura de 18:30 (2.10).
+    store = OddsSnapshotStore(tmp_path / "odds.db")
+    line = store.line_at(fx.event_key, MARKET, "1", "2026-09-19T10:00:00Z")
+    assert line is not None
+    assert line.odd == 1.90
+    assert store.register_entry(
+        match_key=fx.event_key, market=MARKET, outcome="1",
+        entry_odd=line.odd, entry_timestamp=line.timestamp,
+        entry_n_books=line.n_books,
+        kickoff=utc_key(fx.kickoff, fx.timezone),
+        prediction_timestamp="2026-09-19T10:00:00Z",
+    )
     report = BetgsnService().clv()
     clv_entry = next(
         e for e in report.entries
@@ -256,7 +270,8 @@ def test_t1_movement_and_clv_read_the_matched_key(monkeypatch, tmp_path):
     )
     assert clv_entry.status == "OK"
     assert clv_entry.closing_odd == 2.10
-    assert clv_entry.entry_odd == fx.best_odds[MARKET]["1"]
+    assert clv_entry.entry_odd == 1.90
+    assert clv_entry.entry_timestamp == "2026-09-19T10:00:00Z"
 
 
 def test_t1_full_round_matches(monkeypatch, tmp_path):

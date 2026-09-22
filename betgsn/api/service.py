@@ -17,7 +17,7 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from statistics import mean
+from statistics import fmean, mean, median
 
 from .. import __version__
 from ..backtest import run_backtest
@@ -40,23 +40,26 @@ MODEL_DOC_FALLBACK = "Documentacao do modelo indisponivel."
 # informacao e SEM aceitar string qualquer. Os mapeamentos abaixo sao
 # explicitos e totais: estado desconhecido e erro, nunca silencio.
 
-#: CLV: o dominio (CLVResult) produz exatamente estes tres status — ver
-#: `OddsSnapshotStore.clv` e `clv_prospective`. A API expoe os mesmos
-#: estados porque nenhum deles pode ser colapsado sem mentir:
-#: CLOSING_BEFORE_ENTRY significa "a entrada ja era pos-fechamento", o que
-#: e diferente de NO_CLOSING_ODDS ("nunca houve fechamento valido").
+#: CLV: o dominio (CLVResult) produz OK, NO_CLOSING_ODDS e
+#: CLOSING_BEFORE_ENTRY — ver `OddsSnapshotStore.clv` e `clv_prospective`.
+#: NO_ENTRY_ODDS e produzido NA BORDA: linha apostavel sem entrada
+#: registrada no store (nenhuma observacao PIT valida no instante da
+#: decisao). A API expoe os quatro porque nenhum pode ser colapsado sem
+#: mentir: "sem fechamento", "entrada pos-fechamento" e "sem odd de
+#: entrada observada" sao ausencias diferentes.
 _CLV_STATUS_API: dict[str, str] = {
     "OK": "OK",
     "NO_CLOSING_ODDS": "NO_CLOSING_ODDS",
     "CLOSING_BEFORE_ENTRY": "CLOSING_BEFORE_ENTRY",
+    "NO_ENTRY_ODDS": "NO_ENTRY_ODDS",
 }
 
 
 def clv_status_to_api(status: str) -> str:
     """Traduz status de CLV do dominio para o enum da API.
 
-    Total e restritivo: mapeia os tres estados que o dominio produz e
-    recusa qualquer outro — um status novo no dominio precisa de decisao
+    Total e restritivo: mapeia os estados que o dominio e a borda
+    produzem e recusa qualquer outro — um status novo precisa de decisao
     explicita de contrato, nao de passagem automatica.
     """
     try:
@@ -432,6 +435,12 @@ class BetgsnService:
             market_keys=market_keys,
         )
 
+        # I-02: registra as entradas de CLV a partir de observacao REAL do
+        # OddsSnapshotStore, no instante da decisao. Sem observacao PIT
+        # valida, a linha nao ganha entrada — a ausencia aparece como
+        # NO_ENTRY_ODDS no /api/clv, nunca como odd sintetica.
+        self._register_clv_entries(snap)
+
         # adapter minimo: o tradutor precisa de um RunResult. As ANALISES
         # reais do snapshot sao preservadas — `_signal` busca nelas a liga
         # e a rodada de cada sinal. Sem elas, todo sinal chegaria com
@@ -472,6 +481,56 @@ class BetgsnService:
             "skipped_insufficient_books": snap.skipped_insufficient_books,
             "calibration": S.ModelCalibrationInfo(**MODEL_CALIBRATION),
         })
+
+    def _register_clv_entries(self, snap) -> int:
+        """Registra entradas de CLV para as linhas apostaveis do snapshot.
+
+        Entrada = observacao REAL do OddsSnapshotStore no instante da
+        decisao: `line_at(event_key, market, outcome, prediction_timestamp)`
+        devolve a MEDIANA das ultimas observacoes por casa com timestamp
+        <= decisao. Nada e fabricado:
+
+        - sem observacao PIT valida, a linha NAO ganha entrada;
+        - entry_timestamp e timestamp real da observacao, nunca o
+          prediction_timestamp;
+        - entry_odd e a mediana das casas, nunca fx.best_odds atual;
+        - o store congela a primeira entrada (FIRST-WINS).
+
+        Devolve quantas entradas foram inseridas agora (chamadas
+        repetidas devolvem 0 para as linhas ja congeladas).
+        """
+        from ..odds_snapshots import CLV_ENTRY_SOURCE, OddsSnapshotStore
+
+        store = OddsSnapshotStore()
+        prediction_ts = snap.generated_at
+        registered = 0
+        for fx in snap.fixtures:
+            if not fx.has_odds:
+                continue
+            if not fx.has_kickoff:
+                # Sem horario publicado nao existe instante mensuravel.
+                continue
+            for market, outcomes in fx.best_odds.items():
+                for oc in outcomes:
+                    line = store.line_at(
+                        fx.event_key, market, oc, prediction_ts)
+                    if line is None:
+                        # Sem observacao valida no instante da decisao:
+                        # nao registrar nada — ausencia nao e odd.
+                        continue
+                    if store.register_entry(
+                        match_key=fx.event_key,
+                        market=market,
+                        outcome=oc,
+                        entry_odd=line.odd,
+                        entry_timestamp=line.timestamp,
+                        entry_n_books=line.n_books,
+                        kickoff=utc_key(fx.kickoff, fx.timezone),
+                        prediction_timestamp=prediction_ts,
+                        source=CLV_ENTRY_SOURCE,
+                    ):
+                        registered += 1
+        return registered
 
     def _fixture_of(self, snap: Snapshot, match: str) -> FixtureAnalysis | None:
         for a in snap.result.analyses:
@@ -1142,73 +1201,119 @@ class BetgsnService:
     # ---------------------------------------------------------- clv
 
     def clv(self) -> S.ClvReport:
-        from ..odds_snapshots import OddsSnapshotStore, CLVResult
+        from ..odds_snapshots import ClvEntryRecord, OddsSnapshotStore
         from ..football_data_uk import FootballDataClient
-        from ..signals import Signal as CoreSignal
-        from ..pipeline import run
-        from ..data import build_dataset
-        from ..config import get_config
 
         client = FootballDataClient()
         store = OddsSnapshotStore()
         fixtures_raw = client.load_fixtures()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        cfg = get_config()
-        entries: list[S.ClvEntry] = []
+        # Entradas registradas pelo fluxo real (real_signal_report ->
+        # register_entry, FIRST-WINS). Em caso de fontes concorrentes,
+        # vale a primeira registrada para cada linha.
+        registered: dict[tuple[str, str, str], ClvEntryRecord] = {}
+        for rec in store.clv_entries():
+            registered.setdefault(
+                (rec.match_key, rec.market, rec.outcome), rec)
 
-        for fx in fixtures_raw[:50]:
+        entries: list[S.ClvEntry] = []
+        for fx in fixtures_raw:
             if not fx.has_odds:
                 continue
             if not fx.has_kickoff:
                 # Sem horario publicado nao existe fechamento mensuravel.
                 continue
-            # `fx.odds` e {mercado: {casa: {resultado: odd}}}. O outcome e a
-            # chave interna e o valor e a odd float. A odd de entrada e a
-            # melhor disponivel para a linha (line shopping) — nunca um dict.
             for market, best in fx.best_odds.items():
-                for oc, odd in best.items():
-                    clv = store.clv(
-                        fx.event_key, market, oc,
-                        entry_odd=odd,
+                for oc in best:
+                    rec = registered.get((fx.event_key, market, oc))
+                    if rec is None:
+                        # Nao houve observacao PIT valida no instante da
+                        # decisao: nada foi registrado. Ausencia explicita
+                        # — nunca odd sintetica, nunca now() como timestamp
+                        # da odd.
+                        entries.append(S.ClvEntry(
+                            match=fx.match,
+                            market=market,
+                            outcome=oc,
+                            entry_odd=None,
+                            entry_timestamp=None,
+                            status="NO_ENTRY_ODDS",
+                        ))
+                        continue
+                    # I-07: mediana (entrada congelada) vs mediana
+                    # (fechamento), mesma fonte (store), mesma populacao
+                    # metodologica. clv_prospective so calcula CLV quando
+                    # entry_timestamp < closing_timestamp.
+                    result = store.clv_prospective(
+                        rec.match_key, market, oc,
+                        entry_odd=rec.entry_odd,
+                        entry_timestamp=rec.entry_timestamp,
                     )
                     entries.append(S.ClvEntry(
                         match=fx.match,
                         market=market,
                         outcome=oc,
-                        entry_odd=odd,
-                        closing_odd=clv.closing_odd,
-                        closing_bookmaker=clv.closing_bookmaker,
-                        closing_timestamp=clv.closing_timestamp,
-                        clv_percentage=clv.clv_percentage,
-                        clv_probability=clv.clv_probability,
-                        status=clv_status_to_api(clv.status),
+                        entry_odd=rec.entry_odd,
+                        entry_timestamp=rec.entry_timestamp,
+                        closing_odd=result.closing_odd,
+                        closing_bookmaker=result.closing_bookmaker or None,
+                        closing_timestamp=result.closing_timestamp or None,
+                        clv_percentage=result.clv_percentage,
+                        clv_probability=result.clv_probability,
+                        status=clv_status_to_api(result.status),
                     ))
 
         total = len(entries)
+        n_registered = sum(1 for e in entries if e.entry_odd is not None)
         with_clv = sum(1 for e in entries if e.status == "OK")
-        pcts = [e.clv_percentage for e in entries if e.clv_percentage is not None]
-        avg_clv = sum(pcts) / len(pcts) if pcts else None
-        pos_rate = sum(1 for p in pcts if p > 0) / len(pcts) if pcts else None
+        pcts = [e.clv_percentage for e in entries
+                if e.clv_percentage is not None]
+        probs = [e.clv_probability for e in entries
+                 if e.clv_probability is not None]
+        # Medias de verdade (I-03): fmean sobre os CLV validos, nunca soma.
+        avg_clv = round(fmean(pcts), 6) if pcts else None
+        median_clv = round(median(pcts), 6) if pcts else None
+        avg_prob = round(fmean(probs), 6) if probs else None
+        pos_rate = (
+            round(sum(1 for p in pcts if p > 0) / len(pcts), 6)
+            if pcts else None
+        )
+        # Sem entrada registrada a cobertura nao foi medida: None, nunca
+        # 0.0 (que diria "medimos e nenhuma linha fechou").
+        coverage = with_clv / total if (total and n_registered) else None
 
+        # by_market com a MESMA semantica do store (CLVCoverage.by_market):
+        # {n, avg_clv_percentage} — media por mercado, nao soma.
         by_market: dict[str, dict] = {}
         for e in entries:
-            if e.market not in by_market:
-                by_market[e.market] = {"n": 0, "avg_clv": 0.0, "with_clv": 0}
-            by_market[e.market]["n"] += 1
+            bucket = by_market.setdefault(
+                e.market, {"n": 0, "with_clv": 0, "clvs": []})
+            bucket["n"] += 1
             if e.status == "OK":
-                by_market[e.market]["with_clv"] += 1
-                by_market[e.market]["avg_clv"] += (e.clv_percentage or 0)
+                bucket["with_clv"] += 1
+                bucket["clvs"].append(e.clv_percentage)
+        by_market = {
+            market: {
+                "n": bucket["n"],
+                "with_clv": bucket["with_clv"],
+                "avg_clv_percentage": (
+                    round(fmean(bucket["clvs"]), 6)
+                    if bucket["clvs"] else None
+                ),
+            }
+            for market, bucket in sorted(by_market.items())
+        }
 
         return S.ClvReport(
             generated_at=now,
             total_bets=total,
             bets_with_clv=with_clv,
-            coverage=with_clv / max(total, 1),
+            coverage=coverage,
             avg_clv_percentage=avg_clv,
-            median_clv_percentage=None,
+            median_clv_percentage=median_clv,
             positive_clv_rate=pos_rate,
-            avg_clv_probability=None,
+            avg_clv_probability=avg_prob,
             by_market=by_market,
             entries=entries,
             source="football-data.co.uk",

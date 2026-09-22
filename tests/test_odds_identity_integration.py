@@ -217,12 +217,30 @@ def test_clv_finds_persisted_closing_observation(monkeypatch, tmp_path):
     store.add([
         OddsObservation(
             match_key=fixture.event_key, market=MARKET, outcome="1",
+            bookmaker="Pinnacle", odd=1.90, timestamp="2030-01-01T10:00:00Z",
+            kickoff=KICKOFF, provider="The Odds API",
+        ),
+        OddsObservation(
+            match_key=fixture.event_key, market=MARKET, outcome="1",
             bookmaker="Pinnacle", odd=1.80, timestamp="2030-01-01T11:30:00Z",
             kickoff=KICKOFF, provider="The Odds API",
         ),
     ])
     _patch_fixtures(monkeypatch, [fixture])
     _patch_store(monkeypatch, db)
+
+    # registro real da entrada (I-02): line_at no instante da decisao
+    # (10:30) + congelamento FIRST-WINS — o mesmo caminho do fluxo live.
+    line = store.line_at(
+        fixture.event_key, MARKET, "1", "2030-01-01T10:30:00Z")
+    assert line is not None
+    assert line.odd == 1.90
+    assert store.register_entry(
+        match_key=fixture.event_key, market=MARKET, outcome="1",
+        entry_odd=line.odd, entry_timestamp=line.timestamp,
+        entry_n_books=line.n_books, kickoff=KICKOFF,
+        prediction_timestamp="2030-01-01T10:30:00Z",
+    )
 
     report = BetgsnService().clv()
     entry = next(
@@ -231,7 +249,9 @@ def test_clv_finds_persisted_closing_observation(monkeypatch, tmp_path):
     )
     assert entry.status == "OK"
     assert entry.closing_odd == 1.80
-    assert entry.entry_odd == fixture.best_odds[MARKET]["1"]
+    # a entrada e a observacao PIT do store, nao o best_odds do fixture
+    assert entry.entry_odd == 1.90
+    assert entry.entry_timestamp == "2030-01-01T10:00:00Z"
     assert entry.clv_percentage > 0
 
 
@@ -239,8 +259,28 @@ def test_clv_no_closing_odds_when_none_persisted(monkeypatch, tmp_path):
     from betgsn.api.service import BetgsnService
 
     fixture = _fixture()
+    db = tmp_path / "odds.db"
+    store = OddsSnapshotStore(db)
+    # observacao de entrada as 08:00: fora da janela de fechamento (120min)
+    store.add([
+        OddsObservation(
+            match_key=fixture.event_key, market=MARKET, outcome="1",
+            bookmaker="Pinnacle", odd=1.90, timestamp="2030-01-01T08:00:00Z",
+            kickoff=KICKOFF, provider="The Odds API",
+        ),
+    ])
     _patch_fixtures(monkeypatch, [fixture])
-    _patch_store(monkeypatch, tmp_path / "vazio.db")
+    _patch_store(monkeypatch, db)
+
+    line = store.line_at(
+        fixture.event_key, MARKET, "1", "2030-01-01T09:00:00Z")
+    assert line is not None
+    assert store.register_entry(
+        match_key=fixture.event_key, market=MARKET, outcome="1",
+        entry_odd=line.odd, entry_timestamp=line.timestamp,
+        entry_n_books=line.n_books, kickoff=KICKOFF,
+        prediction_timestamp="2030-01-01T09:00:00Z",
+    )
 
     report = BetgsnService().clv()
     entry = next(
