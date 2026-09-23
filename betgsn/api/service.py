@@ -824,6 +824,10 @@ class BetgsnService:
                         kickoff=utc_key(fx.kickoff, fx.timezone),
                         prediction_timestamp=prediction_ts,
                         source=CLV_ENTRY_SOURCE,
+                        home=fx.home,
+                        away=fx.away,
+                        league=fx.league,
+                        entry_bookmaker=line.bookmaker,
                     ):
                         registered += 1
         return registered
@@ -1539,7 +1543,11 @@ class BetgsnService:
     # ---------------------------------------------------------- clv
 
     def clv(self) -> S.ClvReport:
-        from ..odds_snapshots import ClvEntryRecord, OddsSnapshotStore
+        from ..odds_snapshots import (
+            CLV_LIFECYCLE_STATES,
+            ClvEntryRecord,
+            OddsSnapshotStore,
+        )
         from ..football_data_uk import FootballDataClient
 
         client = FootballDataClient()
@@ -1556,6 +1564,7 @@ class BetgsnService:
                 (rec.match_key, rec.market, rec.outcome), rec)
 
         entries: list[S.ClvEntry] = []
+        lifecycle_counts: dict[str, int] = {s: 0 for s in CLV_LIFECYCLE_STATES}
         for fx in fixtures_raw:
             if not fx.has_odds:
                 continue
@@ -1579,14 +1588,17 @@ class BetgsnService:
                             status="NO_ENTRY_ODDS",
                         ))
                         continue
-                    # I-07: mediana (entrada congelada) vs mediana
-                    # (fechamento), mesma fonte (store), mesma populacao
-                    # metodologica. clv_prospective so calcula CLV quando
-                    # entry_timestamp < closing_timestamp.
-                    result = store.clv_prospective(
-                        rec.match_key, market, oc,
-                        entry_odd=rec.entry_odd,
-                        entry_timestamp=rec.entry_timestamp,
+                    # Ciclo de vida da entrada (PENDING/NO_CLOSE/CLOSED/
+                    # INVALID/MISMATCH) + resultado do CLV prospectivo
+                    # quando existir. O status da API preserva o contrato
+                    # legado; o lifecycle e a classificacao operacional
+                    # (PENDING != NO_CLOSE: "ainda nao" != "nunca").
+                    lifecycle = store.clv_lifecycle(rec)
+                    lifecycle_counts[lifecycle.state] += 1
+                    result = lifecycle.result
+                    status = (
+                        clv_status_to_api(result.status)
+                        if result is not None else "NO_CLOSING_ODDS"
                     )
                     entries.append(S.ClvEntry(
                         match=fx.match,
@@ -1594,12 +1606,26 @@ class BetgsnService:
                         outcome=oc,
                         entry_odd=rec.entry_odd,
                         entry_timestamp=rec.entry_timestamp,
-                        closing_odd=result.closing_odd,
-                        closing_bookmaker=result.closing_bookmaker or None,
-                        closing_timestamp=result.closing_timestamp or None,
-                        clv_percentage=result.clv_percentage,
-                        clv_probability=result.clv_probability,
-                        status=clv_status_to_api(result.status),
+                        closing_odd=result.closing_odd if result else None,
+                        closing_bookmaker=(
+                            result.closing_bookmaker or None
+                            if result else None),
+                        closing_timestamp=(
+                            result.closing_timestamp or None
+                            if result else None),
+                        clv_percentage=(
+                            result.clv_percentage if result else None),
+                        clv_probability=(
+                            result.clv_probability if result else None),
+                        status=status,
+                        home=rec.home or None,
+                        away=rec.away or None,
+                        league=rec.league or None,
+                        entry_n_books=rec.entry_n_books,
+                        entry_bookmaker=rec.entry_bookmaker or None,
+                        execution_status=rec.execution_status,
+                        lifecycle_state=lifecycle.state,
+                        lifecycle_detail=lifecycle.detail,
                     ))
 
         total = len(entries)
@@ -1655,6 +1681,10 @@ class BetgsnService:
             by_market=by_market,
             entries=entries,
             source="football-data.co.uk",
+            # classificacao do ciclo de vida (PENDING/NO_CLOSE/CLOSED/
+            # INVALID/MISMATCH): a distincao entre "ainda nao" e "nunca"
+            # e o que impede ausencia de fechamento de virar CLV=0
+            lifecycle=dict(lifecycle_counts),
         )
 
 

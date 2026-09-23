@@ -192,6 +192,26 @@ class ClvEntry(BaseModel):
     status: Literal[
         "OK", "NO_CLOSING_ODDS", "CLOSING_BEFORE_ENTRY", "NO_ENTRY_ODDS"
     ] = "NO_CLOSING_ODDS"
+    #: ---- Proveniencia da decisao (schema v4 do store) ----
+    home: str | None = None
+    away: str | None = None
+    league: str | None = None
+    #: Casas que sustentaram a mediana de entrada.
+    entry_n_books: int | None = None
+    #: Casa representativa da mediana de entrada.
+    entry_bookmaker: str | None = None
+    #: EXECUTABILIDADE: o preco de execucao e UNKNOWN enquanto nao houver
+    #: execucao real registrada — o preco OBSERVADO na decisao nunca e
+    #: presumido igual ao preco EXECUTADO.
+    execution_status: Literal["UNKNOWN"] = "UNKNOWN"
+    #: Ciclo de vida operacional: PENDING (kickoff no futuro, fechamento
+    #: ainda pode chegar), NO_CLOSE (kickoff passou sem fechamento
+    #: valido), CLOSED (CLV calculado), INVALID (dado inconsistente),
+    #: MISMATCH (entrada sem observacao correspondente no store).
+    lifecycle_state: Literal[
+        "PENDING", "NO_CLOSE", "CLOSED", "INVALID", "MISMATCH"
+    ] | None = None
+    lifecycle_detail: str | None = None
 
 
 class ClvReport(BaseModel):
@@ -201,6 +221,11 @@ class ClvReport(BaseModel):
     entrada, a cobertura nao foi medida — 0.0 ficaria reservado para
     "medido e zero". As medias/medianas sao medias de verdade sobre os
     CLV validos (status OK); sem CLV valido, ficam None.
+
+    `lifecycle` conta as entradas registradas por estado do ciclo de
+    vida (PENDING/NO_CLOSE/CLOSED/INVALID/MISMATCH): "sem fechamento
+    AINDA" e diferente de "sem fechamento NUNCA" — ausencia de
+    fechamento nunca vira CLV=0.
     """
     generated_at: str
     total_bets: int
@@ -213,6 +238,7 @@ class ClvReport(BaseModel):
     by_market: dict[str, dict] = Field(default_factory=dict)
     entries: list[ClvEntry]
     source: str
+    lifecycle: dict[str, int] = Field(default_factory=dict)
 
 
 class CoverageReport(BaseModel):

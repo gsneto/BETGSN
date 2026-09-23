@@ -16,11 +16,38 @@ from typing import Mapping, Optional, Sequence
 
 from .timeutil import now_utc, parse_kickoff, utc_key
 
-SCHEMA_VERSION = 3
+#: v4: clv_entries ganha colunas de PROVENIENCIA da decisao (home, away,
+#: league, casa representativa da entrada, execution_status) — a entrada
+#: deixa de ser apenas um preco e passa a ser rastreavel ate o evento e
+#: a casa que a sustentaram. Bases v3 sao migradas por ALTER TABLE.
+SCHEMA_VERSION = 4
 
 #: Fonte canonica das entradas de CLV prospectivo: o registro acontece em
 #: `real_signal_report`, no instante da decisao, a partir de `line_at`.
 CLV_ENTRY_SOURCE = "real_signal_report"
+
+#: Estados do ciclo de vida de uma entrada de CLV (Etapa de validacao
+#: market/CLV). Distincao obrigatoria: "sem fechamento AINDA" (kickoff
+#: no futuro) e diferente de "sem fechamento NUNCA" (kickoff passou e
+#: nenhuma observacao valida na janela). Ausencia de fechamento NUNCA
+#: vira CLV=0.
+#:
+#:   PENDING   entrada congelada, kickoff ainda nao aconteceu — o
+#:             fechamento ainda pode chegar;
+#:   NO_CLOSE   kickoff passou e nao ha observacao valida na janela de
+#:             fechamento;
+#:   CLOSED     fechamento valido apos a entrada — CLV calculado;
+#:   INVALID    dado inconsistente (fechamento anterior a entrada, odd
+#:             invalida, timestamps fora de ordem);
+#:   MISMATCH   a entrada nao resolve a NENHUMA observacao do store
+#:             para aquela linha (identidade canonica divergente).
+CLV_LIFECYCLE_STATES = (
+    "PENDING", "NO_CLOSE", "CLOSED", "INVALID", "MISMATCH",
+)
+
+#: Sem execucao real registrada, o preco de execucao e DESCONHECIDO —
+#: nunca presumido igual ao preco observado/selecionado.
+CLV_EXECUTION_UNKNOWN = "UNKNOWN"
 
 
 def _default_db() -> Path:
@@ -146,6 +173,12 @@ class ClvEntryRecord:
     `entry_odd`/`entry_timestamp` vem SEMPRE de observacao real
     (`line_at` no instante da decisao): nunca odd sintetica, nunca
     `prediction_timestamp` no lugar do timestamp da odd.
+
+    Proveniencia (schema v4): `home`/`away`/`league` identificam o
+    evento, `entry_bookmaker` e a casa representativa da mediana de
+    entrada, e `execution_status` separa o preco OBSERVADO na decisao
+    do preco de EXECUCAO (UNKNOWN enquanto nao houver execucao real —
+    nunca presumido igual).
     """
 
     id: int
@@ -159,6 +192,11 @@ class ClvEntryRecord:
     prediction_timestamp: str
     source: str
     created_at: str
+    home: str = ""
+    away: str = ""
+    league: str = ""
+    entry_bookmaker: str = ""
+    execution_status: str = CLV_EXECUTION_UNKNOWN
 
 
 @dataclass(frozen=True)
@@ -260,6 +298,65 @@ class CLVCoverage:
         }
 
 
+@dataclass(frozen=True)
+class ClvLifecycle:
+    """Estado do ciclo de vida de UMA entrada de CLV.
+
+    `result` so existe quando ha calculo (CLOSED) ou fechamento
+    inconsistente (INVALID com closing) — nos demais estados o CLV e
+    simplesmente inexistente, nunca zero.
+    """
+
+    entry: ClvEntryRecord
+    state: str
+    result: Optional[CLVResult] = None
+    detail: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "match_key": self.entry.match_key,
+            "market": self.entry.market,
+            "outcome": self.entry.outcome,
+            "kickoff": self.entry.kickoff,
+            "state": self.state,
+            "detail": self.detail,
+            "entry_odd": self.entry.entry_odd,
+            "entry_timestamp": self.entry.entry_timestamp,
+            "closing_odd": self.result.closing_odd if self.result else None,
+            "closing_timestamp": (
+                self.result.closing_timestamp if self.result else None),
+            "clv_percentage": (
+                self.result.clv_percentage if self.result else None),
+            "execution_status": self.entry.execution_status,
+        }
+
+
+@dataclass(frozen=True)
+class ClvLifecycleSummary:
+    """Classificacao do ciclo de vida de TODAS as entradas do store."""
+
+    evaluated_at: str
+    by_state: dict
+    n_entries: int
+    lifecycles: list  # list[ClvLifecycle]
+
+    @property
+    def n_closed(self) -> int:
+        return self.by_state.get("CLOSED", 0)
+
+    @property
+    def n_pending(self) -> int:
+        return self.by_state.get("PENDING", 0)
+
+    def to_dict(self) -> dict:
+        return {
+            "evaluated_at": self.evaluated_at,
+            "n_entries": self.n_entries,
+            "by_state": dict(self.by_state),
+            "entries": [lc.to_dict() for lc in self.lifecycles],
+        }
+
+
 class OddsSnapshotStore:
     """Store append-only de observacoes de odds."""
 
@@ -342,9 +439,35 @@ class OddsSnapshotStore:
                     "INSERT OR REPLACE INTO schema_meta VALUES (?, ?)",
                     ("version", str(SCHEMA_VERSION)),
                 )
+                self._migrate_clv_entries(conn)
                 conn.commit()
             finally:
                 conn.close()
+
+    @staticmethod
+    def _migrate_clv_entries(conn: sqlite3.Connection) -> None:
+        """v3 -> v4: colunas de proveniencia da decisao em clv_entries.
+
+        ALTER TABLE ADD COLUMN com defaults: linhas antigas ficam com
+        string vazia (proveniencia nao registrada na epoca — declarado,
+        nunca inventado) e execution_status UNKNOWN. Nada e sobrescrito;
+        o store continua append-only.
+        """
+        cols = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(clv_entries)")
+        }
+        additions = (
+            ("home", "TEXT DEFAULT ''"),
+            ("away", "TEXT DEFAULT ''"),
+            ("league", "TEXT DEFAULT ''"),
+            ("entry_bookmaker", "TEXT DEFAULT ''"),
+            ("execution_status", "TEXT DEFAULT 'UNKNOWN'"),
+        )
+        for col, decl in additions:
+            if col not in cols:
+                conn.execute(
+                    f"ALTER TABLE clv_entries ADD COLUMN {col} {decl}")
 
     # ------------------------------------------------------------- escrita
 
@@ -834,6 +957,12 @@ class OddsSnapshotStore:
         kickoff: str,
         prediction_timestamp: str,
         source: str = CLV_ENTRY_SOURCE,
+        *,
+        home: str = "",
+        away: str = "",
+        league: str = "",
+        entry_bookmaker: str = "",
+        execution_status: str = CLV_EXECUTION_UNKNOWN,
     ) -> bool:
         """Registra entrada de CLV, congelada FIRST-WINS.
 
@@ -844,6 +973,12 @@ class OddsSnapshotStore:
         aqui: entry_timestamp NAO pode ser posterior ao instante da
         decisao nem alcancar o kickoff.
 
+        Proveniencia (schema v4): `home`/`away`/`league`/`entry_bookmaker`
+        rastreiam a entrada ate o evento e a casa que sustentaram a
+        mediana. `execution_status` comeca UNKNOWN: o preco observado na
+        decisao NAO e o preco de execucao — sem execucao real registrada,
+        nada e presumido.
+
         UNIQUE(match_key, market, outcome, source) + INSERT OR IGNORE =
         FIRST-WINS: o primeiro registro congela a entrada; chamadas
         posteriores nao alteram entry_odd nem entry_timestamp. Devolve
@@ -853,6 +988,15 @@ class OddsSnapshotStore:
             raise ValueError("entry_odd precisa ser > 1.0")
         if entry_n_books < 1:
             raise ValueError("entry_n_books precisa ser >= 1")
+        if execution_status != CLV_EXECUTION_UNKNOWN:
+            # A unica excecao legitima e UNKNOWN ate existir um caminho
+            # de execucao real com feedback proprio. Nada de "EXECUTED"
+            # fabricado no registro.
+            raise ValueError(
+                "execution_status so pode ser UNKNOWN no registro: "
+                "execucao real e atestada por um caminho proprio, nunca "
+                "presumida no instante da decisao"
+            )
         entry_key = utc_key(entry_timestamp)
         prediction_key = utc_key(prediction_timestamp)
         if entry_key > prediction_key:
@@ -871,12 +1015,14 @@ class OddsSnapshotStore:
                     """INSERT OR IGNORE INTO clv_entries
                        (match_key, market, outcome, entry_odd, entry_timestamp,
                         entry_n_books, kickoff, prediction_timestamp, source,
-                        created_at)
-                       VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                        created_at, home, away, league, entry_bookmaker,
+                        execution_status)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
                         match_key, market, outcome, entry_odd, entry_key,
                         entry_n_books, kickoff_key, prediction_key, source,
-                        now_utc(),
+                        now_utc(), home, away, league, entry_bookmaker,
+                        execution_status,
                     ),
                 )
                 conn.commit()
@@ -902,9 +1048,125 @@ class OddsSnapshotStore:
                 entry_n_books=r["entry_n_books"], kickoff=r["kickoff"],
                 prediction_timestamp=r["prediction_timestamp"],
                 source=r["source"], created_at=r["created_at"],
+                home=r["home"] or "", away=r["away"] or "",
+                league=r["league"] or "",
+                entry_bookmaker=r["entry_bookmaker"] or "",
+                execution_status=r["execution_status"] or "UNKNOWN",
             )
             for r in rows
         ]
+
+    # ------------------------------------------------------- ciclo de vida
+
+    def clv_lifecycle(
+        self,
+        entry: ClvEntryRecord,
+        *,
+        now: Optional[str] = None,
+        window_minutes: float = CLOSING_WINDOW_MINUTES,
+    ) -> "ClvLifecycle":
+        """Estado do ciclo de vida de uma entrada de CLV.
+
+        Distincao obrigatoria entre "sem fechamento AINDA" (PENDING,
+        kickoff no futuro) e "sem fechamento NUNCA" (NO_CLOSE, kickoff
+        passou sem observacao valida). Ausencia de fechamento JAMAIS
+        vira CLV=0: o valor so existe no estado CLOSED.
+
+        Ordem de avaliacao:
+          1. INVALID    — dado inconsistente (odd <= 1, entrada >= kickoff,
+                          fechamento anterior a entrada);
+          2. MISMATCH   — a entrada nao resolve a nenhuma observacao do
+                          store para aquela linha (identidade canonica
+                          divergente entre registro e observacoes);
+          3. CLOSED     — clv_prospective devolve OK;
+          4. PENDING    — sem fechamento e kickoff ainda no futuro;
+          5. NO_CLOSE   — sem fechamento e kickoff ja passou.
+        """
+        now = now or now_utc()
+        detail = ""
+        result: Optional[CLVResult] = None
+
+        if entry.entry_odd <= 1.0:
+            state = "INVALID"
+            detail = f"entry_odd invalida: {entry.entry_odd!r}"
+        elif utc_key(entry.entry_timestamp) >= utc_key(entry.kickoff):
+            state = "INVALID"
+            detail = "entry_timestamp >= kickoff (timestamps fora de ordem)"
+        else:
+            has_obs = any(
+                o.market == entry.market and o.outcome == entry.outcome
+                for o in self.all_observations(entry.match_key)
+            )
+            if not has_obs:
+                state = "MISMATCH"
+                detail = (
+                    "entrada sem nenhuma observacao correspondente no "
+                    "store: identidade canonica divergente entre o "
+                    "registro e as observacoes da linha"
+                )
+            else:
+                result = self.clv_prospective(
+                    entry.match_key, entry.market, entry.outcome,
+                    entry_odd=entry.entry_odd,
+                    entry_timestamp=entry.entry_timestamp,
+                    window_minutes=window_minutes,
+                )
+                if result.status == "OK":
+                    state = "CLOSED"
+                    detail = (
+                        "fechamento valido apos a entrada: CLV calculado "
+                        "(entry < closing < kickoff)"
+                    )
+                elif result.status == "CLOSING_BEFORE_ENTRY":
+                    state = "INVALID"
+                    detail = (
+                        "fechamento ANTERIOR a entrada: aposta pos-"
+                        "fechamento, CLV nao e evidencia prospectiva"
+                    )
+                else:
+                    if utc_key(now) < utc_key(entry.kickoff):
+                        state = "PENDING"
+                        detail = (
+                            "kickoff no futuro: fechamento ainda pode "
+                            "chegar (ausencia nao e CLV=0)"
+                        )
+                    else:
+                        state = "NO_CLOSE"
+                        detail = (
+                            "kickoff passou sem observacao valida na "
+                            "janela de fechamento"
+                        )
+
+        return ClvLifecycle(entry=entry, state=state, result=result,
+                            detail=detail)
+
+    def clv_lifecycle_sweep(
+        self,
+        *,
+        now: Optional[str] = None,
+        window_minutes: float = CLOSING_WINDOW_MINUTES,
+    ) -> "ClvLifecycleSummary":
+        """Varre TODAS as entradas e classifica o ciclo de vida de cada uma.
+
+        Operacao de leitura, idempotente: rodar duas vezes produz o
+        mesmo resultado (nada e gravado, nenhuma duplicata nasce). Este
+        e o passo operacional do CLV — depois de novas capturas de odds,
+        o sweep re-classifica PENDING -> NO_CLOSE/CLOSED conforme o que
+        o store REALMENTE observou.
+        """
+        now = now or now_utc()
+        by_state: dict[str, int] = {s: 0 for s in CLV_LIFECYCLE_STATES}
+        lifecycles: list[ClvLifecycle] = []
+        for rec in self.clv_entries():
+            lc = self.clv_lifecycle(rec, now=now, window_minutes=window_minutes)
+            by_state[lc.state] += 1
+            lifecycles.append(lc)
+        return ClvLifecycleSummary(
+            evaluated_at=utc_key(now),
+            by_state=by_state,
+            n_entries=len(lifecycles),
+            lifecycles=lifecycles,
+        )
 
     def clv(
         self,
