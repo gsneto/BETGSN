@@ -182,12 +182,15 @@ def _provider_health_dto(
     configured: bool,
     record: dict | None,
     credit: dict | None,
+    coverage: dict[str, bool] | None = None,
 ) -> S.ProviderHealth:
     """Monta o DTO de um provider a partir do registro REAL do Odds Layer.
 
     `record` e uma entrada de HealthTracker.snapshot(); `credit`, de
     CreditController.snapshot(). Ambos podem nao existir — e nesse caso
     cada campo observavel fica None/UNKNOWN em vez de sintetico.
+    `coverage` vem dos registros REAIS de captura ({sport_key: True}
+    apenas onde o provider gravou quotes); sem captura, fica vazio.
     """
     status = api_provider_status(record.get("state") if record else None)
     if not configured:
@@ -208,6 +211,7 @@ def _provider_health_dto(
         error=(record.get("last_error") or None) if record else None,
         quota_used=credit.get("used") if credit else None,
         quota_remaining=credit.get("known_remaining") if credit else None,
+        coverage=dict(coverage or {}),
         features=_provider_features(name) if configured else [],
         message=message,
     )
@@ -536,13 +540,69 @@ class BetgsnService:
         )
 
     def data_source(self) -> str:
-        return "football-data.co.uk — dados reais em cache; timestamp das odds indisponível" if self.source == "real" else "Demonstração: dataset sintético"
+        if self.source != "real":
+            return "Demonstração: dataset sintético"
+        stamp, providers = self._store_observation_summary()
+        if stamp is None:
+            return "football-data.co.uk — dados reais em cache; timestamp das odds indisponível"
+        # Ha odds COM carimbo real no store (captura ao vivo). A frase diz
+        # quem observou e quando — os providers listados sao os que TEM
+        # observacoes gravadas, nunca os que so estao configurados.
+        fonte = ", ".join(providers) if providers else "provider de odds"
+        return (
+            "football-data.co.uk — dados reais em cache; odds observadas com "
+            f"timestamp real ({fonte}; última observação {stamp})"
+        )
+
+    def _store_observation_summary(self) -> tuple[str | None, list[str]]:
+        """Resumo do store operacional: (ultimo carimbo, providers)."""
+        from ..odds_snapshots import OddsSnapshotStore
+
+        try:
+            return OddsSnapshotStore().latest_observation_stamp()
+        except Exception:  # noqa: BLE001 - store ilegivel nao derruba a rota
+            return None, []
+
+    def _snapshot_odds_timestamp(self, snap) -> str | None:
+        """Carimbo da observacao temporal mais recente dos fixtures do snapshot.
+
+        Fonte: OddsSnapshotStore — observacoes REAIS gravadas sob a MESMA
+        event_key canonica dos jogos deste snapshot, restritas a
+        `timestamp <= generated_at` (point-in-time: observacao futura nao
+        justifica decisao passada). Odds de CSV sem carimbo de publicacao
+        continuam None — ausencia explicita, nunca fetched_at no lugar do
+        carimbo real.
+        """
+        if getattr(snap, "source", "") != "real":
+            return None
+        analyses = getattr(getattr(snap, "result", None), "analyses", None) or []
+        keys: set[str] = set()
+        for a in analyses:
+            fx = getattr(a, "fixture", None)
+            home = getattr(fx, "home", "")
+            away = getattr(fx, "away", "")
+            kickoff = getattr(fx, "kickoff", "")
+            if home and away and kickoff:
+                from ..odds_normalize import event_key
+
+                keys.add(event_key(home, away, kickoff))
+        if not keys:
+            return None
+        from ..odds_snapshots import OddsSnapshotStore
+
+        try:
+            stamp, _providers = OddsSnapshotStore().latest_observation_stamp(
+                tuple(keys), cutoff=snap.generated_at)
+        except Exception:  # noqa: BLE001 - store ilegivel nao derruba a rota
+            return None
+        return stamp
 
     def provenance(self, snap):
         from .prediction_schemas import Provenance
         from ..football_data_uk import FootballDataClient
         return Provenance(source=snap.source, prediction_timestamp=snap.generated_at,
                           data_version=FootballDataClient().corpus_signature() if snap.source == "real" else f"demo-{SEED}",
+                          odds_timestamp=self._snapshot_odds_timestamp(snap),
                           xg_status="ESTIMATED" if snap.source == "synthetic" else "UNAVAILABLE")
 
     # ------------------------------------------------------------- sinais
@@ -1164,13 +1224,27 @@ class BetgsnService:
         health = _merge_latest(health, persisted_health, "updated_at")
         credits = _merge_latest(credits, persisted_credits, "last_updated")
 
+        # Cobertura REAL por provider: sport keys em que o provider gravou
+        # quotes, lidos dos registros de captura (manifesto append-only).
+        # Sem captura registrada, a cobertura fica vazia — nunca derivada
+        # de chave configurada.
+        try:
+            from ..backtest_sources import capture_coverage_from_manifest
+
+            coverage_map = capture_coverage_from_manifest()
+        except Exception:  # noqa: BLE001 - manifesto ilegivel nao derruba a rota
+            coverage_map = {}
+
         configured = available_providers()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         provider_healths: list[S.ProviderHealth] = []
         for name in configured:
             provider_healths.append(
-                _provider_health_dto(name, configured[name], health.get(name), credits.get(name))
+                _provider_health_dto(
+                    name, configured[name], health.get(name),
+                    credits.get(name), coverage_map.get(name),
+                )
             )
 
         return S.ProviderOverview(

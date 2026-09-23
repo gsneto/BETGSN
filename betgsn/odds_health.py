@@ -256,6 +256,16 @@ class CreditController:
             state = self.register(provider)
         return state
 
+    def peek(self, provider: str) -> Optional[CreditState]:
+        """Estado de credito SEM registrar o provider.
+
+        `get` cria (e publica no snapshot) um estado default `used=0` para
+        quem nunca informou creditos — persistir isso seria fabricar quota
+        zero onde o correto e desconhecido (None). `peek` consulta sem
+        efeito colateral: provider sem observacao de credito devolve None.
+        """
+        return self._credits.get(provider)
+
     def update_from_headers(
         self, provider: str, headers: Mapping[str, str]
     ) -> Optional[int]:

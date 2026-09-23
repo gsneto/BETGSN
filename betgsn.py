@@ -350,6 +350,22 @@ def capture_odds_cli(args: list[str]) -> int:
         print("Configure no .env ou no ambiente para capturar odds.")
         return 1
 
+    # Filtro de providers (--providers=ParlayAPI[,OddsPapi...]): captura
+    # controlada — validar um provider novo SEM gastar a quota dos demais.
+    # Nome fora do registry e erro explicito com a lista dos disponiveis,
+    # nunca silencio (o provider "quebrado" pode ser so um typo).
+    raw_providers = _arg(args, "providers", "")
+    if raw_providers:
+        wanted = [p.strip() for p in raw_providers.split(",") if p.strip()]
+        available_names = [name for name, _p in providers]
+        unknown = [p for p in wanted if p not in available_names]
+        if unknown:
+            print(f"ERRO: providers desconhecidos: {', '.join(unknown)}")
+            print(f"  disponiveis: {', '.join(available_names)}")
+            return 1
+        providers = [(n, p) for n, p in providers if n in wanted]
+        print(f"  providers selecionados: {', '.join(n for n, _ in providers)}")
+
     raw = _arg(args, "sports", "")
     fixtures: list = []
     if raw:
