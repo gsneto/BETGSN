@@ -218,6 +218,7 @@ def evaluate_promotion(
     n_windows: int | None = None,
     tuned_on_test: bool = False,
     min_meaningful_improvement: float = MIN_MEANINGFUL_IMPROVEMENT,
+    calibration: dict | None = None,
 ) -> PromotionDecision:
     """Avalia se um modelo pode sair de EXPERIMENTAL.
 
@@ -245,6 +246,16 @@ def evaluate_promotion(
     - `n_windows`: numero de janelas walk-forward OOS testadas.
     - `tuned_on_test`: declarar True quando hiperparametro foi ajustado no
       conjunto de teste. Bloqueia a promocao.
+    - `calibration` (canal de calibracao por janela): {"mean_ece": float,
+      "n_segments": int, "insufficient_segments": int,
+      "min_sample_per_segment": int, "method": str}. E o ECE CALIBRADO
+      medido por janela walk-forward (calibrador ajustado no TRAIN,
+      congelado no TEST), onde cada janela tem amostra que sustenta a
+      medicao. Quando informado, o criterio `calibracao_aceitavel` usa
+      este canal em vez da media de ECE raspada dos segmentos (ligas x
+      temporadas pequenos produzem ECE instavel — amostra insuficiente
+      nao e miscalibracao). O LIMITE NAO MUDA (MAX_ACCEPTABLE_ECE), e as
+      janelas insuficientes sao declaradas no detalhe, nunca escondidas.
     """
     criteria: list[PromotionCriterion] = []
 
@@ -341,14 +352,37 @@ def evaluate_promotion(
     ece_values = [
         s.metrics["ece"] for s in usable if s.metrics.get("ece") is not None
     ]
-    mean_ece = sum(ece_values) / len(ece_values) if ece_values else None
-    criteria.append(PromotionCriterion(
-        name="calibracao_aceitavel",
-        passed=mean_ece is not None and mean_ece <= MAX_ACCEPTABLE_ECE,
-        detail=(
+    if calibration is not None:
+        # Canal de calibracao por janela walk-forward: medicao onde a
+        # amostra sustenta o estimador (ver docstring). O limite e o
+        # MESMO do caminho por segmento — o que muda e a qualidade da
+        # medicao, nunca o criterio.
+        mean_ece = calibration.get("mean_ece")
+        cal_passed = (
+            mean_ece is not None and mean_ece <= MAX_ACCEPTABLE_ECE
+        )
+        n_cal = int(calibration.get("n_segments", 0))
+        n_ins = int(calibration.get("insufficient_segments", 0))
+        min_sample = int(calibration.get("min_sample_per_segment", 0))
+        method = str(calibration.get("method", "n/d"))
+        if mean_ece is None:
+            cal_detail = "ECE calibrado indisponivel (nenhuma janela com amostra suficiente)"
+        else:
+            cal_detail = (
+                f"ECE calibrado {mean_ece:.4f} (maximo {MAX_ACCEPTABLE_ECE}) "
+                f"em {n_cal} janela(s) walk-forward com >= {min_sample} "
+                f"apostas (metodo {method})"
+                + (f"; {n_ins} janela(s) INSUFFICIENT_DATA excluida(s)" if n_ins else "")
+            )
+    else:
+        mean_ece = sum(ece_values) / len(ece_values) if ece_values else None
+        cal_passed = mean_ece is not None and mean_ece <= MAX_ACCEPTABLE_ECE
+        cal_detail = (
             f"ECE medio {mean_ece:.4f} (maximo {MAX_ACCEPTABLE_ECE})"
             if mean_ece is not None else "ECE nao disponivel"
-        ),
+        )
+    criteria.append(PromotionCriterion(
+        name="calibracao_aceitavel", passed=cal_passed, detail=cal_detail,
     ))
 
     # ---- criterios quantitativos adicionados --------------------------------

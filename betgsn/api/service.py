@@ -675,6 +675,7 @@ class BetgsnService:
             n_windows=oos.n_windows_valid,
             clv=prospective_clv_evidence(),
             max_drawdown=oos.max_drawdown,
+            calibration=oos.calibration_channel(),
         )
 
     def signal_report(self, snap: Snapshot) -> S.SignalReport:

@@ -227,23 +227,25 @@ def test_oos_aggregate_metrics_on_known_bets():
     assert result.n_bets_oos == 4
     # ROI: (0.1 + 0.1 - 1.0 + 0.0) / 4
     assert result.roi == pytest.approx((0.1 + 0.1 - 1.0) / 4, abs=1e-6)
-    # Brier: p=1/1.1=0.9090..; y=[1,1,0] (push fora)
+    # MARKET Brier: p=1/1.1=0.9090..; y=[1,1,0] (push fora)
     p = 1.0 / 1.10
     expected_brier = ((p - 1) ** 2 + (p - 1) ** 2 + p ** 2) / 3
-    assert result.brier == pytest.approx(expected_brier, abs=1e-5)
+    assert result.market_brier == pytest.approx(expected_brier, abs=1e-5)
     # LogLoss idem
     import math as _math
 
     expected_ll = -(
         _math.log(p) + _math.log(p) + _math.log(1 - p)
     ) / 3
-    assert result.logloss == pytest.approx(expected_ll, abs=1e-5)
+    assert result.market_logloss == pytest.approx(expected_ll, abs=1e-5)
     # Wilson: wins=2, losses=1
     lo, hi = wilson_ci(2, 1)
     assert result.wilson_low == pytest.approx(lo, abs=1e-6)
     assert result.wilson_high == pytest.approx(hi, abs=1e-6)
     # drawdown registrado
     assert result.max_drawdown is not None and result.max_drawdown >= 0
+    # calibracao presente (raw quando o train nao sustenta ajuste)
+    assert result.calibrated_ece is not None
 
 
 def test_window_without_train_sample_selects_nothing():
@@ -430,9 +432,14 @@ def test_compute_oos_validation_payload_shape(monkeypatch, tmp_path):
         assert key in payload
     agg = payload["aggregate"]
     for key in ("n_windows", "n_windows_valid", "n_bets_oos", "roi",
-                "roi_se", "wilson_low", "bootstrap_low", "brier",
-                "logloss", "ece", "max_drawdown", "embargo_days"):
+                "roi_se", "wilson_low", "bootstrap_low",
+                "market_brier", "market_logloss", "market_ece",
+                "calibrated_brier", "calibrated_logloss", "calibrated_ece",
+                "max_drawdown", "embargo_days"):
         assert key in agg
+    for key in ("calibration_windows", "calibration_insufficient",
+                "oos_rule_bets", "oos_market_bets"):
+        assert key in payload
 
 
 # ==========================================================================

@@ -45,11 +45,17 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+import numpy as np
+
 from .value_strategy import MARKETS, MAX_ODD, MIN_BOOKS, collect_bets
 
 #: Versao do esquema do cache OOS. Mudou o layout/semantica -> bump,
-#: caches antigos sao invalidados.
-OOS_CACHE_SCHEMA_VERSION = 1
+#: caches antigos sao invalidados. v2 (ciclo de evidencia metodologica):
+#: metricas de probabilidade separadas em `market_*` (implicitas das odds,
+#: MARKET BASELINE — nunca performance de modelo) e `calibrated_*`
+#: (calibrador ajustado no TRAIN de cada janela, congelado no TEST);
+#: segmentos do promotion gate passam a comparar MESMA populacao.
+OOS_CACHE_SCHEMA_VERSION = 2
 
 #: Configuracao DEFAULT do walk-forward: 2 anos de treino, 1 ano de teste,
 #: embargo de 2 dias (publicacao de resultados), bandas candidatas em
@@ -65,6 +71,19 @@ DEFAULT_MIN_TRAIN_BETS = 150
 DEFAULT_MIN_TEST_BETS = 10
 DEFAULT_BOOTSTRAP_RESAMPLES = 2000
 DEFAULT_BOOTSTRAP_SEED = 424242
+
+#: Metodos de calibracao candidatos por janela (ETAPA 3 do ciclo de
+#: evidencia): "raw" e o proprio mercado implicito (sem calibrador).
+#: A escolha e feita por validacao DENTRO do train da janela (split
+#: temporal), nunca olhando o teste — e o calibrador escolhido e
+#: reajustado no train completo e aplicado CONGELADO no teste.
+CALIBRATION_METHODS: tuple[str, ...] = ("raw", "platt", "isotonic")
+#: Fracao final do TRAIN reservada a validacao interna do metodo.
+CALIBRATION_VALIDATION_FRACTION = 0.2
+#: Amostra minima para um segmento (janela) contar na media de ECE do
+#: canal de calibracao do promotion gate. Abaixo disso: INSUFFICIENT_DATA,
+#: declarado e excluido — nunca estabilidade inventada.
+MIN_ECE_SAMPLE = 200
 
 #: Stake plano usado na curva de equity do drawdown (fracao da banca).
 DRAWDOWN_STAKE = 0.01
@@ -143,6 +162,9 @@ def oos_cache_fingerprint(
         "min_test_bets": int(config.min_test_bets),
         "bootstrap_resamples": int(config.bootstrap_resamples),
         "bootstrap_seed": int(config.bootstrap_seed),
+        "calibration_methods": list(CALIBRATION_METHODS),
+        "calibration_validation_fraction": CALIBRATION_VALIDATION_FRACTION,
+        "min_ece_sample": MIN_ECE_SAMPLE,
     }
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
@@ -282,16 +304,56 @@ def _bootstrap_ci(
     )
 
 
-#: Binns do ECE sobre probabilidade implicita (odds < 1.40 -> p > 0.71).
+#: Bins do ECE sobre probabilidade implicita (odds < 1.40 -> p > 0.71).
 _ECE_BINS: tuple[float, ...] = (0.0, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 1.0 + 1e-9)
 
 
-def _prob_metrics(bets: Sequence[dict], odd_key: str = "odd") -> dict[str, float]:
-    """Brier/LogLoss/ECE das probabilidades implicitas das odds reais.
+def _ece_from_pairs(ps: Sequence[float], ys: Sequence[int]) -> float:
+    """ECE (bins fixos) de pares (probabilidade, resultado)."""
+    n = len(ps)
+    if n == 0:
+        return 0.0
+    ece = 0.0
+    for lo, hi in zip(_ECE_BINS, _ECE_BINS[1:]):
+        bucket = [(p, y) for p, y in zip(ps, ys) if lo <= p < hi]
+        if not bucket:
+            continue
+        conf = sum(p for p, _ in bucket) / len(bucket)
+        acc = sum(y for _, y in bucket) / len(bucket)
+        ece += len(bucket) / n * abs(conf - acc)
+    return ece
 
-    p = 1/odd; y = 1 se a aposta ganhou, 0 se perdeu (pushs ficam fora:
-    nao sao vitoria nem derrota). E o poder PREDICTIVO do preco que a
-    regra efetivamente pega — sem modelo no meio.
+
+def _metrics_from_pairs(ps: Sequence[float], ys: Sequence[int]) -> dict[str, float]:
+    """Brier/LogLoss/ECE de pares (probabilidade, resultado)."""
+    n = len(ps)
+    if n == 0:
+        return {"brier": 0.0, "logloss": 0.0, "ece": 0.0, "n_prob": 0}
+    brier = sum((p - y) ** 2 for p, y in zip(ps, ys)) / n
+    logloss = -sum(
+        (y * math.log(p) + (1 - y) * math.log(1.0 - p))
+        if 0.0 < p < 1.0 else 0.0
+        for p, y in zip(ps, ys)
+    ) / n
+    return {
+        "brier": round(brier, 6),
+        "logloss": round(logloss, 6),
+        "ece": round(_ece_from_pairs(ps, ys), 6),
+        "n_prob": n,
+    }
+
+
+def _prob_metrics(bets: Sequence[dict], odd_key: str = "odd") -> dict[str, float]:
+    """Brier/LogLoss/ECE das probabilidades IMPLICITAS DO MERCADO.
+
+    ORIGEM (auditoria do ciclo de evidencia): p = 1/odd — probabilidade
+    implicita da odd REAL que a regra pega (melhor entre casas). NAO e
+    probabilidade do modelo BETGSN, NAO passa por de-vig e NAO ha modelo
+    no meio: e o MARKET BASELINE da populacao de apostas da regra.
+    Chamadores que expoem esses numeros precisam rotular como mercado.
+
+    y = 1 se a aposta ganhou, 0 se perdeu (pushs ficam fora: nao sao
+    vitoria nem derrota).
     """
     ps: list[float] = []
     ys: list[int] = []
@@ -303,30 +365,22 @@ def _prob_metrics(bets: Sequence[dict], odd_key: str = "odd") -> dict[str, float
             continue
         ps.append(1.0 / odd)
         ys.append(1 if b.get("res") == "win" else 0)
-    n = len(ps)
-    if n == 0:
-        return {"brier": 0.0, "logloss": 0.0, "ece": 0.0, "n_prob": 0}
-    brier = sum((p - y) ** 2 for p, y in zip(ps, ys)) / n
-    logloss = -sum(
-        (y * math.log(p) + (1 - y) * math.log(1.0 - p))
-        if 0.0 < p < 1.0 else 0.0
-        for p, y in zip(ps, ys)
-    ) / n
-    # ECE: |confianca media - acerto medio| por bin, ponderado por n
-    ece = 0.0
-    for lo, hi in zip(_ECE_BINS, _ECE_BINS[1:]):
-        bucket = [(p, y) for p, y in zip(ps, ys) if lo <= p < hi]
-        if not bucket:
+    return _metrics_from_pairs(ps, ys)
+
+
+def _raw_prob_pairs(bets: Sequence[dict], odd_key: str = "odd"):
+    """(ps, ys) das probabilidades implicitas — primitiva compartilhada."""
+    ps: list[float] = []
+    ys: list[int] = []
+    for b in bets:
+        if b.get("res") == "push":
             continue
-        conf = sum(p for p, _ in bucket) / len(bucket)
-        acc = sum(y for _, y in bucket) / len(bucket)
-        ece += len(bucket) / n * abs(conf - acc)
-    return {
-        "brier": round(brier, 6),
-        "logloss": round(logloss, 6),
-        "ece": round(ece, 6),
-        "n_prob": n,
-    }
+        odd = float(b[odd_key])
+        if odd <= 1.0:
+            continue
+        ps.append(1.0 / odd)
+        ys.append(1 if b.get("res") == "win" else 0)
+    return ps, ys
 
 
 def _max_drawdown(rets: Sequence[float], stake: float = DRAWDOWN_STAKE) -> float:
@@ -364,6 +418,125 @@ class RuleView:
         return "median" if self.use_median else "odd"
 
 
+# --------------------------------------------------------------------------
+# Calibracao por janela (TRAIN ajusta, TEST mede — congelado)
+# --------------------------------------------------------------------------
+
+
+def _binary_matrix(ps: Sequence[float]) -> "np.ndarray":
+    """Probabilidades binarias no formato (n, 2) do TemporalCalibrator."""
+    p = np.clip(np.asarray(ps, dtype=float), 1e-6, 1.0 - 1e-6)
+    return np.column_stack([1.0 - p, p])
+
+
+def _fit_calibrator(
+    fit_bets: list[dict], view: RuleView, method: str, trained_until_bound: str,
+):
+    """Ajusta um TemporalCalibrator `method` nas apostas de fit.
+
+    `trained_until_bound` e o instante ANTERIOR aos dados (o mercado
+    publicou as odds antes da janela): satisfaz o guard PIT do
+    TemporalCalibrator (calibrador so ajusta sobre probabilidades cuja
+    fonte existia antes).
+    """
+    from .models.calibration import TemporalCalibrator
+
+    ps, ys = _raw_prob_pairs(fit_bets, view.odd_key)
+    if len(ps) < 50 or len(set(ys)) < 2:
+        return None
+    calibrator = TemporalCalibrator(method=method)
+    non_push = [b for b in fit_bets
+                if b.get("res") != "push" and float(b[view.odd_key]) > 1.0]
+    times = [str(b["d"]) for b in non_push]
+    calibrator.fit(
+        _binary_matrix(ps), np.asarray(ys), times, trained_until_bound
+    )
+    return calibrator
+
+
+def _apply_calibrator(calibrator, ps: Sequence[float], prediction_time: str):
+    """Probabilidades calibradas (coluna 'win') do calibrador CONGELADO."""
+    if calibrator is None:
+        return list(ps)
+    calibrated = calibrator.predict_proba(
+        _binary_matrix(ps), prediction_time
+    )
+    return [float(row[1]) for row in np.asarray(calibrated)]
+
+
+def _calibrated_for_bets(
+    calibrator, bets: Sequence[dict], view: RuleView, prediction_time: str,
+) -> list[float | None]:
+    """p_calibrada por aposta, alinhada 1:1 com `bets`.
+
+    Push/odd invalida ficam None (não têm probabilidade); as demais
+    recebem a probabilidade do calibrador CONGELADO no instante do teste.
+    """
+    out: list[float | None] = []
+    for b in bets:
+        if b.get("res") == "push":
+            out.append(None)
+            continue
+        odd = float(b[view.odd_key])
+        if odd <= 1.0:
+            out.append(None)
+            continue
+        out.append(_apply_calibrator(calibrator, [1.0 / odd], prediction_time)[0])
+    return out
+
+
+def _select_calibration_method(
+    train_bets: list[dict], view: RuleView, window: "WFWindow",
+) -> tuple[str, object, int]:
+    """Escolhe o metodo de calibracao POR VALIDACAO DENTRO do TRAIN.
+
+    Disciplina temporal (ETAPA 3 do ciclo de evidencia): o TRAIN da
+    janela e dividido temporalmente em fit (parte inicial) e validacao
+    (parte final). Cada candidato (raw/platt/isotonic) e ajustado no fit
+    e medido na validacao; o vencedor e REAJUSTADO no TRAIN completo e
+    devolvido CONGELADO para aplicacao no TEST. O TEST nunca participa
+    da escolha nem do ajuste.
+    """
+    if not train_bets:
+        return "raw", None, 0
+    days = sorted({str(b["d"]) for b in train_bets})
+    split_day = days[max(0, int(len(days) * (1.0 - CALIBRATION_VALIDATION_FRACTION)) - 1)]
+    fit_bets = [b for b in train_bets if str(b["d"]) <= split_day]
+    valid_bets = [b for b in train_bets if str(b["d"]) > split_day]
+    ps_v, ys_v = _raw_prob_pairs(valid_bets, view.odd_key)
+    if len(ps_v) < 50 or len(set(ys_v)) < 2:
+        return "raw", None, len(fit_bets)
+
+    # boundary do guard: instante anterior ao primeiro dado de fit
+    fit_days = sorted({str(b["d"]) for b in fit_bets})
+    bound = (date.fromisoformat(fit_days[0]) - timedelta(days=1)).isoformat()
+
+    best_method, best_ece = "raw", _ece_from_pairs(ps_v, ys_v)
+    for method in ("platt", "isotonic"):
+        try:
+            candidate = _fit_calibrator(fit_bets, view, method, bound)
+            if candidate is None:
+                continue
+            calibrated = _apply_calibrator(candidate, ps_v, str(valid_bets[0]["d"]))
+            ece = _ece_from_pairs(calibrated, ys_v)
+            if ece < best_ece:
+                best_method, best_ece = method, ece
+        except Exception:  # noqa: BLE001 - metodo que nao converge perde a vaga
+            continue
+
+    if best_method == "raw":
+        return "raw", None, len(fit_bets)
+    # reajuste no TRAIN COMPLETO (fit + validacao), congelado para o TEST
+    full_bound = (date.fromisoformat(days[0]) - timedelta(days=1)).isoformat()
+    try:
+        final = _fit_calibrator(train_bets, view, best_method, full_bound)
+    except Exception:  # noqa: BLE001
+        return "raw", None, len(train_bets)
+    if final is None:
+        return "raw", None, len(train_bets)
+    return best_method, final, len(train_bets)
+
+
 def _bet_odd(bet: dict, view: RuleView) -> float:
     return float(bet["median" if view.use_median else "odd"])
 
@@ -376,7 +549,12 @@ def _eligible(bet: dict, view: RuleView, max_odd: float) -> bool:
 
 @dataclass
 class WindowResult:
-    """Resultado OOS de uma janela."""
+    """Resultado OOS de uma janela.
+
+    Campos `market_*`: probabilidades IMPLICITAS das odds reais (MARKET
+    BASELINE — auditoria de origem). Campos `calibrated_*`: calibrador
+    ajustado no TRAIN desta janela, aplicado CONGELADO no TEST.
+    """
 
     index: int
     train_start: str
@@ -392,9 +570,14 @@ class WindowResult:
     t: float | None = None
     wilson_low: float | None = None
     wilson_high: float | None = None
-    brier: float | None = None
-    logloss: float | None = None
-    ece: float | None = None
+    market_brier: float | None = None
+    market_logloss: float | None = None
+    market_ece: float | None = None
+    calibration_method: str = "raw"
+    n_calibration_train: int = 0
+    calibrated_brier: float | None = None
+    calibrated_logloss: float | None = None
+    calibrated_ece: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -402,7 +585,12 @@ class WindowResult:
 
 @dataclass
 class WalkForwardResult:
-    """Agregado OOS + por janela + apostas OOS (para o promotion gate)."""
+    """Agregado OOS + por janela + apostas OOS (para o promotion gate).
+
+    `market_*` = baseline de mercado (implicitas); `calibrated_*` =
+    calibrador por janela congelado. As apostas OOS carregam a
+    probabilidade calibrada em `p_calibrated` (mesma ordem).
+    """
 
     config: WalkForwardConfig
     n_windows: int = 0
@@ -415,9 +603,12 @@ class WalkForwardResult:
     wilson_high: float | None = None
     bootstrap_low: float | None = None
     bootstrap_high: float | None = None
-    brier: float | None = None
-    logloss: float | None = None
-    ece: float | None = None
+    market_brier: float | None = None
+    market_logloss: float | None = None
+    market_ece: float | None = None
+    calibrated_brier: float | None = None
+    calibrated_logloss: float | None = None
+    calibrated_ece: float | None = None
     avg_odd: float | None = None
     max_drawdown: float | None = None
     embargo_days: int = 0
@@ -426,6 +617,10 @@ class WalkForwardResult:
     #: testes — insumo dos segmentos do promotion gate
     oos_rule_bets: list[dict] = field(default_factory=list)
     oos_market_bets: list[dict] = field(default_factory=list)
+    #: canal de calibracao do promotion gate: janelas com amostra
+    #: suficiente para ECE (as demais sao INSUFFICIENT_DATA, contadas)
+    calibration_windows: list[dict] = field(default_factory=list)
+    calibration_insufficient: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         out = asdict(self)
@@ -546,13 +741,55 @@ def run_walk_forward(
                 win.t = round(t, 4)
                 win.wilson_low = round(lo, 6)
                 win.wilson_high = round(hi, 6)
-                win.brier = probs["brier"]
-                win.logloss = probs["logloss"]
-                win.ece = probs["ece"]
+                win.market_brier = probs["brier"]
+                win.market_logloss = probs["logloss"]
+                win.market_ece = probs["ece"]
+
+                # ---- calibracao: ajusta no TRAIN, mede no TEST -----
+                # O metodo e escolhido por validacao DENTRO do train
+                # (split temporal) e o calibrador final e reajustado no
+                # train COMPLETO; o TEST so ve o calibrador congelado.
+                method, calibrator, n_cal_train = _select_calibration_method(
+                    train_bets, view, window
+                )
+                win.calibration_method = method
+                win.n_calibration_train = n_cal_train
+                ps_test, ys_test = _raw_prob_pairs(rule_test, view.odd_key)
+                calibrated = _metrics_from_pairs(
+                    _apply_calibrator(calibrator, ps_test, window.test_start),
+                    ys_test,
+                )
+                win.calibrated_brier = calibrated["brier"]
+                win.calibrated_logloss = calibrated["logloss"]
+                win.calibrated_ece = calibrated["ece"]
+
                 if len(rule_test) >= config.min_test_bets:
-                    result.oos_rule_bets.extend(rule_test)
+                    p_by_bet = _calibrated_for_bets(
+                        calibrator, rule_test, view, window.test_start
+                    )
+                    for b, p_cal in zip(rule_test, p_by_bet):
+                        result.oos_rule_bets.append({
+                            **b,
+                            "p_calibrated": (
+                                p_cal if p_cal is not None
+                                else (1.0 / _bet_odd(b, view)
+                                      if b.get("res") != "push" else None)
+                            ),
+                        })
                     # mercado: todas as linhas apostaveis do MESMO teste
                     result.oos_market_bets.extend(test_bets)
+                    # canal de calibracao do gate: janela conta so com
+                    # amostra suficiente (senao INSUFFICIENT_DATA)
+                    if len(rule_test) >= MIN_ECE_SAMPLE:
+                        result.calibration_windows.append({
+                            "window": window.index,
+                            "method": method,
+                            "n_test": len(rule_test),
+                            "calibrated_ece": calibrated["ece"],
+                            "market_ece": probs["ece"],
+                        })
+                    else:
+                        result.calibration_insufficient += 1
         result.windows.append(win)
 
     result.n_windows_valid = sum(1 for w in result.windows if w.n_test_bets > 0)
@@ -575,9 +812,23 @@ def run_walk_forward(
         result.wilson_high = round(hi, 6)
         result.bootstrap_low = round(blo, 6)
         result.bootstrap_high = round(bhi, 6)
-        result.brier = probs["brier"]
-        result.logloss = probs["logloss"]
-        result.ece = probs["ece"]
+        result.market_brier = probs["brier"]
+        result.market_logloss = probs["logloss"]
+        result.market_ece = probs["ece"]
+        ys_all = [1 if b.get("res") == "win" else 0 for b in pooled
+                  if b.get("res") != "push"]
+        # pares alinhados: p_calibrada por aposta; sem calibrador nessa
+        # aposta (odd invalida) vale a implicita do mercado
+        ps_aligned = [
+            float(b["p_calibrated"])
+            if b.get("p_calibrated") is not None
+            else 1.0 / float(b[view.odd_key])
+            for b in pooled if b.get("res") != "push"
+        ]
+        cal = _metrics_from_pairs(ps_aligned, ys_all)
+        result.calibrated_brier = cal["brier"]
+        result.calibrated_logloss = cal["logloss"]
+        result.calibrated_ece = cal["ece"]
         odds = [_bet_odd(b, view) for b in pooled]
         result.avg_odd = round(sum(odds) / len(odds), 4)
         result.max_drawdown = round(_max_drawdown(rets), 6)
@@ -624,6 +875,8 @@ def robustness_scenarios(
             "roi_se": outcome.roi_se,
             "wilson_low": outcome.wilson_low,
             "n_windows_valid": outcome.n_windows_valid,
+            "market_ece": outcome.market_ece,
+            "calibrated_ece": outcome.calibrated_ece,
             "degradation_vs_baseline": degradation,
         })
     return scenarios
@@ -718,6 +971,9 @@ def compute_oos_validation(
             "min_test_bets": config.min_test_bets,
             "bootstrap_resamples": config.bootstrap_resamples,
             "bootstrap_seed": config.bootstrap_seed,
+            "calibration_methods": list(CALIBRATION_METHODS),
+            "calibration_validation_fraction": CALIBRATION_VALIDATION_FRACTION,
+            "min_ece_sample": MIN_ECE_SAMPLE,
         },
         "aggregate": {
             "n_windows": wf.n_windows,
@@ -730,14 +986,23 @@ def compute_oos_validation(
             "wilson_high": wf.wilson_high,
             "bootstrap_low": wf.bootstrap_low,
             "bootstrap_high": wf.bootstrap_high,
-            "brier": wf.brier,
-            "logloss": wf.logloss,
-            "ece": wf.ece,
+            # ORIGEM DAS PROBABILIDADES (auditoria): market_* = implicitas
+            # das odds reais (MARKET BASELINE, sem modelo/de-vig);
+            # calibrated_* = calibrador ajustado no TRAIN de cada janela e
+            # aplicado CONGELADO no TEST.
+            "market_brier": wf.market_brier,
+            "market_logloss": wf.market_logloss,
+            "market_ece": wf.market_ece,
+            "calibrated_brier": wf.calibrated_brier,
+            "calibrated_logloss": wf.calibrated_logloss,
+            "calibrated_ece": wf.calibrated_ece,
             "avg_odd": wf.avg_odd,
             "max_drawdown": wf.max_drawdown,
             "embargo_days": wf.embargo_days,
         },
         "windows": [w.to_dict() for w in wf.windows],
+        "calibration_windows": wf.calibration_windows,
+        "calibration_insufficient": wf.calibration_insufficient,
         "robustness": robustness,
         "ablation": ablation,
         "oos_rule_bets": wf.oos_rule_bets,
@@ -769,26 +1034,49 @@ class OosEvidence:
     oos_rule_bets: tuple[dict, ...]
     oos_market_bets: tuple[dict, ...]
     aggregate: dict[str, Any]
+    calibration_windows: tuple[dict, ...] = ()
+    calibration_insufficient: int = 0
 
     def promotion_segments(self) -> list:
         """Segmentos (liga x temporada) do promotion gate — SO apostas OOS.
 
-        metrics = regra; baseline_metrics = MERCADO (todas as linhas dos
-        mesmos blocos de teste). Nada de full-sample: cada aposta aqui
-        saiu de um bloco TEST de janela walk-forward.
+        MESMA POPULACAO nas métricas (correção da auditoria de origem):
+        metrics = probabilidades CALIBRADAS das apostas da regra do
+        segmento; baseline_metrics = probabilidades IMPLICITAS de mercado
+        (raw) DAS MESMAS apostas. Antes a regra (favoritos) era comparada
+        ao mercado inteiro (todas as odds) — populações diferentes, e a
+        "melhora" era artefato de população. Agora mede o que a
+        calibração adiciona sobre o mercado na população da regra.
+
+        `n_matches` continua sendo o tamanho do SEGMENTO (partidas
+        apostáveis observadas naquele liga×temporada): é a amostra que
+        sustenta a célula — as métricas são medidas no subconjunto de
+        apostas da regra. ECE por segmento só com MIN_ECE_SAMPLE apostas
+        da regra; senão None (INSUFFICIENT_DATA) — o gate consome a
+        calibração pelo canal `calibration_channel` (janela).
         """
         from .models.promotion import SegmentResult
 
-        def _segment_metrics(bets: list[dict]) -> dict[str, float]:
+        def _segment_metrics(bets: list[dict], calibrated: bool) -> dict[str, float]:
             rets = [_ret(b["odd"], b.get("res", "loss")) for b in bets]
             roi, _se, _t = _roi_stats(rets)
-            probs = _prob_metrics(bets)
-            return {
-                "roi": roi,
-                "brier": probs["brier"],
-                "logloss": probs["logloss"],
-                "ece": probs["ece"],
-            }
+            out: dict[str, float] = {"roi": roi}
+            if calibrated:
+                ps = [
+                    float(b["p_calibrated"])
+                    if b.get("p_calibrated") is not None
+                    else 1.0 / float(b["odd"])
+                    for b in bets if b.get("res") != "push"
+                ]
+                ys = [1 if b.get("res") == "win" else 0 for b in bets
+                      if b.get("res") != "push"]
+                probs = _metrics_from_pairs(ps, ys)
+            else:
+                probs = _prob_metrics(bets)
+            out["brier"] = probs["brier"]
+            out["logloss"] = probs["logloss"]
+            out["ece"] = probs["ece"] if len(bets) >= MIN_ECE_SAMPLE else None  # type: ignore[assignment]
+            return out
 
         rule_by_key: dict[tuple[str, str], list[dict]] = {}
         for b in self.oos_rule_bets:
@@ -805,10 +1093,32 @@ class OosEvidence:
             segments.append(SegmentResult(
                 league=key[0], season=key[1],
                 n_matches=len(market_bets),
-                metrics=_segment_metrics(rule_bets),
-                baseline_metrics=_segment_metrics(market_bets),
+                metrics=_segment_metrics(rule_bets, calibrated=True),
+                baseline_metrics=_segment_metrics(rule_bets, calibrated=False),
             ))
         return segments
+
+    def calibration_channel(self) -> dict | None:
+        """Canal de calibracao para o promotion gate (ETAPA 4).
+
+        ECE calibrado por JANELA walk-forward — segmento temporal com
+        amostra que sustenta a medição (>= MIN_ECE_SAMPLE apostas OOS).
+        Janelas sem amostra suficiente são contadas como INSUFFICIENT_DATA
+        e excluídas da média — nunca preenchidas. None quando nenhuma
+        janela sustenta medição.
+        """
+        if not self.calibration_windows:
+            return None
+        eces = [float(w["calibrated_ece"]) for w in self.calibration_windows]
+        methods = sorted({str(w.get("method", "")) for w in self.calibration_windows})
+        return {
+            "mean_ece": sum(eces) / len(eces),
+            "n_segments": len(eces),
+            "insufficient_segments": self.calibration_insufficient,
+            "min_sample_per_segment": MIN_ECE_SAMPLE,
+            "method": "+".join(m for m in methods if m) or "raw",
+            "prospective": True,
+        }
 
 
 def cached_oos_evidence(
@@ -852,6 +1162,8 @@ def cached_oos_evidence(
         oos_rule_bets=tuple(payload.get("oos_rule_bets") or ()),
         oos_market_bets=tuple(payload.get("oos_market_bets") or ()),
         aggregate=dict(agg),
+        calibration_windows=tuple(payload.get("calibration_windows") or ()),
+        calibration_insufficient=int(payload.get("calibration_insufficient", 0)),
     )
 
 
