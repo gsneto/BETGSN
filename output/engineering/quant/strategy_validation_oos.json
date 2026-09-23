@@ -1,0 +1,138 @@
+{
+  "kind": "strategy_validation_oos",
+  "strategy_model": {
+    "n_bets": 181172,
+    "roi": -0.048872,
+    "roi_se": 0.004247,
+    "roi_t": -11.5066,
+    "wilson_low": 0.264319,
+    "wilson_high": 0.26839,
+    "bootstrap_low": -0.056836,
+    "bootstrap_high": -0.040362,
+    "ev_threshold": 0.0,
+    "note": "STRATEGY performance (EV>0 com prob do modelo calibrado): inclui line-shopping (best odd) — NÃO é performance do modelo"
+  },
+  "strategy_market_per_window": [
+    {
+      "window": 0,
+      "n": 179,
+      "roi": 0.037039
+    },
+    {
+      "window": 1,
+      "n": 227,
+      "roi": 0.075885
+    },
+    {
+      "window": 2,
+      "n": 221,
+      "roi": 0.007968
+    },
+    {
+      "window": 3,
+      "n": 238,
+      "roi": 0.071487
+    },
+    {
+      "window": 4,
+      "n": 243,
+      "roi": -0.027984
+    },
+    {
+      "window": 5,
+      "n": 205,
+      "roi": -0.019659
+    },
+    {
+      "window": 6,
+      "n": 196,
+      "roi": 0.008469
+    },
+    {
+      "window": 7,
+      "n": 236,
+      "roi": 0.031949
+    },
+    {
+      "window": 8,
+      "n": 206,
+      "roi": 0.00699
+    },
+    {
+      "window": 9,
+      "n": 255,
+      "roi": 0.002173
+    },
+    {
+      "window": 10,
+      "n": 235,
+      "roi": 0.010128
+    },
+    {
+      "window": 11,
+      "n": 302,
+      "roi": 0.034182
+    },
+    {
+      "window": 12,
+      "n": 276,
+      "roi": 0.056449
+    },
+    {
+      "window": 13,
+      "n": 271,
+      "roi": 0.022472
+    },
+    {
+      "window": 14,
+      "n": 318,
+      "roi": 0.003616
+    },
+    {
+      "window": 15,
+      "n": 383,
+      "roi": 0.02564
+    },
+    {
+      "window": 16,
+      "n": 344,
+      "roi": -0.00439
+    },
+    {
+      "window": 17,
+      "n": 287,
+      "roi": 0.011463
+    },
+    {
+      "window": 18,
+      "n": 248,
+      "roi": -0.025444
+    },
+    {
+      "window": 19,
+      "n": 284,
+      "roi": 0.006268
+    },
+    {
+      "window": 20,
+      "n": 313,
+      "roi": 0.02377
+    },
+    {
+      "window": 21,
+      "n": 372,
+      "roi": 0.015726
+    },
+    {
+      "window": 22,
+      "n": 322,
+      "roi": 0.005342
+    },
+    {
+      "window": 23,
+      "n": 266,
+      "roi": 0.019962
+    }
+  ],
+  "note": "strategy_model usa prob do modelo calibrado + line-shopping (best odd) — performance da ESTRATÉGIA, não do modelo. strategy_market = regra de favoritos curtos vigente, medida nas mesmas janelas."
+}
