@@ -367,7 +367,14 @@ def capture_odds_cli(args: list[str]) -> int:
         print(f"  providers selecionados: {', '.join(n for n, _ in providers)}")
 
     raw = _arg(args, "sports", "")
-    fixtures: list = []
+    # Os fixtures sao SEMPRE carregados: alem de derivarem os sports keys
+    # quando --sports nao vem, eles alimentam a resolucao de identidade
+    # (FixtureMatchIndex) — sem eles, eventos com nomes divergentes dos
+    # nomes FDUK seriam gravados sob a chave do PROVIDER e a leitura
+    # (movement/CLV usam a event_key DO FIXTURE) nunca os encontraria.
+    from betgsn.football_data_uk import FootballDataClient
+
+    fixtures = FootballDataClient().load_fixtures()
     if raw:
         sports = [s.strip() for s in raw.split(",") if s.strip()]
     else:
@@ -375,9 +382,6 @@ def capture_odds_cli(args: list[str]) -> int:
         # layer conhece (as partidas que a API consome em
         # movement/CLV/coverage). Divisao sem sport key verificada e
         # reportada, nunca inventada (ver DIVISION_TO_SPORT_KEY).
-        from betgsn.football_data_uk import FootballDataClient
-
-        fixtures = FootballDataClient().load_fixtures()
         divisions = sorted(
             {fx.division for fx in fixtures if fx.has_odds and fx.has_kickoff}
         )

@@ -1338,7 +1338,14 @@ class BetgsnService:
 
         movements: list[S.OddsMovement] = []
 
-        for fx in fixtures[:20]:
+        # TODA a populacao de fixtures com odds + kickoff — a mesma que
+        # clv()/coverage() examinam. O cap historico `[:20]` escondia
+        # observacoes reais: a lista segue ordenada por divisao/data, e as
+        # partidas capturadas raramente estao nas primeiras 20 (as
+        # primeiras sao ligas obscuras de datas antigas). Sem cap, uma
+        # observacao gravada hoje e encontrada pela event_key do fixture,
+        # esteja ela na posicao que estiver.
+        for fx in fixtures:
             if not fx.has_odds:
                 continue
             if not fx.has_kickoff:
