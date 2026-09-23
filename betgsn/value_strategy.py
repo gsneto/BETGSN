@@ -249,6 +249,13 @@ def collect_bets(
     Cada aposta e um dicionario com data, liga, odd e retorno (stake 1).
     `closing=False` usa odds de ABERTURA (o preco que existia quando a
     rodada foi publicada); `closing=True` usa as de fechamento.
+
+    Campos adicionais (canonicos, para o harness OOS `value_walkforward`
+    filtrar sem recorrer o corpus): `median` (odd mediana entre as casas
+    — ablação do line-shopping), `n_books` (casas que sustentam a linha)
+    e `res` ("win"/"push"/"loss"). O filtro `max_odd`/`min_books` segue
+    valendo para `odd`/`ret` — quem precisa de TODAS as linhas chama com
+    max_odd=99 e min_books=1.
     """
     from .backtest_engine import csv_odds_store
     from .football_data_uk import FootballDataClient
@@ -284,10 +291,20 @@ def collect_bets(
                     "mkt": market,
                     "odd": best,
                     "ret": (best - 1.0) if res == "win" else (0.0 if res == "push" else -1.0),
+                    "median": _median_of(vals),
+                    "n_books": len(vals),
+                    "res": res,
                 })
         if progress is not None and i % 40000 == 0:
             progress(i, len(matches))
     return bets
+
+
+def _median_of(vals: Sequence[float]) -> float:
+    s = sorted(vals)
+    n = len(s)
+    mid = n // 2
+    return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2.0
 
 
 def validate(
@@ -692,14 +709,31 @@ class ValueStrategy:
     def evidence(self) -> StrategyEvidence:
         """Parametros validados da regra para o decision gate.
 
-        Vantagem medida: usa a validacao em cache QUANDO o fingerprint
-        bate com a regra atual sobre o corpus atual (I-14); sem cache
-        valido, as constantes validadas deste modulo. Nao roda a
-        validacao aqui: percorrer 195 mil partidas num request HTTP
-        nao e lugar para isso. Um cache de outro corpus ou de outros
-        parametros NAO e evidencia desta regra: volta para as
-        constantes, nunca para numeros de outra medicao.
+        Precedencia da vantagem medida:
+
+        1. validação OOS walk-forward em cache (`value_walkforward`),
+           QUANDO o fingerprint bate com a configuração atual sobre o
+           corpus atual — é a evidência que o promotion gate exige
+           (janelas, embargo, estatística OOS);
+        2. validação full-sample em cache (I-14) — medição HISTÓRICA
+           documentada (a seleção da banda foi feita nesse corpus);
+        3. constantes validadas deste módulo.
+
+        Nenhuma das fontes roda o corpus aqui: percorrer 195 mil
+        partidas num request HTTP não é lugar para isso. Cache de outro
+        corpus/configuração NÃO é evidência desta regra — volta para a
+        próxima fonte, nunca para números de outra medição.
         """
+        from .value_walkforward import cached_oos_evidence
+
+        oos = cached_oos_evidence()
+        if oos is not None and oos.n_bets_oos > 0 and oos.roi is not None:
+            return StrategyEvidence(
+                roi=oos.roi,
+                roi_se=oos.roi_se if oos.roi_se is not None else 0.0,
+                odd=oos.avg_odd or EDGE_ODD,
+                n_bets=oos.n_bets_oos,
+            )
         val = cached_validation()
         if val is not None:
             return StrategyEvidence(

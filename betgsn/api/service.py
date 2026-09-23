@@ -613,19 +613,25 @@ class BetgsnService:
         A decisao vem de `staking.decide_bet` (o UNICO produtor de
         BetDecision) sobre a evidencia da estrategia OPERACIONAL,
         encadeada pelo runner (`strategy_runner.run_strategy_decision`:
-        registry -> evidencia validada -> decide_bet). A vantagem vem do
-        cache de validacao QUANDO o fingerprint bate com a regra atual
-        sobre o corpus atual (I-14); sem cache valido, as constantes
-        validadas da estrategia — nunca numeros de outra medicao.
+        registry -> evidencia validada -> promotion gate -> decide_bet).
 
-        A API NUNCA fabrica NO_BET nem inventa stake: so traduz o que o
-        Quant decidiu, preservando o motivo, as verificacoes e o status
-        de evidencia que fundamentou a decisao.
+        O promotion gate e AVALIADO no caminho operacional (nunca None):
+        evidencia OOS walk-forward em cache (fingerprint conferido) +
+        CLV prospectivo REAL do store. Cache OOS ausente/stale reprova
+        conservadoramente — evidencia nao declarada nao e aprovada, e
+        "gate nao avaliado" nao e atalho para producao.
+
+        A vantagem vem do cache OOS quando valido; sem ele, da validacao
+        full-sample (I-14) ou das constantes — nunca numeros de outra
+        medicao. A API NUNCA fabrica NO_BET nem inventa stake: so traduz
+        o que o Quant decidiu, preservando o motivo, as verificacoes e o
+        status de evidencia que fundamentou a decisao.
         """
         from ..strategy_runner import run_strategy_decision
 
         core = run_strategy_decision(
-            OPERATIONAL_STRATEGY, evidence_status=evidence_status)
+            OPERATIONAL_STRATEGY, evidence_status=evidence_status,
+            promotion=self._strategy_promotion())
         return S.BetDecision(
             action=core.action,
             reason=core.reason,
@@ -635,6 +641,40 @@ class BetgsnService:
             evidence_status=evidence_status,
             checks=[S.DecisionCheck(name=name, passed=passed, detail=detail)
                     for name, passed, detail in core.checks],
+        )
+
+    def _strategy_promotion(self):
+        """Promotion gate da estrategia operacional, com evidencia REAL.
+
+        - Cache OOS valido (fingerprint): segmentos (liga x temporada)
+          construidos SOMENTE de apostas dos blocos TEST das janelas
+          walk-forward, n_windows e drawdown da validacao OOS, CLV
+          prospectivo do store.
+        - Cache OOS ausente/stale: gate reprova (segmentos vazios,
+          n_windows=0). Evidencia que nao existe nao passa — e rodar a
+          validacao offline (tools/quant_oos_validation.py) e o caminho
+          para obtenla, nunca recalcular 195 mil partidas num request.
+
+        O gate reprova quase tudo no estado atual (CLV prospectivo com
+        n < 30, janelas minimas, amostra por segmento): e o comportamento
+        correto. Promotion bloqueado -> NO BET.
+        """
+        from ..strategy_runner import evaluate_strategy_promotion
+        from ..value_walkforward import (
+            cached_oos_evidence,
+            prospective_clv_evidence,
+        )
+
+        oos = cached_oos_evidence()
+        if oos is None:
+            return evaluate_strategy_promotion(
+                OPERATIONAL_STRATEGY, segments=(), n_windows=0)
+        return evaluate_strategy_promotion(
+            OPERATIONAL_STRATEGY,
+            segments=oos.promotion_segments(),
+            n_windows=oos.n_windows_valid,
+            clv=prospective_clv_evidence(),
+            max_drawdown=oos.max_drawdown,
         )
 
     def signal_report(self, snap: Snapshot) -> S.SignalReport:

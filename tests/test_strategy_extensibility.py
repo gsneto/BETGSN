@@ -634,20 +634,42 @@ def test_value_strategy_decision_path_unchanged(monkeypatch):
 def test_service_quant_decision_uses_runner(monkeypatch):
     """A borda da API usa o runner; o comportamento e o mesmo (I-14).
 
-    Cache invalido -> constantes -> decisao com o ROI constante. Este e
-    o teste de regressao do desacoplamento: sem import de EDGE_*/cached
-    _validation, o resultado nao muda.
+    Cache invalido -> constantes -> o ROI reportado e o da constante.
+    Este e o teste de regressao do desacoplamento: sem import de EDGE_*/
+    cached_validation na borda, o resultado nao muda. A ACTION agora e
+    NO_BET porque o promotion gate e avaliado no caminho operacional —
+    sem cache OOS valido, reprova (evidencia ausente nao e aprovada).
+    O gate aprovado via monkeypatch destrava o BET, provando que a
+    borda apenas traduz o que o runner decide.
     """
     from betgsn.football_data_uk import FootballDataClient
     from betgsn.api.service import BetgsnService
+    from betgsn.models.promotion import (
+        ModelStatus, PromotionCriterion, PromotionDecision,
+    )
 
     monkeypatch.setattr(
         FootballDataClient, "corpus_signature", lambda self: "outro-corpus")
 
     svc = BetgsnService()
     decision = svc._quant_decision("timestamped")
-    assert decision.action == "BET"
+    # ROI constante (desacoplamento preservado), ACTION NO_BET (gate
+    # encadeado: cache OOS ausente reprova)
+    assert decision.action == "NO_BET"
     assert decision.conservative_roi == pytest.approx(
+        EDGE_ROI - 1.6448536269514722 * EDGE_SE)
+
+    approved = PromotionDecision(
+        model="value_short_favourites",
+        current_status=ModelStatus.EXPERIMENTAL,
+        recommended_status=ModelStatus.VALIDATED,
+        criteria=[PromotionCriterion(name="tudo_ok", passed=True, detail="x")],
+        production_eligible=True,
+    )
+    monkeypatch.setattr(svc, "_strategy_promotion", lambda: approved)
+    bet = svc._quant_decision("timestamped")
+    assert bet.action == "BET"
+    assert bet.conservative_roi == pytest.approx(
         EDGE_ROI - 1.6448536269514722 * EDGE_SE)
 
 

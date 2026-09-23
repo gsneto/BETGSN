@@ -847,17 +847,36 @@ def test_real_signals_preserve_no_bet(client):
     assert any(c["name"] == "evidencia_confiavel" for c in failed)
 
 
-def test_quant_decision_is_not_hardcoded(svc_snapshot):
-    """A API nao fabrica NO_BET: com evidencia confiavel o Quant diz BET."""
+def test_quant_decision_is_not_hardcoded(svc_snapshot, monkeypatch):
+    """A API não fabrica NO_BET: com evidencia confiavel E promotion gate
+    aprovado o Quant diz BET.
+
+    O promotion gate e AVALIADO no caminho operacional (nunca None):
+    aprovado via monkeypatch aqui porque o ambiente de teste nao tem
+    cache OOS do corpus real — o que o teste prova e que a borda nao
+    bloqueia um gate legitimo.
+    """
+    from betgsn.models.promotion import (
+        ModelStatus, PromotionCriterion, PromotionDecision,
+    )
+
+    approved = PromotionDecision(
+        model="value_short_favourites",
+        current_status=ModelStatus.EXPERIMENTAL,
+        recommended_status=ModelStatus.VALIDATED,
+        criteria=[PromotionCriterion(name="tudo_ok", passed=True, detail="x")],
+        production_eligible=True,
+    )
     svc, _ = svc_snapshot
+    monkeypatch.setattr(svc, "_strategy_promotion", lambda: approved)
     decision = svc._quant_decision("timestamped")
     assert decision.action == "BET"
     assert decision.should_bet is True
     assert 0 < decision.fraction <= 0.05
     assert all(c.passed for c in decision.checks)
     assert {c.name for c in decision.checks} == {
-        "evidencia_confiavel", "limite_inferior_positivo",
-        "amostra_suficiente", "ruina_toleravel",
+        "evidencia_confiavel", "promocao_da_estrategia",
+        "limite_inferior_positivo", "amostra_suficiente", "ruina_toleravel",
     }
 
 
