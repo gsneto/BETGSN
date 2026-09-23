@@ -11,6 +11,7 @@ import type { SocketState } from "@/hooks/useBetgsnSocket";
 import type {
   DashboardSummary,
   ModelConfiguration,
+  RecalculateJobStatus,
   SystemStatus,
   TabKey,
 } from "@/types/api";
@@ -38,6 +39,8 @@ export interface StoreState {
   summary: DashboardSummary | null;
   status: SystemStatus | null;
   recalculating: boolean;
+  /** job de recalculo corrente (progresso em tempo real via WS/polling) */
+  recalcJob: RecalculateJobStatus | null;
   /** incrementa a cada recalculo: as abas reagem e recarregam */
   dataVersion: number;
   error: string | null;
@@ -50,6 +53,7 @@ export interface Store extends StoreState {
   setConfig: (patch: Partial<ModelConfiguration>) => void;
   hydrate: (summary: DashboardSummary) => void;
   recalculate: (override?: Partial<ModelConfiguration>) => Promise<void>;
+  cancelRecalculate: () => void;
   pushToast: (tone: Toast["tone"], message: string) => void;
   dismissToast: (id: number) => void;
 }

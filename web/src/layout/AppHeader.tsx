@@ -12,17 +12,19 @@
 
 import Button from "@/components/ui/Button";
 import { Tooltip } from "@/components/ui/States";
-import { RefreshCwIcon } from "@/components/ui/icons";
+import { RefreshCwIcon, CloseIcon } from "@/components/ui/icons";
 import { useStore } from "@/store/context";
 import { cn } from "@/utils/cn";
-import { fmtClock, fmtDuration, fmtInt } from "@/utils/format";
+import { fmtClock, fmtDuration, fmtInt, fmtPct } from "@/utils/format";
 
 export default function AppHeader() {
-  const { summary, status, socketState, recalculating, recalculate } = useStore();
+  const { summary, status, socketState, recalculating, recalcJob, recalculate, cancelRecalculate } =
+    useStore();
 
   const connected = socketState === "open";
   const strong = summary?.kpis.strong ?? 0;
   const total = summary?.kpis.total ?? 0;
+  const progress = recalculating && recalcJob ? recalcJob.progress : null;
 
   const statusTone = recalculating
     ? "text-accent-300"
@@ -126,8 +128,32 @@ export default function AppHeader() {
             startIcon={<RefreshCwIcon className="size-4" />}
             className="tracking-[0.04em] uppercase"
           >
-            {recalculating ? "Calculando" : "Recalcular"}
+            {recalculating
+              ? progress !== null
+                ? `Calculando ${fmtPct(progress, 0)}`
+                : "Calculando"
+              : "Recalcular"}
           </Button>
+
+          {recalculating ? (
+            <Tooltip
+              content={
+                recalcJob?.message
+                  ? `${recalcJob.message} — clique para cancelar (o snapshot atual é preservado)`
+                  : "Cancelar recalculo — o snapshot atual é preservado"
+              }
+            >
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={cancelRecalculate}
+                aria-label="Cancelar recálculo"
+                className="px-2"
+              >
+                <CloseIcon className="size-4" />
+              </Button>
+            </Tooltip>
+          ) : null}
         </div>
       </div>
     </header>

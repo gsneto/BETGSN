@@ -258,18 +258,55 @@ def test_stats_and_model_routes(client):
 
 
 def test_recalculate_route(client):
+    """/api/recalculate e assincrono: devolve o job imediatamente (200)."""
     r = client.post("/api/recalculate", json=S.ModelConfiguration(
         bankroll=1500.0, min_ev=0.045).model_dump())
-    assert r.status_code in (200, 503)
-    if r.status_code == 200:
-        body = r.json()
-        assert body["configuration"]["bankroll"] == 1500.0
-    r2 = client.get("/api/signals")
-    assert r2.status_code in (200, 503)
-    if r2.status_code == 200:
-        assert all(s["ev"] >= 0.045 for s in r2.json()["signals"])
+    assert r.status_code == 200
+    body = r.json()
+    assert body["job_id"]
+    assert body["phase"] in ("starting", "fixtures", "history", "ratings",
+                             "analyzing", "signals", "done", "error")
+    assert 0.0 <= body["progress"] <= 1.0
+
+    # job em execucao: um segundo POST e recusado (409), nao enfileirado
+    dup = client.post("/api/recalculate", json=CONFIG.model_dump())
+    assert dup.status_code in (200, 409)
+
+    # aguarda a conclusao do job (timeout generoso: pipeline real)
+    import time as _time
+    deadline = _time.monotonic() + 300.0
+    final = None
+    while _time.monotonic() < deadline:
+        final = client.get("/api/recalculate/status").json()
+        if final["phase"] in ("done", "error", "cancelled"):
+            break
+        _time.sleep(0.25)
+    assert final is not None and final["phase"] in ("done", "error", "cancelled")
+
+    if final["phase"] == "done":
+        assert final["progress"] == 1.0
+        assert final["has_snapshot"] is True
+        assert final["snapshot_generated_at"]
+        r2 = client.get("/api/signals")
+        assert r2.status_code in (200, 503)
+        if r2.status_code == 200:
+            assert all(s["ev"] >= 0.045 for s in r2.json()["signals"])
     # restaura o default para os demais testes de rota
     client.post("/api/recalculate", json=CONFIG.model_dump())
+    deadline = _time.monotonic() + 300.0
+    while _time.monotonic() < deadline:
+        if client.get("/api/recalculate/status").json()["phase"] in (
+                "done", "error", "cancelled", "idle"):
+            break
+        _time.sleep(0.25)
+
+
+def test_recalculate_status_shape(client):
+    body = client.get("/api/recalculate/status").json()
+    for field in ("job_id", "phase", "progress", "message", "error",
+                  "snapshot_generated_at", "has_snapshot"):
+        assert field in body
+    assert 0.0 <= body["progress"] <= 1.0
 
 
 def test_recalculate_rejects_invalid_config(client):
@@ -288,13 +325,15 @@ def test_model_performance_route(client):
 
 def test_websocket_status(client):
     with client.websocket_connect("/api/ws") as ws:
-        # o servidor envia dois snapshots ao conectar: status do pipeline e
-        # progresso do backtest
-        primeiro = ws.receive_json()
-        segundo = ws.receive_json()
-        eventos = {primeiro["event"], segundo["event"]}
+        # o servidor envia tres snapshots ao conectar: status do pipeline,
+        # progresso do backtest e progresso do recalculo
+        eventos = set()
+        for _ in range(3):
+            msg = ws.receive_json()
+            eventos.add(msg["event"])
         assert "status" in eventos
         assert "backtest:progress" in eventos
+        assert "recalculate:progress" in eventos
         ws.send_text("ping")
         assert ws.receive_json()["event"] == "pong"
         ws.send_text("status")
@@ -1081,16 +1120,30 @@ def _controlled_real_snapshot():
 
 
 def test_recalculate_and_games_200_with_real_future_fixtures(monkeypatch):
-    """/api/recalculate e /api/games respondem 200 quando existem fixtures
-    futuras reais — aqui injetadas como se tivessem vindo do fallback."""
+    """/api/recalculate (assincrono) e /api/games respondem 200 quando
+    existem fixtures futuras reais — aqui injetadas como se tivessem
+    vindo do fallback."""
+    import time as _time
+
     import betgsn.real_signals as rs
 
     snap = _controlled_real_snapshot()
-    monkeypatch.setattr(rs.real_signals_service, "snapshot", lambda force=False: snap)
+    monkeypatch.setattr(
+        rs.real_signals_service, "snapshot",
+        lambda force=False, **kwargs: snap,
+    )
 
     with TestClient(app) as c:
         r = c.post("/api/recalculate", json=CONFIG.model_dump())
         assert r.status_code == 200, r.text
+        # job assincrono: aguarda a conclusao antes de consultar os jogos
+        deadline = _time.monotonic() + 60.0
+        while _time.monotonic() < deadline:
+            st = c.get("/api/recalculate/status").json()
+            if st["phase"] in ("done", "error", "cancelled"):
+                break
+            _time.sleep(0.05)
+        assert st["phase"] == "done", st
         g = c.get("/api/games")
         assert g.status_code == 200, g.text
         games = g.json()

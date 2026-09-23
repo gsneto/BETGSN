@@ -34,7 +34,7 @@ import TabBar from "@/layout/TabBar";
 import { ErrorPanel, ToastStack } from "@/components/ui";
 import { AppStoreProvider } from "@/store/AppStore";
 import { useStore } from "@/store/context";
-import type { TabKey } from "@/types/api";
+import type { RecalculateJobStatus, TabKey } from "@/types/api";
 
 const PAGES: Record<TabKey, () => React.JSX.Element | null> = {
   signals: SignalsPage,
@@ -54,14 +54,14 @@ const PAGES: Record<TabKey, () => React.JSX.Element | null> = {
 };
 
 function Terminal() {
-  const { tab, summary, recalculate, recalculating, hydrate } = useStore();
+  const { tab, summary, recalcJob, recalculate, recalculating, hydrate } = useStore();
   // guarda a promessa (nao um booleano): sobrevive ao duplo efeito do
   // StrictMode sem descartar o resultado do primeiro fetch
   const bootRef = useRef<Promise<void> | null>(null);
 
   // primeiro marco funcional: garante um snapshot do backend ao abrir.
   // Se ja existir, adota o snapshot existente (sem recalcular); se nao,
-  // dispara o calculo uma unica vez.
+  // dispara o JOB assincrono uma unica vez e mostra o progresso real.
   useEffect(() => {
     if (bootRef.current) return;
     bootRef.current = fetchDashboard()
@@ -74,6 +74,7 @@ function Terminal() {
   }, [hydrate, recalculate]);
 
   const Page = PAGES[tab];
+  const coldBoot = !summary && recalculating;
 
   return (
     <div className="flex min-h-screen flex-col bg-app text-ink">
@@ -83,7 +84,9 @@ function Terminal() {
 
       <main className="flex min-h-0 flex-1 flex-col gap-3 p-4">
         {summary && <DataProvenance data={summary.provenance} updated={summary.generated_at} />}
-        {!summary && !recalculating ? (
+        {coldBoot ? (
+          <BootProgress job={recalcJob} />
+        ) : !summary && !recalculating ? (
           <ErrorPanel
             message="Nenhum snapshot disponível. Clique em RECALCULAR para executar o pipeline no backend."
             onRetry={() => void recalculate()}
@@ -96,6 +99,28 @@ function Terminal() {
       <StatusBar />
       <ToastStack />
     </div>
+  );
+}
+
+/** Progresso do primeiro calculo: fases REAIS do pipeline no backend. */
+function BootProgress({ job }: { job: RecalculateJobStatus | null }) {
+  const pct = job ? Math.round(job.progress * 100) : 0;
+  return (
+    <section className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <span className="label-caps text-accent-300">Pipeline em execução</span>
+        <p className="max-w-md text-sm text-ink-3">
+          {job?.message ?? "Iniciando pipeline…"}
+        </p>
+      </div>
+      <div className="h-1.5 w-72 overflow-hidden rounded-full bg-line">
+        <div
+          className="h-full rounded-full bg-accent-400 transition-[width] duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="num text-xs text-ink-4">{pct}%</span>
+    </section>
   );
 }
 

@@ -5,7 +5,9 @@ Rotas (todas sob /api):
     GET  /api/health                       status do sistema
     GET  /api/config                       configuracao atual do snapshot
     GET  /api/dashboard                    resumo + KPIs
-    POST /api/recalculate                  roda o pipeline com nova configuracao
+    POST /api/recalculate                  dispara o pipeline em background
+    GET  /api/recalculate/status           progresso do recalculo corrente
+    POST /api/recalculate/cancel           cancelamento cooperativo
     GET  /api/signals                      relatorio de sinais completo
     GET  /api/games                        analise por jogo
     GET  /api/odds                         visao geral de casas
@@ -91,11 +93,12 @@ hub = EventHub()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Liga o broadcaster do backtest ao loop de eventos do servidor.
+    """Liga os broadcasters (backtest + recalculo) ao loop do servidor.
 
-    O motor de backtest roda em thread separada (processamento pesado fora
-    do event loop). `run_coroutine_threadsafe` e o que permite publicar
-    progresso no WebSocket a partir dessa thread.
+    O motor de backtest e o job de recalculo rodam em threads separadas
+    (processamento pesado fora do event loop). `run_coroutine_threadsafe`
+    e o que permite publicar progresso no WebSocket a partir dessas
+    threads.
     """
     loop = asyncio.get_running_loop()
 
@@ -105,6 +108,7 @@ async def lifespan(_app: FastAPI):
         asyncio.run_coroutine_threadsafe(hub.broadcast(event, payload), loop)
 
     get_backtest_service().set_broadcaster(schedule)
+    _svc().set_broadcaster(schedule)
     yield
 
 
@@ -131,7 +135,16 @@ def _svc() -> BetgsnService:
 
 def _snapshot() -> Snapshot:
     try:
-        return _svc().snapshot()
+        return _svc().snapshot(auto=False)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "nenhum snapshot disponivel: dispare o recalculo via "
+                "POST /api/recalculate (job assincrono) e acompanhe o "
+                "progresso em GET /api/recalculate/status ou no WebSocket."
+            ),
+        ) from exc
     except Exception as exc:  # pipeline quebrou
         raise HTTPException(status_code=503, detail=f"pipeline indisponivel: {exc}") from exc
 
@@ -182,27 +195,41 @@ def dashboard() -> S.DashboardSummary:
     return _svc().dashboard(snap)
 
 
-@app.post("/api/recalculate", response_model=S.DashboardSummary, tags=["dashboard"])
-async def recalculate(config: S.ModelConfiguration) -> S.DashboardSummary:
-    from ..real_signals import RealDataError
+@app.post("/api/recalculate", response_model=S.RecalculateJobStatus, tags=["dashboard"])
+async def recalculate(config: S.ModelConfiguration) -> S.RecalculateJobStatus:
+    """Dispara o pipeline em background e devolve o job imediatamente.
 
+    O pipeline real leva dezenas de segundos; a UX nao pode depender de
+    uma requisicao HTTP longa. O progresso chega via WebSocket
+    (`recalculate:progress`) ou em GET /api/recalculate/status; ao
+    concluir, o evento `recalculate:done` carrega o DashboardSummary
+    atualizado. Uma falha NUNCA remove o snapshot anterior.
+    """
     svc = _svc()
-    await hub.broadcast("recalculate:start", {"configuration": config.model_dump()})
     try:
-        snap = await asyncio.to_thread(svc.recalculate, config)
-    except RealDataError as exc:
-        # dados reais indisponiveis (cache de fixtures sem jogos futuros):
-        # mesmo contrato de /api/signals — 503 com instrucao, nao 500.
-        await hub.broadcast("recalculate:error", {"detail": str(exc)})
-        raise HTTPException(status_code=503,
-                            detail=f"pipeline indisponivel: {exc}") from exc
-    except Exception as exc:
-        await hub.broadcast("recalculate:error", {"detail": str(exc)})
-        raise HTTPException(status_code=500,
-                            detail=f"falha no pipeline: {type(exc).__name__}: {exc}") from exc
-    summary = svc.dashboard(snap)
-    await hub.broadcast("recalculate:done", summary.model_dump())
-    return summary
+        status = svc.start_recalculate(config)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await hub.broadcast("recalculate:start", {"job_id": status.job_id})
+    return status
+
+
+@app.get("/api/recalculate/status", response_model=S.RecalculateJobStatus,
+         tags=["dashboard"])
+def recalculate_status() -> S.RecalculateJobStatus:
+    """Estado do job de recalculo corrente (ou do ultimo concluido)."""
+    return _svc().recalculate_status()
+
+
+@app.post("/api/recalculate/cancel", response_model=S.RecalculateJobStatus,
+          tags=["dashboard"])
+def recalculate_cancel() -> S.RecalculateJobStatus:
+    """Cancelamento cooperativo: aplicado entre fases, nunca no meio.
+
+    Um job cancelado preserva o snapshot anterior — nada e trocado pela
+    metade.
+    """
+    return _svc().request_cancel()
 
 
 @app.get("/api/signals", response_model=S.SignalReport, tags=["signals"])
@@ -597,7 +624,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             {"event": "status", "payload": _svc().status().model_dump()}, default=str))
         await ws.send_text(json.dumps(
             {"event": "backtest:progress",
-             "payload": get_backtest_service().status().model_dump()}, default=str))
+             "payload": get_backtest_service().status().model_dump()}))
+        await ws.send_text(json.dumps(
+            {"event": "recalculate:progress",
+             "payload": _svc().recalculate_status().model_dump()}, default=str))
         while True:
             raw = await ws.receive_text()
             if raw.strip() in {"ping", '"ping"'}:

@@ -11,11 +11,16 @@ import { useStore } from "@/store/context";
 import { fmtClock, fmtInt, fmtMoney, fmtMoneySigned, fmtPct, fmtPctSigned } from "@/utils/format";
 
 export default function StatusBar() {
-  const { summary, error, recalculating, status, socketState } = useStore();
+  const { summary, error, recalculating, recalcJob, status, socketState } = useStore();
   const k = summary?.kpis;
 
+  const progressTxt =
+    recalculating && recalcJob
+      ? ` (${Math.round(recalcJob.progress * 100)}% — ${recalcJob.message})`
+      : "";
+
   const left = recalculating
-    ? "Recalculando modelo, mercados e sinais…"
+    ? `Recalculando modelo, mercados e sinais…${progressTxt}`
     : error
       ? `ERRO: ${error}`
       : summary

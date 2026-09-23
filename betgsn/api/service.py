@@ -249,6 +249,23 @@ class Snapshot:
 class BetgsnService:
     """Executa o pipeline e serve o ultimo snapshot calculado."""
 
+    #: fases que indicam job de recalculo em execucao
+    _RECALC_RUNNING = ("starting", "fixtures", "history", "ratings",
+                       "analyzing", "signals")
+
+    #: peso de cada fase REAL do pipeline no progresso exibido. A fase
+    #: `analyzing` tem sub-progresso exato (i/n fixtures); as demais sao
+    #: conservadoras (a fase ainda nao terminou quando o peso e exibido).
+    _RECALC_WEIGHTS: dict[str, float] = {
+        "starting": 0.0,
+        "fixtures": 0.05,
+        "history": 0.10,
+        "ratings": 0.45,
+        "analyzing": 0.50,
+        "signals": 0.90,
+        "cache": 0.50,
+    }
+
     def __init__(self, source: str = "synthetic", odds_service=None) -> None:
         self._lock = threading.RLock()
         self._snapshot: Snapshot | None = None
@@ -261,6 +278,17 @@ class BetgsnService:
         #: E dele que vem o health REAL: HealthTracker + CreditController
         #: alimentados pelas coletas. A API nunca inventa estado.
         self._odds_service = odds_service
+        # ------------------------------------------------ job de recalculo
+        # Estado do job assincrono (POST /api/recalculate). O snapshot em
+        # memoria NUNCA e removido por uma falha: so substituido por um
+        # calculo bem-sucedido.
+        self._recalc_job_id: str | None = None
+        self._recalc_phase = "idle"
+        self._recalc_progress = 0.0
+        self._recalc_message = "Pronto."
+        self._recalc_error: str | None = None
+        self._recalc_cancel = False
+        self._recalc_broadcaster = None
 
     def odds_service(self):
         """O Odds Layer deste processo (um so, para acumular health real)."""
@@ -275,14 +303,21 @@ class BetgsnService:
     def computing(self) -> bool:
         return self._computing
 
-    def recalculate(self, config: S.ModelConfiguration) -> Snapshot:
-        """Roda o pipeline com os parametros informados e guarda o snapshot."""
+    def recalculate(self, config: S.ModelConfiguration, *,
+                    progress=None, cancel=None) -> Snapshot:
+        """Roda o pipeline com os parametros informados e guarda o snapshot.
+
+        `progress`/`cancel` sao opacos aqui: seguem para o pipeline real
+        (RealSignalsService.report) e nao afetam o resultado — so a
+        observabilidade. O snapshot em memoria so e substituido em caso
+        de SUCESSO: falha preserva o calculo anterior.
+        """
         with self._lock:
             self._computing = True
             self._last_error = None
         started = time.perf_counter()
         try:
-            result = self._run_real(config) if self.source == "real" else run(
+            result = self._run_real(config, progress, cancel) if self.source == "real" else run(
                 bankroll=config.bankroll,
                 kelly_frac=config.kelly_fraction,
                 stake_cap=config.stake_cap,
@@ -310,17 +345,160 @@ class BetgsnService:
             self._computing = False
         return snap
 
-    def _run_real(self, config):
+    def _run_real(self, config, progress=None, cancel=None):
         from ..real_signals import real_signals_service
         from ..data import LeagueDataset
         from ..signals import top_tips
         report, snap = real_signals_service.report(
             bankroll=config.bankroll, kelly_frac=config.kelly_fraction,
             stake_cap=config.stake_cap, min_ev=config.min_ev,
-            max_exposure=config.max_exposure, use_xg=config.use_xg)
+            max_exposure=config.max_exposure, use_xg=config.use_xg,
+            progress=progress, cancel=cancel)
         ds = LeagueDataset(snap.teams, snap.history, [a.fixture for a in snap.analyses],
                            snap.league_goals, LEAGUE_HOME_ADVANTAGE)
         return RunResult(ds, snap.ratings, list(snap.analyses), report, top_tips(report), snap.league_goals)
+
+    # ------------------------------------------------- job assincrono
+
+    def set_broadcaster(self, fn) -> None:
+        """Recebe o broadcaster do EventHub (progresso em tempo real)."""
+        self._recalc_broadcaster = fn
+
+    def _emit(self, event: str, payload: dict) -> None:
+        if self._recalc_broadcaster is not None:
+            try:
+                self._recalc_broadcaster(event, payload)
+            except Exception:
+                # progresso nunca pode derrubar a execucao
+                pass
+
+    def _publish_recalc(self) -> None:
+        self._emit("recalculate:progress", self.recalculate_status().model_dump())
+
+    def _set_recalc_phase(self, phase: str, message: str,
+                          done: int = 0, total: int = 0) -> None:
+        with self._lock:
+            self._recalc_phase = phase
+            self._recalc_message = message
+            base = self._RECALC_WEIGHTS.get(phase, 0.0)
+            frac = (done / total) if (phase == "analyzing" and total) else 0.0
+            if phase == "done":
+                self._recalc_progress = 1.0
+            else:
+                self._recalc_progress = round(
+                    min(0.99, base + 0.35 * frac), 4)
+        self._publish_recalc()
+
+    def recalculate_status(self) -> S.RecalculateJobStatus:
+        """Estado atual do job de recalculo (sem segredos, sem traceback)."""
+        with self._lock:
+            snap = self._snapshot
+            return S.RecalculateJobStatus(
+                job_id=self._recalc_job_id,
+                phase=self._recalc_phase,  # type: ignore[arg-type]
+                progress=self._recalc_progress,
+                message=self._recalc_message,
+                error=self._recalc_error,
+                snapshot_generated_at=snap.generated_at if snap else None,
+                has_snapshot=snap is not None,
+            )
+
+    def request_cancel(self) -> S.RecalculateJobStatus:
+        """Pede cancelamento cooperativo do job em execucao.
+
+        O cancelamento e consultado entre fases e a cada fixture: partes
+        atomicas (parse do corpus) correm ate o fim. Se nao houver job
+        em execucao, e um no-op honesto — nada a cancelar.
+        """
+        with self._lock:
+            running = self._recalc_phase in self._RECALC_RUNNING
+            if running:
+                self._recalc_cancel = True
+                self._recalc_message = "Cancelamento solicitado…"
+        if running:
+            self._publish_recalc()
+        return self.recalculate_status()
+
+    def start_recalculate(self, config: S.ModelConfiguration) -> S.RecalculateJobStatus:
+        """Dispara o pipeline em background e devolve o status do job.
+
+        Nao bloqueia a requisicao HTTP: o progresso chega via WebSocket
+        (`recalculate:progress`) ou por GET /api/recalculate/status. Um
+        job por vez; enquanto roda, o snapshot anterior continua valido.
+        """
+        with self._lock:
+            if self._recalc_phase in self._RECALC_RUNNING:
+                raise RuntimeError(
+                    "recalculo ja em execucao; aguarde a conclusao ou "
+                    "cancele via POST /api/recalculate/cancel"
+                )
+            from datetime import datetime as _dt
+            self._recalc_job_id = _dt.now().strftime("rcjob_%Y%m%d_%H%M%S")
+            self._recalc_cancel = False
+            self._recalc_error = None
+            self._recalc_phase = "starting"
+            self._recalc_progress = 0.0
+            self._recalc_message = "Iniciando pipeline…"
+        self._publish_recalc()
+        threading.Thread(
+            target=self._execute_recalculate, args=(config,),
+            daemon=True, name="betgsn-recalculate",
+        ).start()
+        return self.recalculate_status()
+
+    def _execute_recalculate(self, config: S.ModelConfiguration) -> None:
+        """Corpo do job: executa, troca o snapshot apenas em sucesso."""
+        from ..real_signals import RecalculateCancelled, RealDataError
+
+        def on_progress(phase: str, done: int, total: int, message: str) -> None:
+            if phase == "cache":
+                # snapshot reutilizado: pula direto para a fase de sinais
+                self._set_recalc_phase("analyzing", "Snapshot em cache; analisando…")
+                return
+            self._set_recalc_phase(phase, message, done, total)
+
+        def cancel_requested() -> bool:
+            with self._lock:
+                return self._recalc_cancel
+
+        try:
+            snap = self.recalculate(config, progress=on_progress,
+                                    cancel=cancel_requested)
+        except RecalculateCancelled as exc:
+            with self._lock:
+                self._recalc_phase = "cancelled"
+                self._recalc_error = str(exc)
+                self._recalc_message = "Cancelado. Snapshot anterior preservado."
+            self._emit("recalculate:error", {"detail": str(exc), "cancelled": True})
+            self._publish_recalc()
+            return
+        except RealDataError as exc:
+            with self._lock:
+                self._recalc_phase = "error"
+                self._recalc_error = str(exc)
+                self._recalc_message = "Dados reais indisponíveis."
+            self._emit("recalculate:error", {"detail": str(exc)})
+            self._publish_recalc()
+            return
+        except Exception as exc:
+            with self._lock:
+                self._recalc_phase = "error"
+                self._recalc_error = f"{type(exc).__name__}: {exc}"
+                self._recalc_message = "Falha no pipeline."
+            self._emit("recalculate:error",
+                       {"detail": f"{type(exc).__name__}: {exc}"})
+            self._publish_recalc()
+            return
+        summary = self.dashboard(snap)
+        with self._lock:
+            self._recalc_phase = "done"
+            self._recalc_progress = 1.0
+            self._recalc_message = (
+                f"Concluído em {snap.computed_in_ms / 1000:.1f}s "
+                f"({len(snap.result.analyses)} análises)."
+            )
+        self._emit("recalculate:done", summary.model_dump())
+        self._publish_recalc()
 
     def snapshot(self, *, auto: bool = True) -> Snapshot:
         """Devolve o snapshot atual; calcula com o default se ainda nao existir."""
