@@ -134,6 +134,23 @@ class FrozenModel:
     train_end: str
     n_matches: int
 
+    def prob_1x2(self, home: str, away: str):
+        """(p1, pX, p2) do modelo CONGELADO; None sem rating de algum lado.
+
+        Contrato de provider: qualquer fonte de probabilidade 1X2 que
+        queira ser avaliada nas MESMAS janelas implementa este método —
+        o harness não conhece a família do modelo, só o contrato.
+        """
+        hr = self.ratings.get(home)
+        ar = self.ratings.get(away)
+        if hr is None or ar is None:
+            return None
+        lam_h, lam_a = expected_goals(
+            hr, ar, self.league_goals, home_advantage=HOME_ADVANTAGE,
+        )
+        matrix = build_score_matrix(lam_h, lam_a)
+        return matrix.prob_home_win(), matrix.prob_draw(), matrix.prob_away_win()
+
 
 def fit_model_on_train(
     matches: Sequence, train_end: str,
@@ -167,16 +184,13 @@ def fit_model_on_train(
 
 
 def _prob_1x2(model: FrozenModel, home: str, away: str):
-    """(p1, pX, p2) do modelo CONGELADO; None sem rating de algum lado."""
-    hr = model.ratings.get(home)
-    ar = model.ratings.get(away)
-    if hr is None or ar is None:
-        return None
-    lam_h, lam_a = expected_goals(
-        hr, ar, model.league_goals, home_advantage=HOME_ADVANTAGE,
-    )
-    matrix = build_score_matrix(lam_h, lam_a)
-    return matrix.prob_home_win(), matrix.prob_draw(), matrix.prob_away_win()
+    """(p1, pX, p2) do modelo CONGELADO; None sem rating de algum lado.
+
+    Mantido como wrapper do contrato `model.prob_1x2` — providers
+    externos (Elo/XGBoost/LightGBM, ver `ml_walkforward`) implementam o
+    mesmo método e entram no MESMO harness sem caminho paralelo.
+    """
+    return model.prob_1x2(home, away)
 
 
 def _outcome_index(oc: str) -> int:
@@ -290,15 +304,26 @@ def run_model_walkforward(
     matches: Sequence,
     config: WalkForwardConfig | None = None,
     progress: Any = None,
+    *,
+    model_fn: Callable[[Sequence, str], Any] | None = None,
 ) -> ModelComparisonResult:
     """Executa modelo vs mercado nas MESMAS janelas da estratégia.
 
     `bets`: linhas apostáveis canônicas (collect_bets) com home/away/oc/
     odd/median/fair/res. `matches`: corpus histórico (para fit ratings).
     Violação temporal das janelas levanta — não mede.
+
+    `model_fn` (opcional): fonte de probabilidade alternativa avaliada
+    no MESMO protocolo — recebe (matches, train_end) e devolve um
+    objeto CONGELADO com `prob_1x2(home, away)` e `n_matches` (o
+    contrato de `FrozenModel`). É o gancho dos modelos experimentais
+    (Elo/XGBoost/LightGBM, ver `ml_walkforward`) nas mesmas 24 janelas:
+    mesmo harness, sem caminho paralelo de avaliação. Sem `model_fn`,
+    o modelo de produção BASELINE_V1 é avaliado como sempre.
     """
     config = config or WalkForwardConfig()
     config.validate()
+    model_fn = model_fn or fit_model_on_train
     result = ModelComparisonResult(
         config=config, embargo_days=config.gap_days,
     )
@@ -335,7 +360,7 @@ def run_model_walkforward(
             progress(w_i + 1, len(windows),
                      f"janela {window.index}: modelo vs mercado")
 
-        model = fit_model_on_train(matches, window.train_end)
+        model = model_fn(matches, window.train_end)
         train_bets = [
             b for b in bets
             if window.train_start <= str(b["d"]) < window.train_end

@@ -16,6 +16,12 @@ Rotas (todas sob /api):
     GET  /api/model                        descricao do modelo
     GET  /api/model/performance            backtest (calibracao + aposta)
 
+    GET  /api/quant/benchmarks             manifest da referencia (Etapa 19)
+    GET  /api/quant/model-vs-market        modelo vs mercado (cache validado)
+    GET  /api/quant/line-shopping          auditoria do line-shopping
+    GET  /api/quant/ml                     modelos experimentais (24 janelas)
+    GET  /api/quant/clv/status             ciclo de vida do CLV prospectivo
+
     GET  /api/backtest/options             periodo, competicoes, mercados, defaults
     POST /api/backtest/run                 dispara o backtest em background
     GET  /api/backtest/status              progresso da execucao atual
@@ -182,6 +188,64 @@ def coverage() -> S.CoverageReport:
 @app.get("/api/clv", response_model=S.ClvReport, tags=["clv"])
 def clv() -> S.ClvReport:
     return _svc().clv()
+
+
+# --------------------------------------------------------------------------
+# observabilidade quantitativa (leitura; nada recalcula aqui)
+# --------------------------------------------------------------------------
+
+
+@app.get("/api/quant/benchmarks", tags=["quant"])
+def quant_benchmarks() -> dict:
+    """Manifest da referência oficial de benchmark (Etapa 19).
+
+    Corpus, protocolo (janelas/embargo/seed/bandas), fingerprints,
+    versões e estado de reprodutibilidade de cada cache. Cache stale é
+    DECLARADO, nunca servido como atual."""
+    from .quant_service import benchmarks
+
+    return benchmarks()
+
+
+@app.get("/api/quant/model-vs-market", tags=["quant"])
+def quant_model_vs_market() -> dict:
+    """Modelo (BASELINE_V1) vs mercado nas 24 janelas OOS.
+
+    Fontes separadas (market_raw/market_fair/model_raw/model_calibrated)
+    + comparação pareada. Sem cache válido: status NO_VALID_CACHE."""
+    from .quant_service import model_vs_market
+
+    return model_vs_market()
+
+
+@app.get("/api/quant/line-shopping", tags=["quant"])
+def quant_line_shopping() -> dict:
+    """Auditoria do efeito do line-shopping (+6,4pp decomposto).
+
+    População constante (preço variando), semântica da ablação,
+    segmentações e limitações temporais declaradas."""
+    from .quant_service import line_shopping
+
+    return line_shopping()
+
+
+@app.get("/api/quant/ml", tags=["quant"])
+def quant_ml() -> dict:
+    """Modelos experimentais (Elo/XGBoost/LightGBM) nas 24 janelas.
+
+    Evidência comparativa sem ranking, sem vencedor, sem promoção."""
+    from .quant_service import ml_models
+
+    return ml_models()
+
+
+@app.get("/api/quant/clv/status", tags=["quant"])
+def quant_clv_status() -> dict:
+    """Ciclo de vida do CLV prospectivo (PENDING/NO_CLOSE/CLOSED/
+    INVALID/MISMATCH) + evidência prospectiva do gate."""
+    from .quant_service import clv_status
+
+    return clv_status()
 
 
 @app.get("/api/config", response_model=S.ModelConfiguration, tags=["system"])

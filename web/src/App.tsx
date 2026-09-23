@@ -25,6 +25,7 @@ import MovementPage from "@/pages/MovementPage";
 import OddsPage from "@/pages/OddsPage";
 import PortfolioPage from "@/pages/PortfolioPage";
 import ProvidersPage from "@/pages/ProvidersPage";
+import QuantPage from "@/pages/QuantPage";
 import SignalsPage from "@/pages/SignalsPage";
 import StatsPage from "@/pages/StatsPage";
 import AppHeader from "@/layout/AppHeader";
@@ -51,6 +52,7 @@ const PAGES: Record<TabKey, () => React.JSX.Element | null> = {
   coverage: CoveragePage,
   clv: ClvPage,
   movement: MovementPage,
+  quant: QuantPage,
 };
 
 function Terminal() {

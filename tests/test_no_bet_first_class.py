@@ -245,6 +245,57 @@ def test_no_bet_by_lack_of_evidence_yields_zero_stake():
     assert all(b.stake == 0.0 for b in enforce_decision(_bets(), quant))
 
 
+def test_no_bet_when_oos_cache_is_stale_or_missing(monkeypatch):
+    """Cache OOS stale/ausente -> gate reprova -> NO BET.
+
+    A via operacional (`_strategy_promotion`) consome `cached_oos_evidence`
+    com validação de fingerprint: corpus novo ou parâmetro diferente =
+    cache stale = None = evidência que NÃO existe não passa. Nada de
+    servir números de outra medição como se fossem atuais."""
+    from betgsn import value_walkforward as vwf
+    from betgsn.api.service import BetgsnService
+
+    def _no_cache(*a, **k):
+        return None  # simula cache ausente OU stale (fingerprint divergente)
+
+    monkeypatch.setattr(vwf, "cached_oos_evidence", _no_cache)
+    gate = BetgsnService()._strategy_promotion()
+    assert gate.production_eligible is False
+    assert not gate.promoted
+
+    # decisão sobre evidência exploratória: NO BET, stake zero
+    quant = decide_bet(0.016, 0.0054, 1.21,
+                       evidence_status="exploratory", n_bets=6748)
+    assert quant.action == "NO_BET"
+    assert all(b.stake == 0.0 for b in enforce_decision(_bets(), quant))
+
+
+def test_no_bet_when_oos_cache_is_fingerprint_stale(monkeypatch, tmp_path):
+    """Cache com fingerprint de OUTRO corpus não é evidência desta
+    configuração — o gate vê segmentos vazios e reprova."""
+    import json
+
+    from betgsn import value_walkforward as vwf
+    from betgsn.api.service import BetgsnService
+
+    monkeypatch.setattr(vwf, "_oos_cache_path",
+                        lambda: tmp_path / "oos.json")
+    # cache de OUTRO corpus: fingerprint não confere com o atual
+    (tmp_path / "oos.json").write_text(json.dumps({
+        "schema": vwf.OOS_CACHE_SCHEMA_VERSION,
+        "cache_fingerprint": "de-outro-corpus",
+        "aggregate": {"n_windows": 24, "n_windows_valid": 24,
+                      "n_bets_oos": 9999, "roi": 0.05},
+        "oos_rule_bets": [], "oos_market_bets": [],
+    }), encoding="utf-8")
+
+    gate = BetgsnService()._strategy_promotion()
+    assert gate.production_eligible is False
+    quant = decide_bet(0.016, 0.0054, 1.21,
+                       evidence_status="exploratory", n_bets=6748)
+    assert quant.action == "NO_BET"
+
+
 def test_fixtures_evidence_cannot_become_trusted_without_timestamps():
     """Fase D — invariante de evidencia das odds CSV de fixtures.
 

@@ -132,6 +132,23 @@ export interface ClvEntry {
   clv_percentage: number | null;
   clv_probability: number | null;
   status: "OK" | "NO_CLOSING_ODDS" | "CLOSING_BEFORE_ENTRY" | "NO_ENTRY_ODDS";
+  /** Proveniência da decisão (schema v4) — ausente em registros antigos */
+  home?: string | null;
+  away?: string | null;
+  league?: string | null;
+  entry_n_books?: number | null;
+  entry_bookmaker?: string | null;
+  /** Executabilidade: UNKNOWN enquanto não houver execução real */
+  execution_status?: "UNKNOWN" | null;
+  /** Ciclo de vida operacional: "ainda não" (PENDING) != "nunca" (NO_CLOSE) */
+  lifecycle_state?:
+    | "PENDING"
+    | "NO_CLOSE"
+    | "CLOSED"
+    | "INVALID"
+    | "MISMATCH"
+    | null;
+  lifecycle_detail?: string | null;
 }
 
 export interface ClvReport {
@@ -150,6 +167,8 @@ export interface ClvReport {
   >;
   entries: ClvEntry[];
   source: string;
+  /** Contagem por estado do ciclo de vida (PENDING/NO_CLOSE/CLOSED/...) */
+  lifecycle?: Record<string, number>;
 }
 
 export interface CoverageReport {
@@ -586,7 +605,8 @@ export type TabKey =
   | "providers"
   | "coverage"
   | "clv"
-  | "movement";
+  | "movement"
+  | "quant";
 
 export type ConfidenceFilter = "all" | "FORTE" | "MEDIA" | "FRACA";
 
