@@ -251,11 +251,14 @@ def collect_bets(
     rodada foi publicada); `closing=True` usa as de fechamento.
 
     Campos adicionais (canonicos, para o harness OOS `value_walkforward`
-    filtrar sem recorrer o corpus): `median` (odd mediana entre as casas
-    — ablação do line-shopping), `n_books` (casas que sustentam a linha)
-    e `res` ("win"/"push"/"loss"). O filtro `max_odd`/`min_books` segue
-    valendo para `odd`/`ret` — quem precisa de TODAS as linhas chama com
-    max_odd=99 e min_books=1.
+    e o harness de modelo `model_walkforward` filtrarem sem recorrer o
+    corpus): `home`/`away`/`oc` (identidade da linha), `median` (odd
+    mediana entre as casas — ablação do line-shopping), `n_books` (casas
+    que sustentam a linha), `res` ("win"/"push"/"loss") e `fair`
+    (probabilidade justa do consenso: de-vig multiplicativo das
+    medianas — MARKET FAIR, distinto do raw 1/odd). O filtro
+    `max_odd`/`min_books` segue valendo para `odd`/`ret` — quem precisa
+    de TODAS as linhas chama com max_odd=99 e min_books=1.
     """
     from .backtest_engine import csv_odds_store
     from .football_data_uk import FootballDataClient
@@ -275,6 +278,16 @@ def collect_bets(
             outcomes: set[str] = set()
             for b in books.values():
                 outcomes.update(b)
+            # medianas por outcome -> consenso -> de-vig multiplicativo
+            # (MARKET FAIR: a probabilidade justa implicita no mercado)
+            medians = {
+                oc: _median_of([b[oc] for b in books.values() if b.get(oc)])
+                for oc in outcomes
+            }
+            implied = {
+                oc: 1.0 / med for oc, med in medians.items() if med and med > 1.0
+            }
+            overround = sum(implied.values()) or 1.0
             for oc in outcomes:
                 vals = [b[oc] for b in books.values() if b.get(oc)]
                 if len(vals) < min_books:
@@ -285,15 +298,20 @@ def collect_bets(
                 res = settle_outcome(market, oc, result)
                 if res is None:
                     continue
+                fair = implied.get(oc, 0.0) / overround
                 bets.append({
                     "d": m.kickoff[:10],
                     "lg": m.league,
                     "mkt": market,
+                    "oc": oc,
+                    "home": m.home,
+                    "away": m.away,
                     "odd": best,
                     "ret": (best - 1.0) if res == "win" else (0.0 if res == "push" else -1.0),
-                    "median": _median_of(vals),
+                    "median": medians.get(oc) or best,
                     "n_books": len(vals),
                     "res": res,
+                    "fair": fair,
                 })
         if progress is not None and i % 40000 == 0:
             progress(i, len(matches))
