@@ -237,10 +237,15 @@ class ModelComparisonResult:
     paired_model_vs_fair: dict | None = None
     paired_model_vs_raw: dict | None = None
     windows: list[ModelWindowResult] = field(default_factory=list)
-    #: strategy_model agregada (EV>0 com prob do modelo)
+    #: strategy_model nesta janela
     strategy_model: dict = field(default_factory=dict)
     #: drift: metricas por janela por fonte
     drift: dict = field(default_factory=dict)
+    #: linhas da strategy_model (EV>0), com odd best E mediana da MESMA
+    #: linha — insumo da auditoria do line-shopping (população constante:
+    #: a decomposição preço/seleção do efeito reportado). Nada de decisão
+    #: aqui: é evidência de auditoria, não caminho de aposta.
+    strategy_rows: list[dict] = field(default_factory=list)
     embargo_days: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -424,6 +429,24 @@ def run_model_walkforward(
             if ev > MODEL_EV_THRESHOLD:
                 strat_model_rets.append(
                     _ret(float(r["b"]["odd"]), r["b"]["res"]))
+                # linha da strategy_model com os DOIS preços da mesma
+                # linha (best e mediana): a auditoria do line-shopping
+                # liquida a MESMA população nos dois preços e isola
+                # preço de seleção.
+                result.strategy_rows.append({
+                    "window": window.index,
+                    "d": str(r["b"].get("d", "")),
+                    "lg": str(r["b"].get("lg", "")),
+                    "home": str(r["b"].get("home", "")),
+                    "away": str(r["b"].get("away", "")),
+                    "oc": str(r["b"].get("oc", "")),
+                    "odd": float(r["b"]["odd"]),
+                    "median": float(r["b"].get("median") or r["b"]["odd"]),
+                    "n_books": int(r["b"].get("n_books", 0)),
+                    "res": r["b"]["res"],
+                    "p_calibrated": float(p_cal),
+                    "ev_best": float(ev),
+                })
         win.strategy_model_n = sum(
             1 for r, p in zip(rows, ps_cal)
             if p * float(r["b"]["odd"]) - 1.0 > MODEL_EV_THRESHOLD

@@ -299,6 +299,10 @@ def collect_bets(
                 if res is None:
                     continue
                 fair = implied.get(oc, 0.0) / overround
+                # ordenado desc: second = segunda melhor; sem segunda
+                # casa (n_books==1) fica None — auditar sem inventar.
+                ordered = sorted(vals, reverse=True)
+                second = ordered[1] if len(ordered) > 1 else None
                 bets.append({
                     "d": m.kickoff[:10],
                     "lg": m.league,
@@ -309,6 +313,10 @@ def collect_bets(
                     "odd": best,
                     "ret": (best - 1.0) if res == "win" else (0.0 if res == "push" else -1.0),
                     "median": medians.get(oc) or best,
+                    "second": second,
+                    "worst": min(vals),
+                    "mean": _mean_of(vals),
+                    "disp": _pstdev_of(vals),
                     "n_books": len(vals),
                     "res": res,
                     "fair": fair,
@@ -323,6 +331,19 @@ def _median_of(vals: Sequence[float]) -> float:
     n = len(s)
     mid = n // 2
     return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2.0
+
+
+def _mean_of(vals: Sequence[float]) -> float:
+    """Média das odds das casas que sustentam a linha (auditoria)."""
+    return sum(vals) / len(vals) if vals else 0.0
+
+
+def _pstdev_of(vals: Sequence[float]) -> float:
+    """Dispersão (desvio populacional) entre casas; 0.0 com uma casa."""
+    if len(vals) < 2:
+        return 0.0
+    mean = sum(vals) / len(vals)
+    return math.sqrt(sum((v - mean) ** 2 for v in vals) / len(vals))
 
 
 def validate(
