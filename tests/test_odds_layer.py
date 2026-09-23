@@ -425,6 +425,17 @@ def test_configured_odds_providers_respects_priority(monkeypatch):
     monkeypatch.setenv("BETGSN_ODDS_API_KEY", "k1")
     monkeypatch.setenv("BETGSN_PARLAY_API_KEY", "k2")
     monkeypatch.setenv("BETGSN_PARLAY_API_BASE", "https://parlay.invalid/api")
+    # hermeticidade: chaves reais dos providers novos no .env da maquina
+    # nao podem entrar na lista que o teste afirma ser EXATAMENTE duas.
+    for name in (
+        "BETGSN_ODDSPAPI_API_KEY",
+        "ODDSPAPI_API_KEY",
+        "BETGSN_ODDS_API_IO_KEY",
+        "ODDS_API_IO_KEY",
+        "BETGSN_OPTICODDS_API_KEY",
+        "OPTICODDS_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
     names = [name for name, _ in providers.configured_odds_providers()]
     assert names == ["The Odds API", "ParlayAPI"]
 

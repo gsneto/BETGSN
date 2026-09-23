@@ -6,7 +6,7 @@ falha de forma explicita (ProviderError) — nunca silenciosa.
 
 Fontes suportadas:
   - The Odds API  (the-odds-api.com)   -> odds de varias casas, futebol
-  - ParlayAPI                          -> odds multi-casa (endpoint configuravel)
+  - ParlayAPI    (parlay-api.com)      -> odds multi-casa (GET /v1/sports/{key}/odds)
   - OddsPapi    (oddspapi.io)          -> odds multi-casa (API v4, REST)
   - Odds-API.io (api.odds-api.io)      -> odds de 365+ casas (API v3, REST)
   - OpticOdds   (api.opticodds.com)    -> odds multi-casa (API v3, REST)
@@ -822,12 +822,34 @@ def odds_event_to_internal(event: dict) -> dict[str, dict[str, dict[str, float]]
 # ParlayAPI (adapter configuravel)
 # --------------------------------------------------------------------------
 
-#: Base do endpoint de odds. NAO tem default: sem BETGSN_PARLAY_API_BASE o
-#: provider fica inerte, porque inventar um dominio seria pior que nao ter
-#: provider. A forma exata do payload deve ser confirmada na conta.
+#: Base do endpoint. NAO tem default: sem BETGSN_PARLAY_API_BASE o provider
+#: fica inerte, porque inventar um dominio seria pior que nao ter provider.
 PARLAY_BASE_ENV = "BETGSN_PARLAY_API_BASE"
 PARLAY_PATH_ENV = "BETGSN_PARLAY_ODDS_PATH"
-PARLAY_DEFAULT_PATH = "/odds"
+
+#: Rota oficial de odds (OpenAPI v3.2.0, verificado em 2026-09-23):
+#: GET /v1/sports/{sport_key}/odds — o sport_key vai no PATH, nao na query.
+#: O template permite override via BETGSN_PARLAY_ODDS_PATH sem reescrever
+#: o adapter; o default e a rota documentada.
+PARLAY_DEFAULT_PATH = "/v1/sports/{sport_key}/odds"
+
+
+def _parlay_regions(regions: object) -> str:
+    """Regions em formato canonico da API: string separada por virgula.
+
+    Aceita str ("eu"), tuple (('eu',)) ou list (['eu', 'br']) — a
+    serializacao bruta de um tuple pela urlencode produzia o lixo
+    `('eu',)` (bug real: regions=%28%27eu%27%2C%29 e HTTP 404). Aqui o
+    valor e sempre achatado para "eu,br"; None/string vazia devolve ""
+    (parametro omitido, default da API).
+    """
+    if regions is None:
+        return ""
+    if isinstance(regions, str):
+        return regions.strip()
+    if isinstance(regions, (tuple, list)):
+        return ",".join(str(r).strip() for r in regions if str(r).strip())
+    return str(regions).strip()
 
 
 def _parlay_events(body: dict | list) -> list[dict]:
@@ -852,13 +874,64 @@ def _parlay_events(body: dict | list) -> list[dict]:
     )
 
 
+def _parlay_inject_last_update(events: list[dict]) -> list[dict]:
+    """Copia eventos carimbando o `last_update` REAL de cada bookmaker.
+
+    A API (OpenAPI v3.2.0) devolve `last_update` POR BOOKMAKER — o
+    instante real da ultima observacao de preco (price-change ou
+    heartbeat de verificacao). Ele e propagado para cada outcome daquela
+    casa como `timestamp`, porque e o horario DA OBSERVACAO: nunca e
+    substituido por fetched_at. Casa sem `last_update` fica sem timestamp
+    e segue a semantica do contrato (fallback para fetched_at).
+    """
+    out: list[dict] = []
+    for event in events:
+        if not isinstance(event, dict) or not isinstance(event.get("bookmakers"), list):
+            out.append(event)
+            continue
+        books: list[dict] = []
+        for book in event["bookmakers"]:
+            if not isinstance(book, dict):
+                books.append(book)
+                continue
+            last_update = str(book.get("last_update") or "").strip()
+            if not last_update:
+                books.append(book)
+                continue
+            new_book = dict(book)
+            new_markets: list[dict] = []
+            for market in book.get("markets") or []:
+                if not isinstance(market, dict):
+                    new_markets.append(market)
+                    continue
+                new_market = dict(market)
+                new_market["outcomes"] = [
+                    {**outcome, "timestamp": last_update}
+                    if isinstance(outcome, dict) and not outcome.get("timestamp")
+                    else outcome
+                    for outcome in market.get("outcomes") or []
+                ]
+                new_markets.append(new_market)
+            new_book["markets"] = new_markets
+            books.append(new_book)
+        out.append({**event, "bookmakers": books})
+    return out
+
+
 @dataclass
 class ParlayApiProvider:
-    """Adapter ParlayAPI: odds multi-casa por esporte.
+    """Adapter ParlayAPI (parlay-api.com): odds multi-casa por esporte.
 
-    Diferente da The Odds API, o contrato deste provider nao e publico e
-    verificado. Por isso a base e o caminho sao configuraveis e o adapter
-    so existe quando ambos a chave e a base estao definidos.
+    Endpoint oficial (OpenAPI v3.2.0, verificado em 2026-09-23):
+
+        GET /v1/sports/{sport_key}/odds?regions=eu&markets=h2h
+        Auth: header X-API-Key (recomendado; ?apiKey= e equivalente)
+
+    O sport_key vai no PATH (nunca na query como `sport=`), as regions
+    sao sempre string separada por virgula e o preco e pedido em
+    DECIMAL. O `last_update` de cada bookmaker — horario REAL da
+    observacao — vira o timestamp das quotes daquela casa (nunca o
+    fetched_at).
     """
 
     api_key: str
@@ -876,13 +949,25 @@ class ParlayApiProvider:
         path = os.environ.get(PARLAY_PATH_ENV, "").strip() or PARLAY_DEFAULT_PATH
         return cls(api_key=key, base_url=base.rstrip("/"), odds_path=path)
 
-    def _url(self, sport_key: str, regions: str | None, markets: str | None) -> str:
-        q: dict[str, str] = {"apiKey": self.api_key, "sport": sport_key}
+    def _base(self) -> str:
+        """Host raiz: tolera base terminando em /v1 sem duplicar o prefixo."""
+        base = self.base_url.rstrip("/")
+        if base.endswith("/v1"):
+            base = base[: -len("/v1")]
+        return base
+
+    def _url(self, sport_key: str, regions: object, markets: str | None) -> str:
+        """URL da rota oficial: sport_key no PATH, sem credencial na query."""
+        path = self.odds_path.format(
+            sport_key=urllib.parse.quote(str(sport_key), safe="")
+        )
+        q: dict[str, str] = {"oddsFormat": "decimal"}
         if markets:
             q["markets"] = markets
-        if regions:
-            q["regions"] = regions
-        return f"{self.base_url}{self.odds_path}?{urllib.parse.urlencode(q)}"
+        regions_param = _parlay_regions(regions)
+        if regions_param:
+            q["regions"] = regions_param
+        return f"{self._base()}{path}?{urllib.parse.urlencode(q)}"
 
     def live_odds_with_meta(
         self,
@@ -891,13 +976,21 @@ class ParlayApiProvider:
         markets: str | None = None,
         max_attempts: int = 2,
     ) -> tuple[list[dict], dict[str, str]]:
-        """Eventos + headers de quota, no mesmo contrato da The Odds API."""
+        """Eventos + headers de quota, no mesmo contrato da The Odds API.
+
+        Auth via header X-API-Key: a credencial NUNCA circula na URL
+        (logs e mensagens de erro ficam limpos por construcao).
+        """
         body, headers = request_json_with_retry(
             self._url(sport_key, regions, markets),
-            {"User-Agent": "BETGSN/1.0", "Accept": "application/json"},
+            {
+                "User-Agent": "BETGSN/1.0",
+                "Accept": "application/json",
+                "X-API-Key": self.api_key,
+            },
             max_attempts=max_attempts,
         )
-        return _parlay_events(body), headers
+        return _parlay_inject_last_update(_parlay_events(body)), headers
 
     def to_odds_by_book(self, event: dict) -> dict[str, dict[str, dict[str, float]]]:
         return odds_event_to_internal(event)
