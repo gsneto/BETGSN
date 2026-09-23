@@ -1,0 +1,45 @@
+{
+  "kind": "robustness_report",
+  "scenarios": [
+    {
+      "scenario": "odds_band < 1.40",
+      "n": 10546,
+      "n_windows_valid": 24,
+      "market_logloss": 0.484485,
+      "model_logloss": 0.56376,
+      "delta_logloss_menos_modelo": -0.079275,
+      "model_ece": 0.151665,
+      "status": "OK"
+    },
+    {
+      "scenario": "odds_band 1.40-2.00",
+      "n": 57911,
+      "n_windows_valid": 24,
+      "market_logloss": 0.672665,
+      "model_logloss": 0.717217,
+      "delta_logloss_menos_modelo": -0.044552,
+      "model_ece": 0.111088,
+      "status": "OK"
+    },
+    {
+      "scenario": "odds_band 2.00-3.00",
+      "n": 123203,
+      "n_windows_valid": 24,
+      "market_logloss": 0.668923,
+      "model_logloss": 0.687058,
+      "delta_logloss_menos_modelo": -0.018135,
+      "model_ece": 0.045098,
+      "status": "OK"
+    },
+    {
+      "scenario": "odds_band >= 3.00",
+      "n": 299104,
+      "n_windows_valid": 24,
+      "market_logloss": 0.540096,
+      "model_logloss": 0.55427,
+      "delta_logloss_menos_modelo": -0.014174,
+      "model_ece": 0.034176,
+      "status": "OK"
+    }
+  ]
+}

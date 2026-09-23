@@ -926,6 +926,180 @@
       "provider": "LA Galaxy",
       "fduk": "Los Angeles Galaxy",
       "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP2",
+      "provider": "AD Ceuta FC",
+      "fduk": "Ceuta",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "E3",
+      "provider": "Chesterfield FC",
+      "fduk": "Chesterfield",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão E3 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "Granada CF",
+      "fduk": "Granada",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "Andorra CF",
+      "fduk": "Andorra",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "Sabadell FC",
+      "fduk": "Sabadell",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "Cádiz CF",
+      "fduk": "Cadiz",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "Córdoba",
+      "fduk": "Cordoba",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "Almería",
+      "fduk": "Almeria",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "Burgos CF",
+      "fduk": "Burgos",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "CD Eldense",
+      "fduk": "Eldense",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "SD Eibar",
+      "fduk": "Eibar",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "Leganés",
+      "fduk": "Leganes",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP2",
+      "provider": "CD Castellón",
+      "fduk": "Castellon",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "I2",
+      "provider": "Südtirol",
+      "fduk": "Sudtirol",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão I2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "I2",
+      "provider": "Cesena FC",
+      "fduk": "Cesena",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão I2 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "D1",
+      "provider": "SC Paderborn",
+      "fduk": "Paderborn",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão D1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "E1",
+      "provider": "Wrexham AFC",
+      "fduk": "Wrexham",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão E1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SC0",
+      "provider": "Dundee FC",
+      "fduk": "Dundee",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SC0 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP1",
+      "provider": "Alavés",
+      "fduk": "Alaves",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "F1",
+      "provider": "Le Mans FC",
+      "fduk": "Le Mans",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão F1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "N1",
+      "provider": "FC Utrecht",
+      "fduk": "Utrecht",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão N1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "SP1",
+      "provider": "Elche CF",
+      "fduk": "Elche",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão SP1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "N1",
+      "provider": "SC Telstar",
+      "fduk": "Telstar",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão N1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "N1",
+      "provider": "FC Zwolle",
+      "fduk": "Zwolle",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão N1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "N1",
+      "provider": "SC Cambuur",
+      "fduk": "Cambuur",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão N1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "G1",
+      "provider": "Iraklis FC",
+      "fduk": "Iraklis",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão G1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "D1",
+      "provider": "SC Freiburg",
+      "fduk": "Freiburg",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão D1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "D1",
+      "provider": "FC Schalke 04",
+      "fduk": "Schalke 04",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão D1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
+    },
+    {
+      "division": "I1",
+      "provider": "AC Milan",
+      "fduk": "Milan",
+      "provenance": "diagnóstico de entity matching 2026-09-23: nome do provider (The Odds API, fallback de fixtures) casa, após normalização de acentos e remoção de prefixo/sufixo de entidade, com exatamente um time do corpus CSV da divisão I1 (football-data.co.uk local); sem o alias o time ficava sem rating no snapshot"
     }
   ]
 }

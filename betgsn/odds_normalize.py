@@ -282,10 +282,15 @@ def _selection_for(
 
 
 def iter_event_quotes(event: Mapping):
-    """Parser unico de payload: gera (casa, mercado, resultado, odd, linha).
+    """Parser unico de payload: gera (casa, mercado, resultado, odd, linha, ts).
 
     Nao depende de kickoff nem de timestamp — e a primitiva reutilizada
     tanto pela normalizacao temporal quanto pela conversao de formato.
+
+    O `ts` final e o timestamp DA OBSERVACAO quando o payload carrega um
+    por outcome (ex.: `changedAt`/`updatedAt` de providers agregadores);
+    string vazia quando o outcome nao tem horario proprio — quem chama
+    decide o fallback (regra vigente: timestamp do evento ou fetched_at).
     """
     home = str(event.get("home_team") or event.get("home") or "").strip()
     away = str(event.get("away_team") or event.get("away") or "").strip()
@@ -316,7 +321,14 @@ def iter_event_quotes(event: Mapping):
                     continue
                 if not isfinite(price) or price <= 1.0:
                     continue
-                yield bookmaker, market_label, selection, price, line
+                yield (
+                    bookmaker,
+                    market_label,
+                    selection,
+                    price,
+                    line,
+                    str(outcome.get("timestamp") or "").strip(),
+                )
 
 
 def event_teams(event: Mapping) -> tuple[str, str]:
@@ -360,7 +372,10 @@ def normalize_event(
     event_id = event_key(home, away, kickoff_key)
     league = league or str(event.get("league") or event.get("sport_title") or "")
     quotes: list[NormalizedQuote] = []
-    for bookmaker, market_label, selection, price, line in iter_event_quotes(event):
+    for bookmaker, market_label, selection, price, line, observed_at in iter_event_quotes(event):
+        # Timestamp DA OBSERVACAO: o do outcome (fonte real, ex.
+        # changedAt/updatedAt) tem prioridade; sem ele vale o do evento;
+        # sem nenhum, o fetched_at injetado pelo chamador — nunca inventado.
         quotes.append(
             NormalizedQuote(
                 event_id=event_id,
@@ -374,7 +389,7 @@ def normalize_event(
                 market=market_label,
                 selection=selection,
                 price=price,
-                timestamp=timestamp,
+                timestamp=observed_at or timestamp,
                 line=line,
             )
         )
@@ -388,7 +403,7 @@ def grouped_from_event(event: Mapping) -> dict[str, dict[str, dict[str, float]]]
     `providers.odds_event_to_internal` e este modulo com um unico parser.
     """
     out: dict[str, dict[str, dict[str, float]]] = {}
-    for bookmaker, market_label, selection, price, _line in iter_event_quotes(event):
+    for bookmaker, market_label, selection, price, _line, _ts in iter_event_quotes(event):
         out.setdefault(market_label, {}).setdefault(bookmaker, {})[selection] = price
     return out
 
@@ -427,6 +442,49 @@ def dedupe_quotes(quotes: Sequence[NormalizedQuote]) -> list[NormalizedQuote]:
         ):
             latest[key] = quote
     return sorted(latest.values(), key=lambda q: (q.event_id, q.market, q.selection, q.bookmaker))
+
+
+def merge_provider_quotes(
+    quotes: Sequence[NormalizedQuote],
+) -> tuple[list[NormalizedQuote], list[tuple[str, str, str, str, str, str]]]:
+    """Agrega quotes de VARIOS providers numa so linha por chave fisica.
+
+    Diferente de `dedupe_quotes` (um provider), aqui a mesma linha fisica
+    (evento, casa, mercado, resultado) pode chegar de providers DIFERENTES
+    — multi-provider aggregation. Vale a observacao com timestamp MAIS
+    RECENTE da fonte; empate de timestamp e resolvido pela ORDEM de
+    entrada (o chamador passa os quotes em ordem de prioridade do
+    registry), o primeiro fica dono da chave.
+
+    Devolve `(merged, colisoes)`: `colisoes` e a lista explicita de
+    (event_id, bookmaker, market, selection, provider_mantido,
+    provider_descartado) — a colisao NUNCA e mascarada, quem chamou
+    registra.
+    """
+    latest: dict[tuple[str, str, str, str], NormalizedQuote] = {}
+    collisions: list[tuple[str, str, str, str, str, str]] = []
+    for quote in quotes:
+        if not quote.usable:
+            continue
+        key = quote.quote_key
+        current = latest.get(key)
+        if current is None:
+            latest[key] = quote
+            continue
+        if _utc_or_raw(quote.timestamp) > _utc_or_raw(current.timestamp):
+            collisions.append(
+                (*key, quote.provider, current.provider)
+            )
+            latest[key] = quote
+        else:
+            collisions.append(
+                (*key, current.provider, quote.provider)
+            )
+    merged = sorted(
+        latest.values(),
+        key=lambda q: (q.event_id, q.market, q.selection, q.bookmaker),
+    )
+    return merged, collisions
 
 
 def usable_quotes(quotes: Sequence[NormalizedQuote]) -> list[NormalizedQuote]:

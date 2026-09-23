@@ -32,7 +32,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 from .data import LEAGUE_HOME_ADVANTAGE
 from .football_data_uk import (
@@ -118,6 +118,17 @@ class RealDataError(RuntimeError):
     """Dados reais indisponiveis. Sempre explicito: nunca cai no sintetico."""
 
 
+class RecalculateCancelled(RuntimeError):
+    """Cancelamento cooperativo pedido durante o recalculo."""
+
+
+#: Protocolo de progresso: (fase, feitas, total, mensagem). As fases sao
+#: etapas REAIS do pipeline — nenhuma e inventada para animar a UI.
+ProgressCallback = Callable[[str, int, int, str], None]
+#: Retorna True quando o usuario pediu cancelamento.
+CancelCheck = Callable[[], bool]
+
+
 @dataclass
 class RealSnapshot:
     """Estado calculado a partir de dados reais."""
@@ -152,14 +163,24 @@ def _fit_on_real_history(
     client: FootballDataClient,
     window_years: int = RATING_WINDOW_YEARS,
     cutoff: str | None = None,
+    *,
+    matches: Sequence | None = None,
 ) -> tuple[dict[str, TeamRating], float, list[str], int, tuple[str, str]]:
-    """Ajusta os ratings usando apenas o historico real recente."""
+    """Ajusta os ratings usando apenas o historico real recente.
+
+    `matches` permite reaproveitar o historico ja carregado/convertido
+    pelo chamador: parsear ~600 CSVs custa dezenas de segundos e o
+    snapshot precisa do MESMO corpus duas vezes (fit + prior) — carregar
+    uma vez so nao muda o resultado, so o tempo.
+    """
     from .backtest_data import HistoricalCorpus
     from .timeutil import parse_kickoff
 
     cutoff = cutoff or datetime.now(timezone.utc).isoformat()
-    raw = client.load_matches()
-    matches = HistoricalCorpus([m.to_historical() for m in raw]).available_before(cutoff) if raw else []
+    if matches is None:
+        matches = HistoricalCorpus(
+            [m.to_historical() for m in client.load_matches()]
+        ).available_before(cutoff)
     if len(matches) < MIN_HISTORY:
         raise RealDataError(
             f"historico real insuficiente: {len(matches)} partidas "
@@ -170,7 +191,7 @@ def _fit_on_real_history(
     corte = (parse_kickoff(cutoff) - timedelta(days=365.25 * window_years)).isoformat()
     recentes = [m for m in matches if utc_key(m.kickoff, m.timezone) >= utc_key(corte)]
     if len(recentes) < MIN_HISTORY:
-        recentes = matches
+        recentes = list(matches)
 
     teams = sorted({m.home for m in recentes} | {m.away for m in recentes})
     history = recentes
@@ -217,15 +238,38 @@ class RealSignalsService:
             self._snapshot = None
             self._snapshot_key = None
 
-    def snapshot(self, force: bool = False) -> RealSnapshot:
-        """Constroi (ou reaproveita) o snapshot de dados reais."""
+    def snapshot(
+        self,
+        force: bool = False,
+        *,
+        progress: ProgressCallback | None = None,
+        cancel: CancelCheck | None = None,
+    ) -> RealSnapshot:
+        """Constroi (ou reaproveita) o snapshot de dados reais.
+
+        `progress` recebe as fases REAIS da construcao (fixtures ->
+        history -> ratings); `cancel` e consultado entre fases — o
+        cancelamento e cooperativo e nunca deixa snapshot pela metade:
+        ou o snapshot completo substitui o anterior, ou nada muda.
+        """
         client = FootballDataClient()
         key = self._cache_key(client)
         with self._lock:
             if not force and self._snapshot is not None and self._snapshot_key == key:
+                if progress is not None:
+                    progress("cache", 1, 1, "Snapshot em cache reutilizado.")
                 return self._snapshot
 
+        def _cancelled() -> None:
+            if cancel is not None and cancel():
+                raise RecalculateCancelled(
+                    "recalculo cancelado pelo usuario; snapshot anterior preservado"
+                )
+
         started = time.perf_counter()
+        _cancelled()
+        if progress is not None:
+            progress("fixtures", 0, 1, "Carregando jogos futuros…")
         fixtures = client.load_fixtures()
         if not fixtures:
             raise RealDataError(
@@ -257,10 +301,24 @@ class RealSignalsService:
         # Um único corte conservador, anterior a TODOS os jogos do snapshot.
         cutoff = min(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                      min(utc_key(f.kickoff, f.timezone) for f in com_odds))
-        ratings, league_goals, teams, n_hist, window = _fit_on_real_history(client, cutoff=cutoff)
         from .backtest_data import HistoricalCorpus
-        prior = HistoricalCorpus([m.to_historical() for m in client.load_matches()]).available_before(cutoff)
-        prior = [m for m in prior if window[0] <= utc_key(m.kickoff, m.timezone) <= window[1]]
+        _cancelled()
+        if progress is not None:
+            progress("history", 0, 1, "Lendo histórico real (CSVs)…")
+        # O corpus historico e carregado/convertido UMA vez e reutilizado
+        # pelo fit e pelo prior — antes eram dois parses completos dos
+        # ~600 CSVs, com o mesmo resultado.
+        historical = [m.to_historical() for m in client.load_matches()]
+        matches = HistoricalCorpus(historical).available_before(cutoff)
+
+        _cancelled()
+        if progress is not None:
+            progress("ratings", 0, 1,
+                     f"Ajustando ratings em {len(matches)} partidas…")
+        ratings, league_goals, teams, n_hist, window = _fit_on_real_history(
+            client, cutoff=cutoff, matches=matches)
+        prior = [m for m in matches
+                 if window[0] <= utc_key(m.kickoff, m.timezone) <= window[1]]
         elapsed = (time.perf_counter() - started) * 1000.0
 
         inv = client.inventory()
@@ -301,9 +359,16 @@ class RealSignalsService:
         max_exposure: float = 0.25,
         use_xg: bool = True,
         market_keys: Sequence[str] | None = None,
+        *,
+        progress: ProgressCallback | None = None,
+        cancel: CancelCheck | None = None,
     ) -> tuple[SignalReport, RealSnapshot]:
-        """Gera o relatorio de sinais sobre os jogos futuros reais."""
-        snap = self.snapshot()
+        """Gera o relatorio de sinais sobre os jogos futuros reais.
+
+        `progress` recebe a fase `analyzing` com contagem REAL de
+        fixtures processadas (i/n); `cancel` e consultado a cada fixture.
+        """
+        snap = self.snapshot(progress=progress, cancel=cancel)
         keys = validate_market_keys(tuple(market_keys or ()))
         blend = 0.5 if use_xg else 0.0
 
@@ -314,7 +379,15 @@ class RealSignalsService:
         skipped_books = 0
         analyses = []
 
-        for fx in snap.fixtures:
+        total = len(snap.fixtures)
+        for i, fx in enumerate(snap.fixtures):
+            if cancel is not None and cancel():
+                raise RecalculateCancelled(
+                    "recalculo cancelado pelo usuario; snapshot anterior preservado"
+                )
+            if progress is not None and (i % 10 == 0 or i == total - 1):
+                progress("analyzing", i, total,
+                         f"Analisando fixtures ({i}/{total})…")
             hr = snap.ratings.get(fx.home)
             ar = snap.ratings.get(fx.away)
             if hr is None or ar is None:
@@ -355,6 +428,8 @@ class RealSignalsService:
         # Relatorio de sinais: pode ser vazio sem que isso seja erro. Quando
         # so sobram jogos de ligas menores (2 casas), nao ha consenso e a UI
         # explica o motivo com o contador de descartes acima.
+        if progress is not None:
+            progress("signals", 0, 1, "Construindo relatório de sinais…")
         report = build_report(
             fixtures, model_by_fixture, odds_by_fixture, bankroll,
             kelly_frac=kelly_frac, min_ev=min_ev, stake_cap=stake_cap,

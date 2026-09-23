@@ -10,7 +10,7 @@
  * barra de controles e sempre pelo backend.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchModel, fetchModelPerformance } from "@/api/model";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -185,16 +185,29 @@ function BacktestSection() {
   const [perf, setPerf] = useState<ModelPerformance | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // aborta o request pesado se a secao for desmontada (troca de aba)
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+    },
+    [],
+  );
 
   const run = async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
-      setPerf(await fetchModelPerformance({ split: 0.7, min_ev: 0.03 }));
+      setPerf(await fetchModelPerformance({ split: 0.7, min_ev: 0.03 }, controller.signal));
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : "Falha no backtest.");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 

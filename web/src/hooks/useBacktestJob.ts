@@ -43,6 +43,9 @@ export function useBacktestJob(onFinished?: (runId: string) => void): BacktestJo
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
+  // vivo enquanto o hook esta montado: um poll em andamento nao pode
+  // reagendar o proximo depois do unmount (vazamento de polling)
+  const alive = useRef(true);
   const onFinishedRef = useRef(onFinished);
   onFinishedRef.current = onFinished;
 
@@ -56,6 +59,7 @@ export function useBacktestJob(onFinished?: (runId: string) => void): BacktestJo
   const poll = useCallback(async () => {
     try {
       const next = await fetchBacktestStatus();
+      if (!alive.current) return;
       setStatus(next);
       if (next.phase === "error") {
         setError(next.error ?? "Falha na execução do backtest.");
@@ -69,6 +73,7 @@ export function useBacktestJob(onFinished?: (runId: string) => void): BacktestJo
       }
       timer.current = window.setTimeout(() => void poll(), POLL_MS);
     } catch (err) {
+      if (!alive.current) return;
       setError(err instanceof ApiError ? err.userMessage : "Falha ao consultar o progresso.");
       stopPolling();
     }
@@ -81,6 +86,10 @@ export function useBacktestJob(onFinished?: (runId: string) => void): BacktestJo
       setStarting(true);
       try {
         const initial = await startBacktest(request);
+        if (!alive.current) return;
+        // o reattach do mount pode ter reagendado um timer enquanto o
+        // startBacktest estava pendente: limpa antes de agendar o novo
+        stopPolling();
         setStatus(initial);
         timer.current = window.setTimeout(() => void poll(), POLL_MS);
       } catch (err) {
@@ -100,7 +109,39 @@ export function useBacktestJob(onFinished?: (runId: string) => void): BacktestJo
     setError(null);
   }, [stopPolling]);
 
-  useEffect(() => stopPolling, [stopPolling]);
+  // REATTACH: o job vive no BACKEND, nao na pagina. Se o usuario trocou
+  // de aba enquanto o backtest rodava e voltou, o hook precisa adotar o
+  // job em execucao em vez de fingir estado IDLE — sem isso o progresso
+  // some e o resultado nao e carregado quando a execucao termina.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const current = await fetchBacktestStatus();
+        if (cancelled || !alive.current) return;
+        if (["preparing", "analyzing", "metrics", "saving"].includes(current.phase)) {
+          setStatus(current);
+          stopPolling();
+          timer.current = window.setTimeout(() => void poll(), POLL_MS);
+        }
+      } catch {
+        /* backend fora do ar: o botao de executar mostrara o erro real */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // so no mount: reanexar uma vez basta, o polling segue sozinho
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(
+    () => () => {
+      alive.current = false;
+      stopPolling();
+    },
+    [stopPolling],
+  );
 
   const running =
     starting ||

@@ -699,6 +699,36 @@ def read_manifest(manifest_path: Path | None = None) -> dict[str, Any]:
         return {"imports": []}
 
 
+def capture_coverage_from_manifest(
+    manifest_path: Path | None = None,
+) -> dict[str, dict[str, bool]]:
+    """Cobertura REAL por provider, lida dos registros de captura.
+
+    O manifesto append-only grava cada captura (`kind="capture"`) com os
+    contadores por provider (`per_provider[name].quotes`). A cobertura
+    aqui e o que FOI observado: {provider: {sport_key: True}} apenas para
+    esportes em que o provider gravou quotes. Provider sem captura com
+    quotes nao aparece — cobertura nunca e inventada nem derivada de
+    chave configurada.
+    """
+    manifest = read_manifest(manifest_path)
+    out: dict[str, dict[str, bool]] = {}
+    for entry in manifest.get("imports", []):
+        if not isinstance(entry, dict) or entry.get("kind") != "capture":
+            continue
+        sports = [str(s) for s in entry.get("sport_keys") or []]
+        per_provider = entry.get("per_provider") or {}
+        for name, counts in per_provider.items():
+            if not isinstance(counts, dict):
+                continue
+            if not counts.get("quotes"):
+                continue  # sem quotes gravadas: nao houve cobertura
+            covered = out.setdefault(str(name), {})
+            for sport in sports:
+                covered[sport] = True
+    return out
+
+
 def load_imported_matches(root: Path | None = None) -> list[HistoricalMatch]:
     """Carrega todas as temporadas importadas, sem precisar de provider.
 
@@ -1110,6 +1140,18 @@ class LiveOddsCapture:
 
     # ------------------------------------------------------------ caminhos
 
+    @staticmethod
+    def _known_remaining(credits: "CreditController", provider: str):
+        """Saldo conhecido SEM registrar quota default no controller.
+
+        `CreditController.get` cria um estado `used=0` para provider que
+        nunca informou creditos; persistir esse estado fabricaria quota
+        zero onde o contrato exige None (desconhecido). `peek` consulta
+        sem efeito colateral: sem observacao de credito, devolve None.
+        """
+        state = credits.peek(provider)
+        return state.known_remaining if state is not None else None
+
     def _capture_legacy(
         self,
         provider: OddsApiProvider,
@@ -1170,7 +1212,7 @@ class LiveOddsCapture:
         health.record_success(
             LIVE_ODDS_PROVIDER,
             observations=len(with_odds),
-            credits_remaining=credits.get(LIVE_ODDS_PROVIDER).known_remaining,
+            credits_remaining=self._known_remaining(credits, LIVE_ODDS_PROVIDER),
             latency_ms=latency_ms,
         )
         report.events += len(events)
@@ -1265,7 +1307,7 @@ class LiveOddsCapture:
         health.record_success(
             name,
             observations=len(result.quotes),
-            credits_remaining=credits.get(name).known_remaining,
+            credits_remaining=self._known_remaining(credits, name),
             latency_ms=latency_ms,
         )
 

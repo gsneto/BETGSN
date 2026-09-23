@@ -197,7 +197,7 @@ def test_snapshot_accepts_future_fixture_and_labels_fallback_source(monkeypatch)
     monkeypatch.setattr(
         mod,
         "_fit_on_real_history",
-        lambda client, cutoff=None, window_years=3: (
+        lambda client, cutoff=None, window_years=3, matches=None: (
             {"Arsenal": _rating("Arsenal"), "Chelsea": _rating("Chelsea")},
             2.7, ["Arsenal", "Chelsea"], 400, ("2025-01-01", "2026-01-01"),
         ),
@@ -269,7 +269,7 @@ def test_report_uses_supplied_odds_and_can_return_no_signals(monkeypatch):
         computed_in_ms=0.0, sources=["controlled-test"],
     )
     svc = RealSignalsService()
-    monkeypatch.setattr(svc, "snapshot", lambda: snap)
+    monkeypatch.setattr(svc, "snapshot", lambda **kwargs: snap)
     report, _ = svc.report(market_keys=("1x2",))
     assert report.signals
     for signal in report.signals:
@@ -304,7 +304,7 @@ def test_report_kickoff_is_canonical_utc_instant(monkeypatch):
         )
 
     svc = RealSignalsService()
-    monkeypatch.setattr(svc, "snapshot", lambda: _snap(summer))
+    monkeypatch.setattr(svc, "snapshot", lambda **kwargs: _snap(summer))
     report, _ = svc.report(market_keys=("1x2",))
     assert report.signals
     for signal in report.signals:
@@ -312,7 +312,7 @@ def test_report_kickoff_is_canonical_utc_instant(monkeypatch):
         # e a chave canonica: reparsear nao muda o instante
         assert utc_key(signal.kickoff) == signal.kickoff
 
-    monkeypatch.setattr(svc, "snapshot", lambda: _snap(winter))
+    monkeypatch.setattr(svc, "snapshot", lambda **kwargs: _snap(winter))
     report, _ = svc.report(market_keys=("1x2",))
     assert report.signals
     for signal in report.signals:
@@ -346,7 +346,7 @@ def test_signal_ev_is_raw_not_calibrated(monkeypatch):
         computed_in_ms=0.0, sources=["controlled-test"],
     )
     svc = RealSignalsService()
-    monkeypatch.setattr(svc, "snapshot", lambda: snap)
+    monkeypatch.setattr(svc, "snapshot", lambda **kwargs: snap)
     report, _ = svc.report(market_keys=("1x2",))
     assert report.signals
     for signal in report.signals:

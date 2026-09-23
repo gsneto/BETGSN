@@ -279,7 +279,13 @@ def test_decision_ignores_stale_cache(monkeypatch):
 
     O caminho de decisao NAO pode consumir ROI de um cache medido sobre
     outro corpus: voltar para os parametros validados constantes e a
-    saida segura.
+    saida segura — e o ROI da decisao e o da constante, nao o do cache
+    de outro corpus.
+
+    O ACTION agora e NO_BET: o promotion gate e avaliado no caminho
+    operacional e, sem cache OOS valido, reprova (evidencia ausente nao
+    e aprovada). O ROI conservador continua o da constante — a fonte
+    da vantagem e o que este teste fixa.
     """
     from betgsn.api.service import BetgsnService
     from betgsn.value_strategy import EDGE_ROI
@@ -290,10 +296,13 @@ def test_decision_ignores_stale_cache(monkeypatch):
 
     svc = BetgsnService()
     decision = svc._quant_decision("timestamped")
-    # cache invalido -> constantes -> decisao ainda e BET (a regra
-    # validada constante sustenta), mas o ROI e o da constante, nao o
-    # do cache de outro corpus
-    assert decision.action == "BET"
+    # cache invalido -> promotion reprova -> NO BET (gate encadeado)
+    assert decision.action == "NO_BET"
+    assert any(
+        c.name == "promocao_da_estrategia" and not c.passed
+        for c in decision.checks
+    )
+    # mas o ROI reportado e o da CONSTANTE, nao o do cache stale
     assert decision.conservative_roi is not None
     assert decision.conservative_roi == pytest.approx(
         EDGE_ROI - 1.6448536269514722 * 0.0054)

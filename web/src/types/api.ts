@@ -595,7 +595,31 @@ export interface WsMessage<T = unknown> {
     | "status"
     | "pong"
     | "recalculate:start"
+    | "recalculate:progress"
     | "recalculate:done"
-    | "recalculate:error";
+    | "recalculate:error"
+    | "backtest:start"
+    | "backtest:progress";
   payload: T;
+}
+
+/** Estado do job assincrono de recalculo (GET /api/recalculate/status). */
+export interface RecalculateJobStatus {
+  job_id: string | null;
+  phase:
+    | "idle"
+    | "starting"
+    | "fixtures"
+    | "history"
+    | "ratings"
+    | "analyzing"
+    | "signals"
+    | "done"
+    | "error"
+    | "cancelled";
+  progress: number;
+  message: string;
+  error: string | null;
+  snapshot_generated_at: string | null;
+  has_snapshot: boolean;
 }

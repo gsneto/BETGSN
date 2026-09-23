@@ -1,0 +1,29 @@
+{
+  "kind": "clv_prospective_monitor",
+  "status": "BLOCKED",
+  "clv": {
+    "mean": 0.0,
+    "n": 0,
+    "prospective": true
+  },
+  "n_entries": 480,
+  "n_valid": 0,
+  "n_no_closing": 480,
+  "n_closing_before_entry": 0,
+  "mean": null,
+  "median": null,
+  "p10": null,
+  "p25": null,
+  "p75": null,
+  "p90": null,
+  "positive_rate": null,
+  "coverage": 0.0,
+  "n_matches": 161,
+  "period": {
+    "first_kickoff": "2026-09-24T01:30:00Z",
+    "last_kickoff": "2026-10-19T19:00:00Z"
+  },
+  "closing_bookmakers": [],
+  "note": "CLV prospectivo: entradas registradas no instante da decisão (FIRST-WINS), fechamento posterior ao entry, ambos anteriores ao kickoff. Nada de CLV retrospectivo.",
+  "gate": "n=0 < 30: Promotion Gate permanece BLOCKED por amostra insuficiente (MIN_CLV_SAMPLE)"
+}

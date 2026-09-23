@@ -145,7 +145,7 @@ def _isolate(
         sources=["controlled-test"],
     )
     svc = RealSignalsService()
-    monkeypatch.setattr(svc, "snapshot", lambda: snap)
+    monkeypatch.setattr(svc, "snapshot", lambda **kwargs: snap)
     monkeypatch.setattr(
         rs.real_signals_service, "report", lambda **kw: svc.report(**kw))
     return db

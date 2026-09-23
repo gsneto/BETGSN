@@ -36,6 +36,8 @@ import { fmtDateTime, fmtInt } from "@/utils/format";
 export default function BacktestPage() {
   const [options, setOptions] = useState<BacktestOptions | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
+  // incrementa no retry: refaz o fetch de opcoes sem recarregar a pagina
+  const [optionsRetry, setOptionsRetry] = useState(0);
   const [detail, setDetail] = useState<BacktestRunDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export default function BacktestPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [optionsRetry]);
 
   const handleRun = useCallback(
     (request: BacktestRequest) => {
@@ -101,7 +103,7 @@ export default function BacktestPage() {
     return (
       <ErrorPanel
         message={optionsError}
-        onRetry={() => window.location.reload()}
+        onRetry={() => setOptionsRetry((n) => n + 1)}
       />
     );
   }

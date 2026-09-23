@@ -116,6 +116,9 @@ _DOMAIN_TO_API_STATUS: dict[str, S.ProviderAvailability] = {
 _PROVIDER_FEATURES: dict[str, list[str]] = {
     "The Odds API": ["odds"],
     "ParlayAPI": ["odds"],
+    "OddsPapi": ["odds"],
+    "Odds-API.io": ["odds"],
+    "OpticOdds": ["odds"],
     "API-Football": ["fixtures", "historical", "statistics"],
     "Football-Data.org": ["fixtures", "historical"],
 }
@@ -179,12 +182,15 @@ def _provider_health_dto(
     configured: bool,
     record: dict | None,
     credit: dict | None,
+    coverage: dict[str, bool] | None = None,
 ) -> S.ProviderHealth:
     """Monta o DTO de um provider a partir do registro REAL do Odds Layer.
 
     `record` e uma entrada de HealthTracker.snapshot(); `credit`, de
     CreditController.snapshot(). Ambos podem nao existir — e nesse caso
     cada campo observavel fica None/UNKNOWN em vez de sintetico.
+    `coverage` vem dos registros REAIS de captura ({sport_key: True}
+    apenas onde o provider gravou quotes); sem captura, fica vazio.
     """
     status = api_provider_status(record.get("state") if record else None)
     if not configured:
@@ -205,6 +211,7 @@ def _provider_health_dto(
         error=(record.get("last_error") or None) if record else None,
         quota_used=credit.get("used") if credit else None,
         quota_remaining=credit.get("known_remaining") if credit else None,
+        coverage=dict(coverage or {}),
         features=_provider_features(name) if configured else [],
         message=message,
     )
@@ -249,6 +256,23 @@ class Snapshot:
 class BetgsnService:
     """Executa o pipeline e serve o ultimo snapshot calculado."""
 
+    #: fases que indicam job de recalculo em execucao
+    _RECALC_RUNNING = ("starting", "fixtures", "history", "ratings",
+                       "analyzing", "signals")
+
+    #: peso de cada fase REAL do pipeline no progresso exibido. A fase
+    #: `analyzing` tem sub-progresso exato (i/n fixtures); as demais sao
+    #: conservadoras (a fase ainda nao terminou quando o peso e exibido).
+    _RECALC_WEIGHTS: dict[str, float] = {
+        "starting": 0.0,
+        "fixtures": 0.05,
+        "history": 0.10,
+        "ratings": 0.45,
+        "analyzing": 0.50,
+        "signals": 0.90,
+        "cache": 0.50,
+    }
+
     def __init__(self, source: str = "synthetic", odds_service=None) -> None:
         self._lock = threading.RLock()
         self._snapshot: Snapshot | None = None
@@ -261,6 +285,17 @@ class BetgsnService:
         #: E dele que vem o health REAL: HealthTracker + CreditController
         #: alimentados pelas coletas. A API nunca inventa estado.
         self._odds_service = odds_service
+        # ------------------------------------------------ job de recalculo
+        # Estado do job assincrono (POST /api/recalculate). O snapshot em
+        # memoria NUNCA e removido por uma falha: so substituido por um
+        # calculo bem-sucedido.
+        self._recalc_job_id: str | None = None
+        self._recalc_phase = "idle"
+        self._recalc_progress = 0.0
+        self._recalc_message = "Pronto."
+        self._recalc_error: str | None = None
+        self._recalc_cancel = False
+        self._recalc_broadcaster = None
 
     def odds_service(self):
         """O Odds Layer deste processo (um so, para acumular health real)."""
@@ -275,14 +310,21 @@ class BetgsnService:
     def computing(self) -> bool:
         return self._computing
 
-    def recalculate(self, config: S.ModelConfiguration) -> Snapshot:
-        """Roda o pipeline com os parametros informados e guarda o snapshot."""
+    def recalculate(self, config: S.ModelConfiguration, *,
+                    progress=None, cancel=None) -> Snapshot:
+        """Roda o pipeline com os parametros informados e guarda o snapshot.
+
+        `progress`/`cancel` sao opacos aqui: seguem para o pipeline real
+        (RealSignalsService.report) e nao afetam o resultado — so a
+        observabilidade. O snapshot em memoria so e substituido em caso
+        de SUCESSO: falha preserva o calculo anterior.
+        """
         with self._lock:
             self._computing = True
             self._last_error = None
         started = time.perf_counter()
         try:
-            result = self._run_real(config) if self.source == "real" else run(
+            result = self._run_real(config, progress, cancel) if self.source == "real" else run(
                 bankroll=config.bankroll,
                 kelly_frac=config.kelly_fraction,
                 stake_cap=config.stake_cap,
@@ -310,17 +352,160 @@ class BetgsnService:
             self._computing = False
         return snap
 
-    def _run_real(self, config):
+    def _run_real(self, config, progress=None, cancel=None):
         from ..real_signals import real_signals_service
         from ..data import LeagueDataset
         from ..signals import top_tips
         report, snap = real_signals_service.report(
             bankroll=config.bankroll, kelly_frac=config.kelly_fraction,
             stake_cap=config.stake_cap, min_ev=config.min_ev,
-            max_exposure=config.max_exposure, use_xg=config.use_xg)
+            max_exposure=config.max_exposure, use_xg=config.use_xg,
+            progress=progress, cancel=cancel)
         ds = LeagueDataset(snap.teams, snap.history, [a.fixture for a in snap.analyses],
                            snap.league_goals, LEAGUE_HOME_ADVANTAGE)
         return RunResult(ds, snap.ratings, list(snap.analyses), report, top_tips(report), snap.league_goals)
+
+    # ------------------------------------------------- job assincrono
+
+    def set_broadcaster(self, fn) -> None:
+        """Recebe o broadcaster do EventHub (progresso em tempo real)."""
+        self._recalc_broadcaster = fn
+
+    def _emit(self, event: str, payload: dict) -> None:
+        if self._recalc_broadcaster is not None:
+            try:
+                self._recalc_broadcaster(event, payload)
+            except Exception:
+                # progresso nunca pode derrubar a execucao
+                pass
+
+    def _publish_recalc(self) -> None:
+        self._emit("recalculate:progress", self.recalculate_status().model_dump())
+
+    def _set_recalc_phase(self, phase: str, message: str,
+                          done: int = 0, total: int = 0) -> None:
+        with self._lock:
+            self._recalc_phase = phase
+            self._recalc_message = message
+            base = self._RECALC_WEIGHTS.get(phase, 0.0)
+            frac = (done / total) if (phase == "analyzing" and total) else 0.0
+            if phase == "done":
+                self._recalc_progress = 1.0
+            else:
+                self._recalc_progress = round(
+                    min(0.99, base + 0.35 * frac), 4)
+        self._publish_recalc()
+
+    def recalculate_status(self) -> S.RecalculateJobStatus:
+        """Estado atual do job de recalculo (sem segredos, sem traceback)."""
+        with self._lock:
+            snap = self._snapshot
+            return S.RecalculateJobStatus(
+                job_id=self._recalc_job_id,
+                phase=self._recalc_phase,  # type: ignore[arg-type]
+                progress=self._recalc_progress,
+                message=self._recalc_message,
+                error=self._recalc_error,
+                snapshot_generated_at=snap.generated_at if snap else None,
+                has_snapshot=snap is not None,
+            )
+
+    def request_cancel(self) -> S.RecalculateJobStatus:
+        """Pede cancelamento cooperativo do job em execucao.
+
+        O cancelamento e consultado entre fases e a cada fixture: partes
+        atomicas (parse do corpus) correm ate o fim. Se nao houver job
+        em execucao, e um no-op honesto — nada a cancelar.
+        """
+        with self._lock:
+            running = self._recalc_phase in self._RECALC_RUNNING
+            if running:
+                self._recalc_cancel = True
+                self._recalc_message = "Cancelamento solicitado…"
+        if running:
+            self._publish_recalc()
+        return self.recalculate_status()
+
+    def start_recalculate(self, config: S.ModelConfiguration) -> S.RecalculateJobStatus:
+        """Dispara o pipeline em background e devolve o status do job.
+
+        Nao bloqueia a requisicao HTTP: o progresso chega via WebSocket
+        (`recalculate:progress`) ou por GET /api/recalculate/status. Um
+        job por vez; enquanto roda, o snapshot anterior continua valido.
+        """
+        with self._lock:
+            if self._recalc_phase in self._RECALC_RUNNING:
+                raise RuntimeError(
+                    "recalculo ja em execucao; aguarde a conclusao ou "
+                    "cancele via POST /api/recalculate/cancel"
+                )
+            from datetime import datetime as _dt
+            self._recalc_job_id = _dt.now().strftime("rcjob_%Y%m%d_%H%M%S")
+            self._recalc_cancel = False
+            self._recalc_error = None
+            self._recalc_phase = "starting"
+            self._recalc_progress = 0.0
+            self._recalc_message = "Iniciando pipeline…"
+        self._publish_recalc()
+        threading.Thread(
+            target=self._execute_recalculate, args=(config,),
+            daemon=True, name="betgsn-recalculate",
+        ).start()
+        return self.recalculate_status()
+
+    def _execute_recalculate(self, config: S.ModelConfiguration) -> None:
+        """Corpo do job: executa, troca o snapshot apenas em sucesso."""
+        from ..real_signals import RecalculateCancelled, RealDataError
+
+        def on_progress(phase: str, done: int, total: int, message: str) -> None:
+            if phase == "cache":
+                # snapshot reutilizado: pula direto para a fase de sinais
+                self._set_recalc_phase("analyzing", "Snapshot em cache; analisando…")
+                return
+            self._set_recalc_phase(phase, message, done, total)
+
+        def cancel_requested() -> bool:
+            with self._lock:
+                return self._recalc_cancel
+
+        try:
+            snap = self.recalculate(config, progress=on_progress,
+                                    cancel=cancel_requested)
+        except RecalculateCancelled as exc:
+            with self._lock:
+                self._recalc_phase = "cancelled"
+                self._recalc_error = str(exc)
+                self._recalc_message = "Cancelado. Snapshot anterior preservado."
+            self._emit("recalculate:error", {"detail": str(exc), "cancelled": True})
+            self._publish_recalc()
+            return
+        except RealDataError as exc:
+            with self._lock:
+                self._recalc_phase = "error"
+                self._recalc_error = str(exc)
+                self._recalc_message = "Dados reais indisponíveis."
+            self._emit("recalculate:error", {"detail": str(exc)})
+            self._publish_recalc()
+            return
+        except Exception as exc:
+            with self._lock:
+                self._recalc_phase = "error"
+                self._recalc_error = f"{type(exc).__name__}: {exc}"
+                self._recalc_message = "Falha no pipeline."
+            self._emit("recalculate:error",
+                       {"detail": f"{type(exc).__name__}: {exc}"})
+            self._publish_recalc()
+            return
+        summary = self.dashboard(snap)
+        with self._lock:
+            self._recalc_phase = "done"
+            self._recalc_progress = 1.0
+            self._recalc_message = (
+                f"Concluído em {snap.computed_in_ms / 1000:.1f}s "
+                f"({len(snap.result.analyses)} análises)."
+            )
+        self._emit("recalculate:done", summary.model_dump())
+        self._publish_recalc()
 
     def snapshot(self, *, auto: bool = True) -> Snapshot:
         """Devolve o snapshot atual; calcula com o default se ainda nao existir."""
@@ -355,13 +540,69 @@ class BetgsnService:
         )
 
     def data_source(self) -> str:
-        return "football-data.co.uk — dados reais em cache; timestamp das odds indisponível" if self.source == "real" else "Demonstração: dataset sintético"
+        if self.source != "real":
+            return "Demonstração: dataset sintético"
+        stamp, providers = self._store_observation_summary()
+        if stamp is None:
+            return "football-data.co.uk — dados reais em cache; timestamp das odds indisponível"
+        # Ha odds COM carimbo real no store (captura ao vivo). A frase diz
+        # quem observou e quando — os providers listados sao os que TEM
+        # observacoes gravadas, nunca os que so estao configurados.
+        fonte = ", ".join(providers) if providers else "provider de odds"
+        return (
+            "football-data.co.uk — dados reais em cache; odds observadas com "
+            f"timestamp real ({fonte}; última observação {stamp})"
+        )
+
+    def _store_observation_summary(self) -> tuple[str | None, list[str]]:
+        """Resumo do store operacional: (ultimo carimbo, providers)."""
+        from ..odds_snapshots import OddsSnapshotStore
+
+        try:
+            return OddsSnapshotStore().latest_observation_stamp()
+        except Exception:  # noqa: BLE001 - store ilegivel nao derruba a rota
+            return None, []
+
+    def _snapshot_odds_timestamp(self, snap) -> str | None:
+        """Carimbo da observacao temporal mais recente dos fixtures do snapshot.
+
+        Fonte: OddsSnapshotStore — observacoes REAIS gravadas sob a MESMA
+        event_key canonica dos jogos deste snapshot, restritas a
+        `timestamp <= generated_at` (point-in-time: observacao futura nao
+        justifica decisao passada). Odds de CSV sem carimbo de publicacao
+        continuam None — ausencia explicita, nunca fetched_at no lugar do
+        carimbo real.
+        """
+        if getattr(snap, "source", "") != "real":
+            return None
+        analyses = getattr(getattr(snap, "result", None), "analyses", None) or []
+        keys: set[str] = set()
+        for a in analyses:
+            fx = getattr(a, "fixture", None)
+            home = getattr(fx, "home", "")
+            away = getattr(fx, "away", "")
+            kickoff = getattr(fx, "kickoff", "")
+            if home and away and kickoff:
+                from ..odds_normalize import event_key
+
+                keys.add(event_key(home, away, kickoff))
+        if not keys:
+            return None
+        from ..odds_snapshots import OddsSnapshotStore
+
+        try:
+            stamp, _providers = OddsSnapshotStore().latest_observation_stamp(
+                tuple(keys), cutoff=snap.generated_at)
+        except Exception:  # noqa: BLE001 - store ilegivel nao derruba a rota
+            return None
+        return stamp
 
     def provenance(self, snap):
         from .prediction_schemas import Provenance
         from ..football_data_uk import FootballDataClient
         return Provenance(source=snap.source, prediction_timestamp=snap.generated_at,
                           data_version=FootballDataClient().corpus_signature() if snap.source == "real" else f"demo-{SEED}",
+                          odds_timestamp=self._snapshot_odds_timestamp(snap),
                           xg_status="ESTIMATED" if snap.source == "synthetic" else "UNAVAILABLE")
 
     # ------------------------------------------------------------- sinais
@@ -372,19 +613,25 @@ class BetgsnService:
         A decisao vem de `staking.decide_bet` (o UNICO produtor de
         BetDecision) sobre a evidencia da estrategia OPERACIONAL,
         encadeada pelo runner (`strategy_runner.run_strategy_decision`:
-        registry -> evidencia validada -> decide_bet). A vantagem vem do
-        cache de validacao QUANDO o fingerprint bate com a regra atual
-        sobre o corpus atual (I-14); sem cache valido, as constantes
-        validadas da estrategia — nunca numeros de outra medicao.
+        registry -> evidencia validada -> promotion gate -> decide_bet).
 
-        A API NUNCA fabrica NO_BET nem inventa stake: so traduz o que o
-        Quant decidiu, preservando o motivo, as verificacoes e o status
-        de evidencia que fundamentou a decisao.
+        O promotion gate e AVALIADO no caminho operacional (nunca None):
+        evidencia OOS walk-forward em cache (fingerprint conferido) +
+        CLV prospectivo REAL do store. Cache OOS ausente/stale reprova
+        conservadoramente — evidencia nao declarada nao e aprovada, e
+        "gate nao avaliado" nao e atalho para producao.
+
+        A vantagem vem do cache OOS quando valido; sem ele, da validacao
+        full-sample (I-14) ou das constantes — nunca numeros de outra
+        medicao. A API NUNCA fabrica NO_BET nem inventa stake: so traduz
+        o que o Quant decidiu, preservando o motivo, as verificacoes e o
+        status de evidencia que fundamentou a decisao.
         """
         from ..strategy_runner import run_strategy_decision
 
         core = run_strategy_decision(
-            OPERATIONAL_STRATEGY, evidence_status=evidence_status)
+            OPERATIONAL_STRATEGY, evidence_status=evidence_status,
+            promotion=self._strategy_promotion())
         return S.BetDecision(
             action=core.action,
             reason=core.reason,
@@ -394,6 +641,41 @@ class BetgsnService:
             evidence_status=evidence_status,
             checks=[S.DecisionCheck(name=name, passed=passed, detail=detail)
                     for name, passed, detail in core.checks],
+        )
+
+    def _strategy_promotion(self):
+        """Promotion gate da estrategia operacional, com evidencia REAL.
+
+        - Cache OOS valido (fingerprint): segmentos (liga x temporada)
+          construidos SOMENTE de apostas dos blocos TEST das janelas
+          walk-forward, n_windows e drawdown da validacao OOS, CLV
+          prospectivo do store.
+        - Cache OOS ausente/stale: gate reprova (segmentos vazios,
+          n_windows=0). Evidencia que nao existe nao passa — e rodar a
+          validacao offline (tools/quant_oos_validation.py) e o caminho
+          para obtenla, nunca recalcular 195 mil partidas num request.
+
+        O gate reprova quase tudo no estado atual (CLV prospectivo com
+        n < 30, janelas minimas, amostra por segmento): e o comportamento
+        correto. Promotion bloqueado -> NO BET.
+        """
+        from ..strategy_runner import evaluate_strategy_promotion
+        from ..value_walkforward import (
+            cached_oos_evidence,
+            prospective_clv_evidence,
+        )
+
+        oos = cached_oos_evidence()
+        if oos is None:
+            return evaluate_strategy_promotion(
+                OPERATIONAL_STRATEGY, segments=(), n_windows=0)
+        return evaluate_strategy_promotion(
+            OPERATIONAL_STRATEGY,
+            segments=oos.promotion_segments(),
+            n_windows=oos.n_windows_valid,
+            clv=prospective_clv_evidence(),
+            max_drawdown=oos.max_drawdown,
+            calibration=oos.calibration_channel(),
         )
 
     def signal_report(self, snap: Snapshot) -> S.SignalReport:
@@ -627,13 +909,19 @@ class BetgsnService:
     def _game(self, a: FixtureAnalysis, sig_count: dict[str, int]) -> S.GameAnalysis:
         key = f"{a.fixture.home} vs {a.fixture.away}"
         m1 = a.markets.get("Resultado Final (1X2)", {})
+        kickoff = utc_key(a.fixture.kickoff)
+        # id UNICO: "Casa vs Fora" pode se repetir na janela (mesmo
+        # confronto em liga e copa). O id identifica; `match` continua
+        # sendo o rotulo humano. Liga + kickoff distinguem sem inventar
+        # chave opaca — quem le o id sabe exatamente o que ele e.
+        game_id = f"{a.fixture.league}|{key}|{kickoff}" if kickoff else key
         return S.GameAnalysis(
-            id=key,
+            id=game_id,
             match=key,
             home=a.fixture.home,
             away=a.fixture.away,
             league=a.fixture.league,
-            kickoff=utc_key(a.fixture.kickoff),
+            kickoff=kickoff,
             round_label=a.fixture.round_label,
             lambda_home=a.lambdas[0],
             lambda_away=a.lambdas[1],
@@ -977,13 +1265,27 @@ class BetgsnService:
         health = _merge_latest(health, persisted_health, "updated_at")
         credits = _merge_latest(credits, persisted_credits, "last_updated")
 
+        # Cobertura REAL por provider: sport keys em que o provider gravou
+        # quotes, lidos dos registros de captura (manifesto append-only).
+        # Sem captura registrada, a cobertura fica vazia — nunca derivada
+        # de chave configurada.
+        try:
+            from ..backtest_sources import capture_coverage_from_manifest
+
+            coverage_map = capture_coverage_from_manifest()
+        except Exception:  # noqa: BLE001 - manifesto ilegivel nao derruba a rota
+            coverage_map = {}
+
         configured = available_providers()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         provider_healths: list[S.ProviderHealth] = []
         for name in configured:
             provider_healths.append(
-                _provider_health_dto(name, configured[name], health.get(name), credits.get(name))
+                _provider_health_dto(
+                    name, configured[name], health.get(name),
+                    credits.get(name), coverage_map.get(name),
+                )
             )
 
         return S.ProviderOverview(
@@ -1077,7 +1379,14 @@ class BetgsnService:
 
         movements: list[S.OddsMovement] = []
 
-        for fx in fixtures[:20]:
+        # TODA a populacao de fixtures com odds + kickoff — a mesma que
+        # clv()/coverage() examinam. O cap historico `[:20]` escondia
+        # observacoes reais: a lista segue ordenada por divisao/data, e as
+        # partidas capturadas raramente estao nas primeiras 20 (as
+        # primeiras sao ligas obscuras de datas antigas). Sem cap, uma
+        # observacao gravada hoje e encontrada pela event_key do fixture,
+        # esteja ela na posicao que estiver.
+        for fx in fixtures:
             if not fx.has_odds:
                 continue
             if not fx.has_kickoff:

@@ -758,6 +758,18 @@ def test_cli_capture_without_configured_provider_keeps_error(monkeypatch, capsys
     monkeypatch.delenv("BETGSN_ODDS_API_KEY", raising=False)
     monkeypatch.delenv("BETGSN_PARLAY_API_KEY", raising=False)
     monkeypatch.delenv("BETGSN_PARLAY_API_BASE", raising=False)
+    # providers novos: o teste afirma "NENHUM provider configurado" — sem
+    # limpar, uma chave real no .env da maquina configuraria um provider
+    # e invalidaria a premissa (hermeticidade).
+    for name in (
+        "BETGSN_ODDSPAPI_API_KEY",
+        "ODDSPAPI_API_KEY",
+        "BETGSN_ODDS_API_IO_KEY",
+        "ODDS_API_IO_KEY",
+        "BETGSN_OPTICODDS_API_KEY",
+        "OPTICODDS_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
 
     cli = _load_cli_module()
     rc = cli.capture_odds_cli([])

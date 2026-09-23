@@ -52,7 +52,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .backtest_data import MatchResult, settle_outcome
-from .odds_normalize import group_by_event, group_by_market
+from .odds_normalize import group_by_event, group_by_market, merge_provider_quotes
 from .odds_provider import OddsFetchRequest, divisions_for
 from .odds_registry import default_odds_registry
 from .providers import ProviderError
@@ -249,6 +249,16 @@ def collect_bets(
     Cada aposta e um dicionario com data, liga, odd e retorno (stake 1).
     `closing=False` usa odds de ABERTURA (o preco que existia quando a
     rodada foi publicada); `closing=True` usa as de fechamento.
+
+    Campos adicionais (canonicos, para o harness OOS `value_walkforward`
+    e o harness de modelo `model_walkforward` filtrarem sem recorrer o
+    corpus): `home`/`away`/`oc` (identidade da linha), `median` (odd
+    mediana entre as casas — ablação do line-shopping), `n_books` (casas
+    que sustentam a linha), `res` ("win"/"push"/"loss") e `fair`
+    (probabilidade justa do consenso: de-vig multiplicativo das
+    medianas — MARKET FAIR, distinto do raw 1/odd). O filtro
+    `max_odd`/`min_books` segue valendo para `odd`/`ret` — quem precisa
+    de TODAS as linhas chama com max_odd=99 e min_books=1.
     """
     from .backtest_engine import csv_odds_store
     from .football_data_uk import FootballDataClient
@@ -268,6 +278,16 @@ def collect_bets(
             outcomes: set[str] = set()
             for b in books.values():
                 outcomes.update(b)
+            # medianas por outcome -> consenso -> de-vig multiplicativo
+            # (MARKET FAIR: a probabilidade justa implicita no mercado)
+            medians = {
+                oc: _median_of([b[oc] for b in books.values() if b.get(oc)])
+                for oc in outcomes
+            }
+            implied = {
+                oc: 1.0 / med for oc, med in medians.items() if med and med > 1.0
+            }
+            overround = sum(implied.values()) or 1.0
             for oc in outcomes:
                 vals = [b[oc] for b in books.values() if b.get(oc)]
                 if len(vals) < min_books:
@@ -278,16 +298,31 @@ def collect_bets(
                 res = settle_outcome(market, oc, result)
                 if res is None:
                     continue
+                fair = implied.get(oc, 0.0) / overround
                 bets.append({
                     "d": m.kickoff[:10],
                     "lg": m.league,
                     "mkt": market,
+                    "oc": oc,
+                    "home": m.home,
+                    "away": m.away,
                     "odd": best,
                     "ret": (best - 1.0) if res == "win" else (0.0 if res == "push" else -1.0),
+                    "median": medians.get(oc) or best,
+                    "n_books": len(vals),
+                    "res": res,
+                    "fair": fair,
                 })
         if progress is not None and i % 40000 == 0:
             progress(i, len(matches))
     return bets
+
+
+def _median_of(vals: Sequence[float]) -> float:
+    s = sorted(vals)
+    n = len(s)
+    mid = n // 2
+    return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2.0
 
 
 def validate(
@@ -594,11 +629,17 @@ def scan_live(
 ) -> tuple[list[Opportunity], dict[str, Any]]:
     """Busca oportunidades nas odds ao vivo (providers do registry, FASE B).
 
-    Cada esporte e atendido pelo primeiro provider CONFIGURADO que devolve
-    odds utilizaveis — o mesmo fallback do OddsService, sem health tracker
-    (o scanner e uma leitura pontual, nao uma coleta persistida). Provider
-    que falha ou nao cobre o esporte registra e segue para o proximo; sem
-    NENHUM provider configurado, o erro explicito de sempre.
+    MULTI-PROVIDER AGREGACAO: cada esporte e atendido por TODOS os
+    providers configurados que devolvem quotes utilizaveis — as quotes
+    sao mescladas por linha fisica (a observacao com timestamp mais
+    recente da fonte vence; empate fica com a ordem do registry) e o
+    line shopping enxerga as casas de todos os providers de uma vez.
+    Nenhuma quote e perdida porque o primeiro provider respondeu.
+
+    Sem health tracker (o scanner e uma leitura pontual, nao uma coleta
+    persistida). Provider que falha ou nao cobre o esporte registra e
+    segue para o proximo; sem NENHUM provider configurado, o erro
+    explicito de sempre.
     """
     providers = default_odds_registry().available_providers()
     if not providers:
@@ -613,7 +654,13 @@ def scan_live(
         fetched_at = _utcnow()
         sport_error: str | None = None
         served_events = 0
-        sport_ops: list[Opportunity] = []
+        # MULTI-PROVIDER AGREGACAO: todos os providers configurados sao
+        # consultados e as quotes MERGADAS por linha fisica (a mais recente
+        # da fonte vira; empate fica com a prioridade do registry). O
+        # fallback por provider continua valendo INTERNAMENTE (um que
+        # falha nao derruba os outros); nenhuma quote e perdida porque o
+        # primeiro provider respondeu.
+        quotes: list = []
         for _name, provider in providers:
             request = OddsFetchRequest(
                 divisions=divisions_for(provider, sport),
@@ -630,13 +677,15 @@ def scan_live(
                 meta["credits_remaining"] = fetched.credits.remaining
             if fetched.no_coverage:
                 continue
-            quotes = [q for q in fetched.quotes if q.usable]
-            if not quotes:
-                continue
-            sport_ops = _opportunities_from_quotes(quotes, max_odd, min_books)
-            served_events = len({q.event_id for q in quotes})
+            quotes.extend(q for q in fetched.quotes if q.usable)
+
+        if quotes:
+            merged, _collisions = merge_provider_quotes(quotes)
+            sport_ops = _opportunities_from_quotes(merged, max_odd, min_books)
+            served_events = len({q.event_id for q in merged})
             found.extend(sport_ops)
-            break
+        else:
+            sport_ops = []
 
         if sport_ops or served_events:
             meta["sports"][sport] = {
@@ -678,14 +727,31 @@ class ValueStrategy:
     def evidence(self) -> StrategyEvidence:
         """Parametros validados da regra para o decision gate.
 
-        Vantagem medida: usa a validacao em cache QUANDO o fingerprint
-        bate com a regra atual sobre o corpus atual (I-14); sem cache
-        valido, as constantes validadas deste modulo. Nao roda a
-        validacao aqui: percorrer 195 mil partidas num request HTTP
-        nao e lugar para isso. Um cache de outro corpus ou de outros
-        parametros NAO e evidencia desta regra: volta para as
-        constantes, nunca para numeros de outra medicao.
+        Precedencia da vantagem medida:
+
+        1. validação OOS walk-forward em cache (`value_walkforward`),
+           QUANDO o fingerprint bate com a configuração atual sobre o
+           corpus atual — é a evidência que o promotion gate exige
+           (janelas, embargo, estatística OOS);
+        2. validação full-sample em cache (I-14) — medição HISTÓRICA
+           documentada (a seleção da banda foi feita nesse corpus);
+        3. constantes validadas deste módulo.
+
+        Nenhuma das fontes roda o corpus aqui: percorrer 195 mil
+        partidas num request HTTP não é lugar para isso. Cache de outro
+        corpus/configuração NÃO é evidência desta regra — volta para a
+        próxima fonte, nunca para números de outra medição.
         """
+        from .value_walkforward import cached_oos_evidence
+
+        oos = cached_oos_evidence()
+        if oos is not None and oos.n_bets_oos > 0 and oos.roi is not None:
+            return StrategyEvidence(
+                roi=oos.roi,
+                roi_se=oos.roi_se if oos.roi_se is not None else 0.0,
+                odd=oos.avg_odd or EDGE_ODD,
+                n_bets=oos.n_bets_oos,
+            )
         val = cached_validation()
         if val is not None:
             return StrategyEvidence(

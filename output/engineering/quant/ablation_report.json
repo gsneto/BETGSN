@@ -1,0 +1,40 @@
+{
+  "kind": "ablation_report",
+  "components": [
+    {
+      "componente": "market_raw (referência)",
+      "logloss": 0.586882,
+      "brier": 0.200495,
+      "n": 490736
+    },
+    {
+      "componente": "market_fair (efeito do de-vig)",
+      "logloss": 0.586979,
+      "brier": 0.200506,
+      "n": 490736
+    },
+    {
+      "componente": "model_raw (modelo congelado)",
+      "logloss": 0.607036,
+      "brier": 0.209143,
+      "n": 490736
+    },
+    {
+      "componente": "model_calibrated (efeito da calibração)",
+      "logloss": 0.608331,
+      "brier": 0.209479,
+      "n": 490736
+    },
+    {
+      "componente": "strategy_model (EV>0; INCLUI line-shopping)",
+      "roi": -0.048872,
+      "n_bets": 181172
+    },
+    {
+      "componente": "strategy_model sem_line_shopping (mediana)",
+      "roi": -0.113062,
+      "n_bets": 113272,
+      "delta_vs_com_line_shopping": -0.06419
+    }
+  ]
+}

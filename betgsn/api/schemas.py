@@ -659,6 +659,32 @@ class DashboardSummary(BaseModel):
     data_source: str
 
 
+RecalcPhase = Literal[
+    "idle", "starting", "fixtures", "history", "ratings",
+    "analyzing", "signals", "done", "error", "cancelled",
+]
+
+
+class RecalculateJobStatus(BaseModel):
+    """Estado do job assincrono de recalculo (POST /api/recalculate).
+
+    Fases correspondem a etapas REAIS do pipeline (ver
+    RealSignalsService.snapshot/report): nenhuma fase e inventada. O
+    progresso e exato dentro da fase `analyzing` (i/n fixtures) e
+    conservador nas demais (a fase ainda nao terminou).
+    """
+
+    job_id: str | None
+    phase: RecalcPhase
+    progress: float = Field(ge=0.0, le=1.0)
+    message: str
+    error: str | None = None
+    #: timestamp do snapshot EM MEMORIA (preservado quando o job falha)
+    snapshot_generated_at: str | None = None
+    #: snapshot em memoria? a UI usa para saber se ha dados validos
+    has_snapshot: bool = False
+
+
 class SystemStatus(BaseModel):
     status: Literal["ok", "computing", "error"]
     version: str

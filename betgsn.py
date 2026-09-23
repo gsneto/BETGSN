@@ -350,8 +350,31 @@ def capture_odds_cli(args: list[str]) -> int:
         print("Configure no .env ou no ambiente para capturar odds.")
         return 1
 
+    # Filtro de providers (--providers=ParlayAPI[,OddsPapi...]): captura
+    # controlada — validar um provider novo SEM gastar a quota dos demais.
+    # Nome fora do registry e erro explicito com a lista dos disponiveis,
+    # nunca silencio (o provider "quebrado" pode ser so um typo).
+    raw_providers = _arg(args, "providers", "")
+    if raw_providers:
+        wanted = [p.strip() for p in raw_providers.split(",") if p.strip()]
+        available_names = [name for name, _p in providers]
+        unknown = [p for p in wanted if p not in available_names]
+        if unknown:
+            print(f"ERRO: providers desconhecidos: {', '.join(unknown)}")
+            print(f"  disponiveis: {', '.join(available_names)}")
+            return 1
+        providers = [(n, p) for n, p in providers if n in wanted]
+        print(f"  providers selecionados: {', '.join(n for n, _ in providers)}")
+
     raw = _arg(args, "sports", "")
-    fixtures: list = []
+    # Os fixtures sao SEMPRE carregados: alem de derivarem os sports keys
+    # quando --sports nao vem, eles alimentam a resolucao de identidade
+    # (FixtureMatchIndex) — sem eles, eventos com nomes divergentes dos
+    # nomes FDUK seriam gravados sob a chave do PROVIDER e a leitura
+    # (movement/CLV usam a event_key DO FIXTURE) nunca os encontraria.
+    from betgsn.football_data_uk import FootballDataClient
+
+    fixtures = FootballDataClient().load_fixtures()
     if raw:
         sports = [s.strip() for s in raw.split(",") if s.strip()]
     else:
@@ -359,9 +382,6 @@ def capture_odds_cli(args: list[str]) -> int:
         # layer conhece (as partidas que a API consome em
         # movement/CLV/coverage). Divisao sem sport key verificada e
         # reportada, nunca inventada (ver DIVISION_TO_SPORT_KEY).
-        from betgsn.football_data_uk import FootballDataClient
-
-        fixtures = FootballDataClient().load_fixtures()
         divisions = sorted(
             {fx.division for fx in fixtures if fx.has_odds and fx.has_kickoff}
         )

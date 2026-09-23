@@ -258,18 +258,55 @@ def test_stats_and_model_routes(client):
 
 
 def test_recalculate_route(client):
+    """/api/recalculate e assincrono: devolve o job imediatamente (200)."""
     r = client.post("/api/recalculate", json=S.ModelConfiguration(
         bankroll=1500.0, min_ev=0.045).model_dump())
-    assert r.status_code in (200, 503)
-    if r.status_code == 200:
-        body = r.json()
-        assert body["configuration"]["bankroll"] == 1500.0
-    r2 = client.get("/api/signals")
-    assert r2.status_code in (200, 503)
-    if r2.status_code == 200:
-        assert all(s["ev"] >= 0.045 for s in r2.json()["signals"])
+    assert r.status_code == 200
+    body = r.json()
+    assert body["job_id"]
+    assert body["phase"] in ("starting", "fixtures", "history", "ratings",
+                             "analyzing", "signals", "done", "error")
+    assert 0.0 <= body["progress"] <= 1.0
+
+    # job em execucao: um segundo POST e recusado (409), nao enfileirado
+    dup = client.post("/api/recalculate", json=CONFIG.model_dump())
+    assert dup.status_code in (200, 409)
+
+    # aguarda a conclusao do job (timeout generoso: pipeline real)
+    import time as _time
+    deadline = _time.monotonic() + 300.0
+    final = None
+    while _time.monotonic() < deadline:
+        final = client.get("/api/recalculate/status").json()
+        if final["phase"] in ("done", "error", "cancelled"):
+            break
+        _time.sleep(0.25)
+    assert final is not None and final["phase"] in ("done", "error", "cancelled")
+
+    if final["phase"] == "done":
+        assert final["progress"] == 1.0
+        assert final["has_snapshot"] is True
+        assert final["snapshot_generated_at"]
+        r2 = client.get("/api/signals")
+        assert r2.status_code in (200, 503)
+        if r2.status_code == 200:
+            assert all(s["ev"] >= 0.045 for s in r2.json()["signals"])
     # restaura o default para os demais testes de rota
     client.post("/api/recalculate", json=CONFIG.model_dump())
+    deadline = _time.monotonic() + 300.0
+    while _time.monotonic() < deadline:
+        if client.get("/api/recalculate/status").json()["phase"] in (
+                "done", "error", "cancelled", "idle"):
+            break
+        _time.sleep(0.25)
+
+
+def test_recalculate_status_shape(client):
+    body = client.get("/api/recalculate/status").json()
+    for field in ("job_id", "phase", "progress", "message", "error",
+                  "snapshot_generated_at", "has_snapshot"):
+        assert field in body
+    assert 0.0 <= body["progress"] <= 1.0
 
 
 def test_recalculate_rejects_invalid_config(client):
@@ -288,13 +325,15 @@ def test_model_performance_route(client):
 
 def test_websocket_status(client):
     with client.websocket_connect("/api/ws") as ws:
-        # o servidor envia dois snapshots ao conectar: status do pipeline e
-        # progresso do backtest
-        primeiro = ws.receive_json()
-        segundo = ws.receive_json()
-        eventos = {primeiro["event"], segundo["event"]}
+        # o servidor envia tres snapshots ao conectar: status do pipeline,
+        # progresso do backtest e progresso do recalculo
+        eventos = set()
+        for _ in range(3):
+            msg = ws.receive_json()
+            eventos.add(msg["event"])
         assert "status" in eventos
         assert "backtest:progress" in eventos
+        assert "recalculate:progress" in eventos
         ws.send_text("ping")
         assert ws.receive_json()["event"] == "pong"
         ws.send_text("status")
@@ -808,17 +847,36 @@ def test_real_signals_preserve_no_bet(client):
     assert any(c["name"] == "evidencia_confiavel" for c in failed)
 
 
-def test_quant_decision_is_not_hardcoded(svc_snapshot):
-    """A API nao fabrica NO_BET: com evidencia confiavel o Quant diz BET."""
+def test_quant_decision_is_not_hardcoded(svc_snapshot, monkeypatch):
+    """A API não fabrica NO_BET: com evidencia confiavel E promotion gate
+    aprovado o Quant diz BET.
+
+    O promotion gate e AVALIADO no caminho operacional (nunca None):
+    aprovado via monkeypatch aqui porque o ambiente de teste nao tem
+    cache OOS do corpus real — o que o teste prova e que a borda nao
+    bloqueia um gate legitimo.
+    """
+    from betgsn.models.promotion import (
+        ModelStatus, PromotionCriterion, PromotionDecision,
+    )
+
+    approved = PromotionDecision(
+        model="value_short_favourites",
+        current_status=ModelStatus.EXPERIMENTAL,
+        recommended_status=ModelStatus.VALIDATED,
+        criteria=[PromotionCriterion(name="tudo_ok", passed=True, detail="x")],
+        production_eligible=True,
+    )
     svc, _ = svc_snapshot
+    monkeypatch.setattr(svc, "_strategy_promotion", lambda: approved)
     decision = svc._quant_decision("timestamped")
     assert decision.action == "BET"
     assert decision.should_bet is True
     assert 0 < decision.fraction <= 0.05
     assert all(c.passed for c in decision.checks)
     assert {c.name for c in decision.checks} == {
-        "evidencia_confiavel", "limite_inferior_positivo",
-        "amostra_suficiente", "ruina_toleravel",
+        "evidencia_confiavel", "promocao_da_estrategia",
+        "limite_inferior_positivo", "amostra_suficiente", "ruina_toleravel",
     }
 
 
@@ -957,22 +1015,37 @@ def test_signal_carries_kickoff_provider_and_odd(svc_snapshot, core):
 
 
 def _patch_server_service(monkeypatch):
-    """Troca o service global do servidor por um sintetico isolado."""
+    """Troca o service global do servidor por um sintetico isolado.
+
+    O snapshot e criado EXPLICITAMENTE por um recalculate — mesmo ciclo
+    de producao do recalculate assincrono (cdd91cb): nenhum endpoint GET
+    constroi snapshot implicitamente, e cold start responde 503 com
+    instrucao (ver `_snapshot` no server). Os endpoints de portfolio
+    derivam tudo do snapshot, entao o teste precisa de um snapshot real
+    calculado pelo pipeline, igual a producao.
+    """
     from betgsn.api import server
 
     synthetic = BetgsnService(source="synthetic")
+    synthetic.recalculate(CONFIG)
     monkeypatch.setattr(server, "service", synthetic)
     return synthetic
 
 
 def test_portfolio_exposure_no_bet_creates_no_exposure(monkeypatch):
-    """NO_BET chegando ao portfolio: nenhuma exposicao e criada."""
+    """NO_BET chegando ao portfolio: nenhuma exposicao e criada.
+
+    O contrato tambem carrega o MOTIVO e o status de evidencia da
+    decisao — a UI precisa explicar por que as stakes sao zero.
+    """
     _patch_server_service(monkeypatch)
     with TestClient(app) as c:
         r = c.get("/api/portfolio/exposure")
     assert r.status_code == 200
     body = r.json()
     assert body["decision_action"] == "NO_BET"
+    assert body["decision_reason"]
+    assert body["decision_evidence_status"]
     assert body["total_exposure"] == 0.0
     assert body["total_exposure_pct"] == 0.0
     assert body["within_limits"] is True
@@ -1081,16 +1154,30 @@ def _controlled_real_snapshot():
 
 
 def test_recalculate_and_games_200_with_real_future_fixtures(monkeypatch):
-    """/api/recalculate e /api/games respondem 200 quando existem fixtures
-    futuras reais — aqui injetadas como se tivessem vindo do fallback."""
+    """/api/recalculate (assincrono) e /api/games respondem 200 quando
+    existem fixtures futuras reais — aqui injetadas como se tivessem
+    vindo do fallback."""
+    import time as _time
+
     import betgsn.real_signals as rs
 
     snap = _controlled_real_snapshot()
-    monkeypatch.setattr(rs.real_signals_service, "snapshot", lambda force=False: snap)
+    monkeypatch.setattr(
+        rs.real_signals_service, "snapshot",
+        lambda force=False, **kwargs: snap,
+    )
 
     with TestClient(app) as c:
         r = c.post("/api/recalculate", json=CONFIG.model_dump())
         assert r.status_code == 200, r.text
+        # job assincrono: aguarda a conclusao antes de consultar os jogos
+        deadline = _time.monotonic() + 60.0
+        while _time.monotonic() < deadline:
+            st = c.get("/api/recalculate/status").json()
+            if st["phase"] in ("done", "error", "cancelled"):
+                break
+            _time.sleep(0.05)
+        assert st["phase"] == "done", st
         g = c.get("/api/games")
         assert g.status_code == 200, g.text
         games = g.json()

@@ -31,6 +31,7 @@ const makeStore = (overrides: Partial<Store> = {}): Store => ({
   summary: null,
   status: null,
   recalculating: false,
+  recalcJob: null,
   dataVersion: 0,
   error: null,
   toasts: [],
@@ -39,6 +40,7 @@ const makeStore = (overrides: Partial<Store> = {}): Store => ({
   setConfig: noop,
   hydrate: noop,
   recalculate: async () => {},
+  cancelRecalculate: noop,
   pushToast: noop,
   dismissToast: noop,
   ...overrides,
@@ -106,7 +108,8 @@ describe("ClvPage", () => {
       expect(screen.getAllByText("Arsenal vs Chelsea").length).toBeGreaterThan(0),
     );
     expect(screen.getByText("2,20")).toBeInTheDocument();
-    expect(screen.getByText("2030-01-01T09:55:00Z")).toBeInTheDocument();
+    // timestamp formatado para leitura humana (nao o ISO cru)
+    expect(screen.getByText("01/01/2030 09:55")).toBeInTheDocument();
     expect(screen.getAllByText("OK").length).toBeGreaterThan(0);
   });
 
@@ -135,7 +138,7 @@ describe("ClvPage", () => {
     );
     renderPage(makeStore());
     await waitFor(() =>
-      expect(screen.getByText(/coverage —/)).toBeInTheDocument(),
+      expect(screen.getByText(/coverage não medido/)).toBeInTheDocument(),
     );
     expect(screen.queryByText(/coverage 0,0%/)).not.toBeInTheDocument();
   });

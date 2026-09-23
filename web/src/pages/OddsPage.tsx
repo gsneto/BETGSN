@@ -43,7 +43,14 @@ export default function OddsPage() {
     [dataVersion],
   );
 
-  const matches = useMemo(() => overview.data?.matches ?? [], [overview.data]);
+  // "Casa vs Fora" pode se repetir na janela (liga + copa). O endpoint
+  // de comparison e enderecado por esse label e devolve o primeiro jogo
+  // que casa — itens duplicados no seletor nao adicionam informacao e
+  // quebram as keys do <Select>. Dedup aqui; o contrato nao muda.
+  const matches = useMemo(() => {
+    const all = overview.data?.matches ?? [];
+    return [...new Set(all)];
+  }, [overview.data]);
   const markets = useMemo(
     () => (match ? (overview.data?.markets_by_match[match] ?? []) : []),
     [overview.data, match],
@@ -106,7 +113,7 @@ export default function OddsPage() {
               <Select
                 value={match}
                 onChange={(e) => setMatch(e.target.value)}
-                options={data.matches.map((m) => ({ value: m, label: m }))}
+                options={matches.map((m) => ({ value: m, label: m }))}
                 className="w-[260px]"
                 aria-label="Selecionar jogo"
               />

@@ -527,6 +527,44 @@ class OddsSnapshotStore:
                 conn.close()
         return [self._to_obs(r) for r in rows]
 
+    def latest_observation_stamp(
+        self,
+        match_keys: Sequence[str] = (),
+        cutoff: str = "",
+    ) -> tuple[Optional[str], list[str]]:
+        """(maior timestamp, providers observados) sem ler observacoes.
+
+        Leitura de RESUMO para proveniencia/dashboard: devolve o carimbo
+        da observacao mais recente e os providers que gravaram no store —
+        nada alem do observado. `match_keys` vazio considera o store
+        inteiro (visao operacional); `cutoff` nao vazio restringe a
+        observacoes point-in-time (`timestamp <= cutoff`). Store vazio
+        devolve (None, []) — ausencia explicita, nunca carimbo fabricado.
+        """
+        with self._lock:
+            conn = self._conn()
+            try:
+                sql = "SELECT timestamp, provider FROM odds_observations"
+                clauses: list[str] = []
+                params: list = []
+                if match_keys:
+                    marks = ",".join("?" for _ in match_keys)
+                    clauses.append(f"match_key IN ({marks})")
+                    params.extend(match_keys)
+                if cutoff:
+                    clauses.append("timestamp <= ?")
+                    params.append(utc_key(cutoff))
+                if clauses:
+                    sql += " WHERE " + " AND ".join(clauses)
+                sql += " ORDER BY timestamp DESC"
+                rows = conn.execute(sql, params).fetchall()
+            finally:
+                conn.close()
+        if not rows:
+            return None, []
+        providers = sorted({r["provider"] for r in rows if r["provider"]})
+        return rows[0]["timestamp"], providers
+
     def closing_line(
         self,
         match_key: str,
