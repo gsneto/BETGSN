@@ -403,3 +403,206 @@ def test_promotion_with_empty_segments_never_eligible():
     decision = evaluate_strategy_promotion(STRATEGY_NAME, segments=[])
     assert decision.production_eligible is False
     assert decision.recommended_status.value == "EXPERIMENTAL"
+
+
+# ==========================================================================
+# 9. PRODUCTION GATE — os 10 casos (ETAPA 13 do ciclo de evidência)
+# ==========================================================================
+
+
+def _full_evidence_segments():
+    """Segmentos OOS same-population com melhora real e amostra mínima."""
+    return [
+        _gate_segment(lg, se)
+        for lg in ("E0", "SP1") for se in ("2024", "2025")
+    ]
+
+
+def _gate_segment(league: str, season: str):
+    """Segmento com melhora ACIMA da margem de erro medida (~5%).
+
+    Valores hipotéticos mas CONSISTENTES para o caso 10 do gate (prova
+    de que production_eligible=True só acontece com tudo passando):
+    logloss 0.480 vs 0.520 = +7.7% (margem 5%), brier melhor, ECE ok.
+    """
+    from betgsn.models.promotion import SegmentResult
+
+    return SegmentResult(
+        league=league, season=season, n_matches=300,
+        metrics={"roi": 0.03, "brier": 0.170, "logloss": 0.480,
+                  "ece": 0.02},
+        baseline_metrics={"roi": 0.03, "brier": 0.190, "logloss": 0.520,
+                          "ece": 0.03},
+    )
+
+
+_GOOD_CALIBRATION = {"mean_ece": 0.02, "n_segments": 20,
+                     "insufficient_segments": 0,
+                     "min_sample_per_segment": 200, "method": "platt"}
+_GOOD_CLV = {"mean": 0.02, "ci_low": 0.005, "ci_high": 0.04, "n": 50,
+             "prospective": True}
+
+
+def _gate_kwargs(**overrides):
+    """Evidência COMPLETA do gate — tudo que o caminho operacional declara."""
+    kwargs = dict(
+        segments=_full_evidence_segments(),
+        n_windows=24,
+        clv=dict(_GOOD_CLV),
+        max_drawdown=0.20,
+        calibration=dict(_GOOD_CALIBRATION),
+    )
+    kwargs.update(overrides)
+    return kwargs
+
+
+def test_gate_case_10_all_criteria_passing_is_eligible():
+    """Caso 10: TODOS os critérios passando — único caminho para
+    production_eligible=True. Nada aqui é artificial: evidência completa,
+    thresholds originais."""
+    from betgsn.strategy_runner import evaluate_strategy_promotion
+    from betgsn.value_strategy import STRATEGY_NAME
+
+    decision = evaluate_strategy_promotion(
+        STRATEGY_NAME, **_gate_kwargs())
+    assert decision.production_eligible is True
+    assert decision.recommended_status.value == "VALIDATED"
+    assert decision.blocking_failures == []
+
+
+def test_gate_case_1_bad_calibration_blocks(monkeypatch):
+    """Caso 1: calibração ruim (ECE acima do limite) → não elegível."""
+    from betgsn.api.service import BetgsnService
+    from betgsn.strategy_runner import evaluate_strategy_promotion
+    from betgsn.value_strategy import STRATEGY_NAME
+
+    decision = evaluate_strategy_promotion(
+        STRATEGY_NAME,
+        **_gate_kwargs(calibration={**_GOOD_CALIBRATION, "mean_ece": 0.09}))
+    assert decision.production_eligible is False
+    assert "calibracao_aceitavel" in decision.blocking_failures
+
+    # e NO BET no caminho operacional
+    svc = BetgsnService(source="synthetic")
+    monkeypatch.setattr(svc, "_strategy_promotion", lambda: decision)
+    assert svc._quant_decision("timestamped").action == "NO_BET"
+
+
+def test_gate_case_2_clv_below_30_blocks():
+    """Caso 2: CLV prospectivo n < 30 → não elegível (estado ATUAL real)."""
+    from betgsn.strategy_runner import evaluate_strategy_promotion
+    from betgsn.value_strategy import STRATEGY_NAME
+
+    decision = evaluate_strategy_promotion(
+        STRATEGY_NAME, **_gate_kwargs(
+            clv={**_GOOD_CLV, "n": 29}))
+    assert decision.production_eligible is False
+    assert "clv_nao_negativo" in decision.blocking_failures
+
+
+def test_gate_case_3_stale_cache_blocks():
+    """Caso 3: cache OOS stale/ausente → gate reprova conservadoramente."""
+    from betgsn.api.service import BetgsnService
+
+    decision = BetgsnService(source="synthetic")._strategy_promotion()
+    assert decision.production_eligible is False
+
+
+def test_gate_case_4_insufficient_oos_blocks():
+    """Caso 4: OOS insuficiente (sem segmentos com amostra) → reprova."""
+    from betgsn.strategy_runner import evaluate_strategy_promotion
+    from betgsn.value_strategy import STRATEGY_NAME
+
+    decision = evaluate_strategy_promotion(
+        STRATEGY_NAME, **_gate_kwargs(segments=[]))
+    assert decision.production_eligible is False
+    assert "amostra_minima" in decision.blocking_failures
+
+
+def test_gate_case_5_insufficient_windows_block():
+    """Caso 5: n_windows insuficiente → reprova."""
+    from betgsn.strategy_runner import evaluate_strategy_promotion
+    from betgsn.value_strategy import STRATEGY_NAME
+
+    decision = evaluate_strategy_promotion(
+        STRATEGY_NAME, **_gate_kwargs(n_windows=1))
+    assert "evidencia_oos_janelas" in decision.blocking_failures
+    assert decision.production_eligible is False
+
+
+def test_gate_case_6_invalid_pit_blocks():
+    """Caso 6: leakage PIT declarado → reprova tudo."""
+    from betgsn.strategy_runner import evaluate_strategy_promotion
+    from betgsn.value_strategy import STRATEGY_NAME
+
+    decision = evaluate_strategy_promotion(
+        STRATEGY_NAME, **_gate_kwargs(), )
+    decision = evaluate_strategy_promotion(
+        STRATEGY_NAME, has_known_leakage=True, **_gate_kwargs())
+    assert "sem_leakage_conhecido" in decision.blocking_failures
+    assert decision.production_eligible is False
+
+
+def test_gate_case_7_robustness_violation_blocks():
+    """Caso 7: degradação secundária (robustez) além do limite → reprova."""
+    from betgsn.models.promotion import SegmentResult
+    from betgsn.strategy_runner import evaluate_strategy_promotion
+    from betgsn.value_strategy import STRATEGY_NAME
+
+    degraded = [
+        SegmentResult(
+            league=lg, season=se, n_matches=300,
+            metrics={"roi": 0.03, "brier": 0.190, "logloss": 0.500,
+                     "ece": 0.02},
+            baseline_metrics={"roi": 0.03, "brier": 0.185, "logloss": 0.505,
+                              "ece": 0.03},
+        )
+        for lg in ("E0", "SP1") for se in ("2024", "2025")
+    ]
+    decision = evaluate_strategy_promotion(
+        STRATEGY_NAME, **_gate_kwargs(segments=degraded))
+    assert "sem_degradacao_secundaria" in decision.blocking_failures
+    assert decision.production_eligible is False
+
+
+def test_gate_case_8_invalid_evidence_blocks():
+    """Caso 8: evidence inválida é erro de contrato (nunca decision)."""
+    from betgsn.strategy_runner import run_strategy_decision
+    from betgsn.value_strategy import STRATEGY_NAME
+
+    with pytest.raises(ValueError):
+        run_strategy_decision(STRATEGY_NAME, evidence_status="invalido")
+
+
+def test_gate_case_9_multiple_failures_still_no_bet(monkeypatch):
+    """Caso 9: múltiplos critérios falhando → NO BET (e todos listados)."""
+    from betgsn.api.service import BetgsnService
+    from betgsn.strategy_runner import evaluate_strategy_promotion
+    from betgsn.value_strategy import STRATEGY_NAME
+
+    decision = evaluate_strategy_promotion(
+        STRATEGY_NAME, **_gate_kwargs(
+            clv={**_GOOD_CLV, "n": 5},
+            calibration={**_GOOD_CALIBRATION, "mean_ece": 0.09},
+            n_windows=1,
+        ))
+    assert decision.production_eligible is False
+    assert set(decision.blocking_failures) >= {
+        "clv_nao_negativo", "calibracao_aceitavel", "evidencia_oos_janelas"}
+
+    svc = BetgsnService(source="synthetic")
+    monkeypatch.setattr(svc, "_strategy_promotion", lambda: decision)
+    result = svc._quant_decision("timestamped")
+    assert result.action == "NO_BET"
+    failed = {c.name for c in result.checks if not c.passed}
+    assert "promocao_da_estrategia" in failed
+
+
+def test_real_current_state_is_no_bet():
+    """Estado REAL atual: sem cache OOS válido no ambiente de teste, o
+    caminho operacional responde NO BET — verificação de sanidade final."""
+    from betgsn.api.service import BetgsnService
+
+    decision = BetgsnService(source="synthetic")._quant_decision("exploratory")
+    assert decision.action == "NO_BET"
+    assert decision.fraction == 0.0

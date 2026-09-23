@@ -12,9 +12,141 @@
     "wilson_high": 0.834026,
     "bootstrap_low": 0.007475,
     "bootstrap_high": 0.030161,
-    "brier": 0.141444,
-    "logloss": 0.453418,
-    "ece": 0.01534,
+    "market_brier": 0.141444,
+    "market_logloss": 0.453418,
+    "market_ece": 0.01534,
+    "calibrated_brier": 0.141438,
+    "calibrated_logloss": 0.457396,
+    "calibrated_ece": 0.009018,
+    "avg_odd": 1.2396,
+    "max_drawdown": 0.2364,
+    "embargo_days": 2
+  },
+  "calibration_windows": [
+    {
+      "window": 3,
+      "method": "isotonic",
+      "n_test": 238,
+      "calibrated_ece": 0.040243,
+      "market_ece": 0.057647
+    },
+    {
+      "window": 4,
+      "method": "platt",
+      "n_test": 243,
+      "calibrated_ece": 0.041123,
+      "market_ece": 0.043015
+    },
+    {
+      "window": 5,
+      "method": "platt",
+      "n_test": 205,
+      "calibrated_ece": 0.030952,
+      "market_ece": 0.016805
+    },
+    {
+      "window": 6,
+      "method": "isotonic",
+      "n_test": 366,
+      "calibrated_ece": 0.01724,
+      "market_ece": 0.035928
+    },
+    {
+      "window": 7,
+      "method": "platt",
+      "n_test": 459,
+      "calibrated_ece": 0.019541,
+      "market_ece": 0.018163
+    },
+    {
+      "window": 10,
+      "method": "platt",
+      "n_test": 411,
+      "calibrated_ece": 0.054019,
+      "market_ece": 0.048399
+    },
+    {
+      "window": 11,
+      "method": "platt",
+      "n_test": 495,
+      "calibrated_ece": 0.045985,
+      "market_ece": 0.040543
+    },
+    {
+      "window": 12,
+      "method": "isotonic",
+      "n_test": 473,
+      "calibrated_ece": 0.020626,
+      "market_ece": 0.056564
+    },
+    {
+      "window": 13,
+      "method": "platt",
+      "n_test": 488,
+      "calibrated_ece": 0.036814,
+      "market_ece": 0.033956
+    },
+    {
+      "window": 14,
+      "method": "platt",
+      "n_test": 318,
+      "calibrated_ece": 0.010386,
+      "market_ece": 0.012683
+    },
+    {
+      "window": 15,
+      "method": "isotonic",
+      "n_test": 608,
+      "calibrated_ece": 0.049081,
+      "market_ece": 0.03169
+    },
+    {
+      "window": 16,
+      "method": "isotonic",
+      "n_test": 570,
+      "calibrated_ece": 0.028107,
+      "market_ece": 0.029286
+    },
+    {
+      "window": 17,
+      "method": "platt",
+      "n_test": 509,
+      "calibrated_ece": 0.029763,
+      "market_ece": 0.028753
+    },
+    {
+      "window": 22,
+      "method": "isotonic",
+      "n_test": 564,
+      "calibrated_ece": 0.022613,
+      "market_ece": 0.02013
+    },
+    {
+      "window": 23,
+      "method": "platt",
+      "n_test": 266,
+      "calibrated_ece": 0.028373,
+      "market_ece": 0.028199
+    }
+  ],
+  "calibration_insufficient": 9,
+  "previous_aggregate": {
+    "n_windows": 24,
+    "n_windows_valid": 24,
+    "n_bets_oos": 7277,
+    "roi": 0.018964,
+    "roi_se": 0.005559,
+    "roi_t": 3.4115,
+    "wilson_low": 0.816586,
+    "wilson_high": 0.834026,
+    "bootstrap_low": 0.007475,
+    "bootstrap_high": 0.030161,
+    "market_brier": 0.141444,
+    "market_logloss": 0.453418,
+    "market_ece": 0.01534,
+    "calibrated_brier": 0.141438,
+    "calibrated_logloss": 0.457396,
+    "calibrated_ece": 0.009018,
     "avg_odd": 1.2396,
     "max_drawdown": 0.2364,
     "embargo_days": 2
@@ -27,6 +159,8 @@
       "roi_se": 0.006393,
       "wilson_low": 0.851518,
       "n_windows_valid": 24,
+      "market_ece": 0.011106,
+      "calibrated_ece": 0.009909,
       "degradation_vs_baseline": -0.003604
     },
     {
@@ -36,6 +170,8 @@
       "roi_se": 0.005046,
       "wilson_low": 0.811197,
       "n_windows_valid": 24,
+      "market_ece": 0.010159,
+      "calibrated_ece": 0.008497,
       "degradation_vs_baseline": -0.004116
     },
     {
@@ -45,6 +181,8 @@
       "roi_se": 0.005518,
       "wilson_low": 0.833211,
       "n_windows_valid": 24,
+      "market_ece": 0.01339,
+      "calibrated_ece": 0.010902,
       "degradation_vs_baseline": -0.000293
     },
     {
@@ -54,6 +192,8 @@
       "roi_se": 0.005526,
       "wilson_low": 0.833387,
       "n_windows_valid": 24,
+      "market_ece": 0.013631,
+      "calibrated_ece": 0.010916,
       "degradation_vs_baseline": -1.7e-05
     }
   ],
@@ -96,15 +236,15 @@
     "primary_metric": "logloss",
     "n_segments": 433,
     "total_matches": 420512,
-    "consistency": 0.7667,
-    "mean_improvement": 0.1942,
-    "improvement_t_stat": 9.2682,
+    "consistency": 0.5427,
+    "mean_improvement": 0.019142,
+    "improvement_t_stat": 2.5542,
     "improvement_t_stat_infinite": false,
     "min_meaningful_improvement": 0.05,
-    "below_meaningful_margin": false,
+    "below_meaningful_margin": true,
     "production_eligible": false,
     "blocking_failures": [
-      "calibracao_aceitavel",
+      "consistencia",
       "clv_nao_negativo"
     ],
     "criteria": [
@@ -136,13 +276,13 @@
         "name": "melhora_logloss",
         "passed": true,
         "blocking": true,
-        "detail": "melhora media de 19.4200% (minimo 0.50%)"
+        "detail": "melhora media de 1.9142% (minimo 0.50%)"
       },
       {
         "name": "consistencia",
-        "passed": true,
+        "passed": false,
         "blocking": true,
-        "detail": "melhora em 77% dos segmentos (minimo 60%)"
+        "detail": "melhora em 54% dos segmentos (minimo 60%)"
       },
       {
         "name": "sem_degradacao_secundaria",
@@ -152,9 +292,9 @@
       },
       {
         "name": "calibracao_aceitavel",
-        "passed": false,
+        "passed": true,
         "blocking": true,
-        "detail": "ECE medio 0.1831 (maximo 0.05)"
+        "detail": "ECE calibrado 0.0317 (maximo 0.05) em 15 janela(s) walk-forward com >= 200 apostas (metodo isotonic+platt); 9 janela(s) INSUFFICIENT_DATA excluida(s)"
       },
       {
         "name": "amostra_total_minima",
@@ -166,13 +306,13 @@
         "name": "efeito_acima_do_ruido",
         "passed": true,
         "blocking": true,
-        "detail": "t entre segmentos 9.27 (minimo 2.0) em 433 segmentos"
+        "detail": "t entre segmentos 2.55 (minimo 2.0) em 433 segmentos"
       },
       {
         "name": "efeito_acima_da_margem",
-        "passed": true,
+        "passed": false,
         "blocking": false,
-        "detail": "melhora media +19.4200% vs margem 5.00%; elegivel a producao"
+        "detail": "melhora media +1.9142% vs margem 5.00%; ABAIXO da margem: nao elegivel a producao"
       },
       {
         "name": "sem_tuning_no_teste",
@@ -201,6 +341,47 @@
     ]
   },
   "sections": {
+    "modelo": "NÃO AVALIADO nesta validação: a estratégia de valor usa o MERCADO como fonte de probabilidade (p=1/odd), sem modelo BETGSN. Performance de modelo vive nos relatórios de benchmark (output/engineering/benchmark), separada.",
+    "mercado": {
+      "baseline": "probabilidades implícitas p=1/odd (MARKET)",
+      "market_brier": 0.141444,
+      "market_logloss": 0.453418,
+      "market_ece": 0.01534
+    },
+    "estrategia": {
+      "calibrado_por_janela": {
+        "metodo_por_janela": [
+          "isotonic",
+          "platt"
+        ],
+        "calibrated_brier": 0.141438,
+        "calibrated_logloss": 0.457396,
+        "calibrated_ece": 0.009018,
+        "n_janelas_suficientes": 15,
+        "n_janelas_insuficientes": 9
+      },
+      "oos": {
+        "n_windows": 24,
+        "n_windows_valid": 24,
+        "n_bets_oos": 7277,
+        "roi": 0.018964,
+        "roi_se": 0.005559,
+        "roi_t": 3.4115,
+        "wilson_low": 0.816586,
+        "wilson_high": 0.834026,
+        "bootstrap_low": 0.007475,
+        "bootstrap_high": 0.030161,
+        "market_brier": 0.141444,
+        "market_logloss": 0.453418,
+        "market_ece": 0.01534,
+        "calibrated_brier": 0.141438,
+        "calibrated_logloss": 0.457396,
+        "calibrated_ece": 0.009018,
+        "avg_odd": 1.2396,
+        "max_drawdown": 0.2364,
+        "embargo_days": 2
+      }
+    },
     "historico": "validação full-sample em cache separado (value_validation.json) — medição histórica, não OOS",
     "oos": {
       "n_windows": 24,
@@ -213,9 +394,12 @@
       "wilson_high": 0.834026,
       "bootstrap_low": 0.007475,
       "bootstrap_high": 0.030161,
-      "brier": 0.141444,
-      "logloss": 0.453418,
-      "ece": 0.01534,
+      "market_brier": 0.141444,
+      "market_logloss": 0.453418,
+      "market_ece": 0.01534,
+      "calibrated_brier": 0.141438,
+      "calibrated_logloss": 0.457396,
+      "calibrated_ece": 0.009018,
       "avg_odd": 1.2396,
       "max_drawdown": 0.2364,
       "embargo_days": 2
