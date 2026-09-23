@@ -1,0 +1,234 @@
+{
+  "kind": "quant_oos_validation",
+  "strategy": "value_short_favourites",
+  "aggregate": {
+    "n_windows": 24,
+    "n_windows_valid": 24,
+    "n_bets_oos": 7277,
+    "roi": 0.018964,
+    "roi_se": 0.005559,
+    "roi_t": 3.4115,
+    "wilson_low": 0.816586,
+    "wilson_high": 0.834026,
+    "bootstrap_low": 0.007475,
+    "bootstrap_high": 0.030161,
+    "brier": 0.141444,
+    "logloss": 0.453418,
+    "ece": 0.01534,
+    "avg_odd": 1.2396,
+    "max_drawdown": 0.2364,
+    "embargo_days": 2
+  },
+  "robustness": [
+    {
+      "scenario": "max_odd=1.25",
+      "n_bets_oos": 4043,
+      "roi": 0.012875,
+      "roi_se": 0.006393,
+      "wilson_low": 0.851518,
+      "n_windows_valid": 24,
+      "degradation_vs_baseline": -0.003604
+    },
+    {
+      "scenario": "max_odd=1.35",
+      "n_bets_oos": 9030,
+      "roi": 0.012363,
+      "roi_se": 0.005046,
+      "wilson_low": 0.811197,
+      "n_windows_valid": 24,
+      "degradation_vs_baseline": -0.004116
+    },
+    {
+      "scenario": "min_books=2",
+      "n_bets_oos": 6437,
+      "roi": 0.016186,
+      "roi_se": 0.005518,
+      "wilson_low": 0.833211,
+      "n_windows_valid": 24,
+      "degradation_vs_baseline": -0.000293
+    },
+    {
+      "scenario": "min_books=4",
+      "n_bets_oos": 6413,
+      "roi": 0.016462,
+      "roi_se": 0.005526,
+      "wilson_low": 0.833387,
+      "n_windows_valid": 24,
+      "degradation_vs_baseline": -1.7e-05
+    }
+  ],
+  "ablation": [
+    {
+      "scenario": "baseline (banda + consenso + melhor odd)",
+      "n_bets_oos": 6427,
+      "roi": 0.016479,
+      "roi_se": 0.005519,
+      "n_windows_valid": 24,
+      "delta_vs_baseline": 0.0
+    },
+    {
+      "scenario": "sem_line_shopping (mediana em vez da melhor odd)",
+      "n_bets_oos": 8102,
+      "roi": -0.007248,
+      "roi_se": 0.00508,
+      "n_windows_valid": 24,
+      "delta_vs_baseline": -0.023727
+    },
+    {
+      "scenario": "sem_consenso_minimo (min_books=1)",
+      "n_bets_oos": 6458,
+      "roi": 0.016345,
+      "roi_se": 0.005506,
+      "n_windows_valid": 24,
+      "delta_vs_baseline": -0.000134
+    }
+  ],
+  "clv_prospective": {
+    "mean": 0.0,
+    "n": 0,
+    "prospective": true
+  },
+  "promotion": {
+    "model": "value_short_favourites",
+    "current_status": "EXPERIMENTAL",
+    "recommended_status": "EXPERIMENTAL",
+    "promoted": false,
+    "primary_metric": "logloss",
+    "n_segments": 433,
+    "total_matches": 420512,
+    "consistency": 0.7667,
+    "mean_improvement": 0.1942,
+    "improvement_t_stat": 9.2682,
+    "improvement_t_stat_infinite": false,
+    "min_meaningful_improvement": 0.05,
+    "below_meaningful_margin": false,
+    "production_eligible": false,
+    "blocking_failures": [
+      "calibracao_aceitavel",
+      "clv_nao_negativo"
+    ],
+    "criteria": [
+      {
+        "name": "amostra_minima",
+        "passed": true,
+        "blocking": true,
+        "detail": "433 de 433 segmentos com >= 200 partidas (420512 partidas uteis)"
+      },
+      {
+        "name": "multiplas_temporadas",
+        "passed": true,
+        "blocking": true,
+        "detail": "25 temporada(s): ['2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'] (minimo 2)"
+      },
+      {
+        "name": "multiplas_ligas",
+        "passed": true,
+        "blocking": true,
+        "detail": "22 liga(s): ['Bundesliga (Germany)', 'Bundesliga 2 (Germany)', 'Championship (England)', 'Championship (Scotland)', 'Conference (England)', 'Eredivisie (Netherlands)', 'Jupiler League (Belgium)', 'La Liga (Spain)', 'League One (England)', 'League One (Scotland)', 'League Two (England)', 'League Two (Scotland)', 'Ligue 1 (France)', 'Ligue 2 (France)', 'Premier League (England)', 'Premiership (Scotland)', 'Primeira Liga (Portugal)', 'Segunda División (Spain)', 'Serie A (Italy)', 'Serie B (Italy)', 'Super League (Greece)', 'Süper Lig (Turkey)'] (minimo 2)"
+      },
+      {
+        "name": "sem_leakage_conhecido",
+        "passed": true,
+        "blocking": true,
+        "detail": "nenhum leakage declarado"
+      },
+      {
+        "name": "melhora_logloss",
+        "passed": true,
+        "blocking": true,
+        "detail": "melhora media de 19.4200% (minimo 0.50%)"
+      },
+      {
+        "name": "consistencia",
+        "passed": true,
+        "blocking": true,
+        "detail": "melhora em 77% dos segmentos (minimo 60%)"
+      },
+      {
+        "name": "sem_degradacao_secundaria",
+        "passed": true,
+        "blocking": true,
+        "detail": "nenhuma metrica secundaria degradada alem de 2%"
+      },
+      {
+        "name": "calibracao_aceitavel",
+        "passed": false,
+        "blocking": true,
+        "detail": "ECE medio 0.1831 (maximo 0.05)"
+      },
+      {
+        "name": "amostra_total_minima",
+        "passed": true,
+        "blocking": true,
+        "detail": "420512 partidas uteis (minimo 400)"
+      },
+      {
+        "name": "efeito_acima_do_ruido",
+        "passed": true,
+        "blocking": true,
+        "detail": "t entre segmentos 9.27 (minimo 2.0) em 433 segmentos"
+      },
+      {
+        "name": "efeito_acima_da_margem",
+        "passed": true,
+        "blocking": false,
+        "detail": "melhora media +19.4200% vs margem 5.00%; elegivel a producao"
+      },
+      {
+        "name": "sem_tuning_no_teste",
+        "passed": true,
+        "blocking": true,
+        "detail": "nenhum ajuste declarado no conjunto de teste"
+      },
+      {
+        "name": "evidencia_oos_janelas",
+        "passed": true,
+        "blocking": true,
+        "detail": "24 janela(s) walk-forward (minimo 2)"
+      },
+      {
+        "name": "clv_nao_negativo",
+        "passed": false,
+        "blocking": true,
+        "detail": "CLV medio +0.0000%"
+      },
+      {
+        "name": "drawdown_aceitavel",
+        "passed": true,
+        "blocking": true,
+        "detail": "drawdown 23.6% (maximo 50%)"
+      }
+    ]
+  },
+  "sections": {
+    "historico": "validação full-sample em cache separado (value_validation.json) — medição histórica, não OOS",
+    "oos": {
+      "n_windows": 24,
+      "n_windows_valid": 24,
+      "n_bets_oos": 7277,
+      "roi": 0.018964,
+      "roi_se": 0.005559,
+      "roi_t": 3.4115,
+      "wilson_low": 0.816586,
+      "wilson_high": 0.834026,
+      "bootstrap_low": 0.007475,
+      "bootstrap_high": 0.030161,
+      "brier": 0.141444,
+      "logloss": 0.453418,
+      "ece": 0.01534,
+      "avg_odd": 1.2396,
+      "max_drawdown": 0.2364,
+      "embargo_days": 2
+    },
+    "prospectivo": {
+      "mean": 0.0,
+      "n": 0,
+      "prospective": true
+    },
+    "producao": {
+      "production_eligible": false,
+      "evidence_status_max": "exploratory (odds FDUK sem timestamp de publicação)",
+      "action": "NO_BET"
+    }
+  }
+}
