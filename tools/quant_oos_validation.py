@@ -41,8 +41,11 @@ from betgsn.value_walkforward import (  # noqa: E402
 )
 
 
-def _progress(done: int, total: int, message: str) -> None:
-    print(f"  [{done}/{total}] {message}", flush=True)
+def _progress(done: int, total: int, message: str = "") -> None:
+    if message:
+        print(f"  [{done}/{total}] {message}", flush=True)
+    else:
+        print(f"  ... {done}/{total} partidas", flush=True)
 
 
 def main() -> int:
