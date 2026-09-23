@@ -48,6 +48,23 @@ def _progress(done: int, total: int, message: str = "") -> None:
         print(f"  ... {done}/{total} partidas", flush=True)
 
 
+def _previous_aggregate() -> dict | None:
+    """Agregado do cache ANTERIOR (ANTES), se legível — para comparação.
+
+    Cache de schema antigo ou corrompido devolve None: o 'antes' só
+    existe como histórico quando é legível.
+    """
+    import json
+
+    from betgsn.value_walkforward import _oos_cache_path
+
+    try:
+        payload = json.loads(_oos_cache_path().read_text(encoding="utf-8"))
+        return payload.get("aggregate") or None
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
 def main() -> int:
     config = WalkForwardConfig()
     print("Validação OOS da estratégia de valor (corpus real, sem rede)")
@@ -55,6 +72,7 @@ def main() -> int:
           f"gap/embargo={config.gap_days}d")
     print(f"  bandas candidatas: {config.candidate_max_odds}")
 
+    previous = _previous_aggregate()
     payload = compute_oos_validation(config, progress=_progress)
     path = save_oos_validation(payload)
     print(f"\ncache OOS gravado: {path}")
@@ -69,10 +87,37 @@ def main() -> int:
           f"{agg['wilson_high']:.4f}]")
     print(f"  bootstrap 95% ROI: [{agg['bootstrap_low']:+.4%}, "
           f"{agg['bootstrap_high']:+.4%}]")
-    print(f"  Brier {agg['brier']:.4f} | LogLoss {agg['logloss']:.4f} | "
-          f"ECE {agg['ece']:.4f}")
+    # ORIGEM DAS PROBABILIDADES: market_* = baseline de mercado (p=1/odd,
+    # sem modelo); calibrated_* = calibrador por janela, frozen no TEST.
+    print(f"  MARKET baseline: Brier {agg['market_brier']:.4f} | "
+          f"LogLoss {agg['market_logloss']:.4f} | ECE {agg['market_ece']:.4f}")
+    print(f"  CALIBRADO (frozen): Brier {agg['calibrated_brier']:.4f} | "
+          f"LogLoss {agg['calibrated_logloss']:.4f} | "
+          f"ECE {agg['calibrated_ece']:.4f}")
     print(f"  drawdown máximo (stake 1%): {agg['max_drawdown']:.2%}")
     print(f"  embargo aplicado: {agg['embargo_days']}d")
+
+    if previous:
+        print("\n=== COMPARAÇÃO (ANTES -> DEPOIS) ===")
+        for key, fmt in (
+            ("roi", "{:+.4%}"), ("n_bets_oos", "{}"),
+            ("market_ece", "{:.4f}"), ("calibrated_ece", "{:.4f}"),
+            ("market_brier", "{:.4f}"), ("calibrated_brier", "{:.4f}"),
+        ):
+            old, new = previous.get(key), agg.get(key)
+            if old is not None and new is not None:
+                print(f"  {key:18s} {fmt.format(old)} -> {fmt.format(new)}")
+            elif new is not None:
+                print(f"  {key:18s} n/d (campo novo) -> {fmt.format(new)}")
+
+    print("\n=== CALIBRAÇÃO POR JANELA ===")
+    for w in payload["calibration_windows"]:
+        print(f"  w{w['window']:02d} método={w['method']:8s} n={w['n_test']:4d} "
+              f"ECE calibrado {w['calibrated_ece']:.4f} "
+              f"(mercado {w['market_ece']:.4f})")
+    if payload["calibration_insufficient"]:
+        print(f"  {payload['calibration_insufficient']} janela(s) "
+              f"INSUFFICIENT_DATA (amostra < MIN_ECE_SAMPLE) — excluídas")
 
     print("\n=== POR JANELA ===")
     for w in payload["windows"]:
@@ -80,14 +125,16 @@ def main() -> int:
         roi = f"{w['roi']:+.4%}" if w["roi"] is not None else "n/d"
         print(f"  w{w['index']:02d} train[{w['train_start']}..{w['train_end']}] "
               f"test[{w['test_start']}..{w['test_end']}] banda={band} "
-              f"n_test={w['n_test_bets']:4d} roi={roi}")
+              f"n_test={w['n_test_bets']:4d} roi={roi} calib={w['calibration_method']}")
 
     print("\n=== ROBUSTEZ (OOS) ===")
     for s in payload["robustness"]:
         deg = s["degradation_vs_baseline"]
         deg_txt = f"{deg:+.4%}" if deg is not None else "n/d"
+        cal = s.get("calibrated_ece")
+        cal_txt = f"{cal:.4f}" if cal is not None else "n/d"
         print(f"  {s['scenario']:16s} n={s['n_bets_oos']:5d} "
-              f"roi={s['roi']:+.4%} degradação={deg_txt}")
+              f"roi={s['roi']:+.4%} ECEcal={cal_txt} degradação={deg_txt}")
 
     print("\n=== ABLAÇÃO (OOS) ===")
     for s in payload["ablation"]:
@@ -111,6 +158,7 @@ def main() -> int:
         n_windows=evidence.n_windows_valid,
         clv=clv,
         max_drawdown=evidence.max_drawdown,
+        calibration=evidence.calibration_channel(),
     )
     print("\n=== PROMOTION GATE ===")
     print(decision.summary())
@@ -119,11 +167,40 @@ def main() -> int:
         "kind": "quant_oos_validation",
         "strategy": STRATEGY_NAME,
         "aggregate": agg,
+        "calibration_windows": payload["calibration_windows"],
+        "calibration_insufficient": payload["calibration_insufficient"],
+        "previous_aggregate": previous,
         "robustness": payload["robustness"],
         "ablation": payload["ablation"],
         "clv_prospective": clv,
         "promotion": decision.to_dict(),
         "sections": {
+            # SEPARAÇÃO EXPLÍCITA (ETAPA 1): nunca misturar origens
+            "modelo": (
+                "NÃO AVALIADO nesta validação: a estratégia de valor usa "
+                "o MERCADO como fonte de probabilidade (p=1/odd), sem "
+                "modelo BETGSN. Performance de modelo vive nos relatórios "
+                "de benchmark (output/engineering/benchmark), separada."
+            ),
+            "mercado": {
+                "baseline": "probabilidades implícitas p=1/odd (MARKET)",
+                "market_brier": agg["market_brier"],
+                "market_logloss": agg["market_logloss"],
+                "market_ece": agg["market_ece"],
+            },
+            "estrategia": {
+                "calibrado_por_janela": {
+                    "metodo_por_janela": sorted({
+                        w["method"] for w in payload["calibration_windows"]
+                    }),
+                    "calibrated_brier": agg["calibrated_brier"],
+                    "calibrated_logloss": agg["calibrated_logloss"],
+                    "calibrated_ece": agg["calibrated_ece"],
+                    "n_janelas_suficientes": len(payload["calibration_windows"]),
+                    "n_janelas_insuficientes": payload["calibration_insufficient"],
+                },
+                "oos": agg,
+            },
             "historico": (
                 "validação full-sample em cache separado "
                 "(value_validation.json) — medição histórica, não OOS"

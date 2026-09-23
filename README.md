@@ -233,6 +233,21 @@ python betgsn.py --capture-odds --sports=soccer_brazil_campeonato
 #    Agende 1x/dia. Cada captura vira odds historica quando a partida
 #    acontecer. E o caminho para acumular serie sem pagar.
 
+# 2a) CAPTURA DIARIA RECORRENTE (todos os providers configurados)
+.\scripts\capture_daily.ps1
+#    Wrapper fino do --capture-odds: log em output\logs\, exit code do
+#    CLI (0 ok / 1 config / 2 erros de captura), sem chaves no script.
+#    Idempotente (INSERT OR IGNORE por chave fisica); falha de um
+#    provider nao interrompe os demais.
+#
+#    Agendamento (Task Scheduler) — configurar EXPLICITAMENTE:
+#      schtasks /Create /SC DAILY /ST 09:00 /TN BETGSN-capture-odds ^
+#        /TR "pwsh -NoProfile -File C:\caminho\BETGSN\scripts\capture_daily.ps1"
+#
+#    A captura diaria e o que alimenta o CLV prospectivo (entradas
+#    FIRST-WINS no instante da decisao + fechamento pos-entry). Monitor:
+#      python tools/clv_report.py    # n, media, distribuicao, BLOCKED <30
+
 # 3) TEMPORADAS REAIS (API-Football, plano gratuito 2022-2024)
 $env:BETGSN_APIFOOTBALL_KEY = "..."       # api-football.com
 python betgsn.py --import-fixtures --league=71 --season=2024 --with-stats
