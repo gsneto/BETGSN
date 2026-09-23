@@ -368,14 +368,20 @@ def test_real_signals_use_real_odds(client):
     if r.status_code != 200:
         pytest.skip("sem jogos futuros em cache neste ambiente")
     books = {s["best_book"] for s in r.json()["signals"]}
-    # o dataset sintetico usa nomes de casa brasileiras; o arquivo real usa
-    # Betfair Exchange / Pinnacle / Bet365 / Paddy Power / SkyBet...
-    reais = {"Betfair Exchange", "Pinnacle", "Bet365", "Paddy Power", "SkyBet",
-             "Betfred", "BetVictor", "Bet&Win", "William Hill", "Ladbrokes",
-             "Melhor do mercado", "Media do mercado"}
     if not books:
         pytest.skip("jogos atuais sem oportunidades acima do filtro de EV")
-    assert books <= reais, f"casas inesperadas: {books - reais}"
+    # o dataset sintetico usa casas brasileiras que NUNCA aparecem nas
+    # fontes reais (football-data.co.uk / The Odds API). As fontes reais
+    # trazem dezenas de casas (Betfair Exchange, Pinnacle, Codere,
+    # Unibet...) — a lista muda com o tempo, entao o teste verifica o
+    # que seria ERRO: uma casa exclusiva do gerador sintetico vazando
+    # para o modo real.
+    sinteticas = {"Betano", "KTO", "Novibet", "EstrelaBet",
+                  "Betnacional", "Superbet"}
+    assert books.isdisjoint(sinteticas), (
+        f"casas exclusivas do dataset sintetico no modo real: "
+        f"{books & sinteticas}"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -1016,3 +1022,117 @@ def test_portfolio_parlays_available_when_quant_approves(monkeypatch):
     # mesmo com BET, as multiplas vem do mesmo gerador do dominio
     for parlay in body:
         assert parlay["n_legs"] >= 2
+
+
+# --------------------------------------------------------------------------
+# Fixtures futuras reais via fallback (The Odds API): recalculate/games 200
+# --------------------------------------------------------------------------
+
+
+def _controlled_real_snapshot():
+    """Snapshot REAL controlado: um jogo futuro com odds multi-casa.
+
+    Simula o estado apos o fallback: fixtures futuras da The Odds API no
+    cache, ratings vindos do historico real. O motor que roda em cima
+    (`report`) e o verdadeiro — so a origem dos dados e controlada.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from betgsn.football_data_uk import UpcomingFixture
+    from betgsn.model import TeamRating
+    from betgsn.real_signals import RealSnapshot
+
+    amanha = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+    odds = {"Resultado Final (1X2)": {
+        "Pinnacle": {"1": 1.90, "X": 3.40, "2": 4.20},
+        "Bet365": {"1": 1.85, "X": 3.35, "2": 4.10},
+        "Betfair Exchange": {"1": 1.95, "X": 3.45, "2": 4.30},
+    }}
+
+    def rating(name: str) -> TeamRating:
+        return TeamRating(
+            name=name, attack=1.1, defense=0.9, goals_for=1.5,
+            goals_against=1.0, xg_for=1.4, xg_against=1.1,
+            corners_for=5.0, corners_against=4.5, cards_for=2.2,
+            cards_against=2.4, shots_for=12.0, shots_on_target_for=4.2,
+            form_points=1.5, matches_played=20,
+        )
+
+    fx = UpcomingFixture(
+        division="E0", league="Premier League (England)",
+        date=amanha, time="18:00", timezone="UTC",
+        home="Arsenal", away="Chelsea", source="the_odds_api",
+        odds=odds,
+        best_odds={"Resultado Final (1X2)": {"1": 1.95, "X": 3.45, "2": 4.30}},
+        best_books={"Resultado Final (1X2)": {
+            "1": "Betfair Exchange", "X": "Betfair Exchange",
+            "2": "Betfair Exchange"}},
+    )
+    return RealSnapshot(
+        fixtures=[fx],
+        ratings={"Arsenal": rating("Arsenal"), "Chelsea": rating("Chelsea")},
+        league_goals=2.7, teams=["Arsenal", "Chelsea"], n_history=400,
+        history_window=("2025-01-01", "2026-01-01"),
+        generated_at="2026-09-22T00:00:00Z", computed_in_ms=0.0,
+        sources=["The Odds API (fallback de fixtures)"],
+        cutoff="2026-09-22T00:00:00Z",
+        history=[],
+    )
+
+
+def test_recalculate_and_games_200_with_real_future_fixtures(monkeypatch):
+    """/api/recalculate e /api/games respondem 200 quando existem fixtures
+    futuras reais — aqui injetadas como se tivessem vindo do fallback."""
+    import betgsn.real_signals as rs
+
+    snap = _controlled_real_snapshot()
+    monkeypatch.setattr(rs.real_signals_service, "snapshot", lambda force=False: snap)
+
+    with TestClient(app) as c:
+        r = c.post("/api/recalculate", json=CONFIG.model_dump())
+        assert r.status_code == 200, r.text
+        g = c.get("/api/games")
+        assert g.status_code == 200, g.text
+        games = g.json()
+        assert len(games) == 1
+        assert games[0]["home"] == "Arsenal"
+        assert games[0]["away"] == "Chelsea"
+
+
+def test_signals_503_explicit_when_no_future_fixture(monkeypatch):
+    """Ausencia de fixture futura continua sendo ERRO explicito (503 com
+    instrucao) — o fallback nao transforma falta de cobertura em sucesso."""
+    from datetime import datetime, timedelta, timezone
+
+    from betgsn.football_data_uk import FootballDataClient, UpcomingFixture
+
+    ontem = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    passado = UpcomingFixture(
+        division="E0", league="Premier League (England)",
+        date=ontem, time="15:00", timezone="UTC",
+        home="Arsenal", away="Chelsea",
+        odds={"Resultado Final (1X2)": {
+            "Pinnacle": {"1": 1.90, "X": 3.40, "2": 4.20},
+            "Bet365": {"1": 1.85, "X": 3.35, "2": 4.10},
+            "Betfair Exchange": {"1": 1.95, "X": 3.45, "2": 4.30},
+        }},
+        best_odds={"Resultado Final (1X2)": {"1": 1.95, "X": 3.45, "2": 4.30}},
+        best_books={"Resultado Final (1X2)": {
+            "1": "Betfair Exchange", "X": "Betfair Exchange",
+            "2": "Betfair Exchange"}},
+    )
+    monkeypatch.setattr(
+        FootballDataClient, "load_fixtures", lambda self: [passado], raising=True,
+    )
+    # o servico cacheia o snapshot pela assinatura dos ARQUIVOS; o
+    # monkeypatch nao muda arquivos, entao o cache precisa ser descartado
+    # para o teste exercitar o caminho de dados de verdade
+    import betgsn.real_signals as rs
+
+    rs.real_signals_service.invalidate()
+    with TestClient(app) as c:
+        r = c.get("/api/signals")
+    assert r.status_code == 503
+    assert "--import-fixtures-live" in r.json()["detail"]
+    # restaura o cache para os demais testes do modulo
+    rs.real_signals_service.invalidate()

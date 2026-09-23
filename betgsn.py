@@ -819,8 +819,16 @@ def import_live_fixtures_cli(args: list[str]) -> int:
     Estes sao os jogos que a tela SINAIS usa. Sem eles, a tela cai no
     dataset sintetico — que tem datas fixas no codigo e odds geradas pelo
     proprio modelo, portanto inuteis para decidir aposta.
+
+    FALLBACK: o football-data.co.uk publica fixtures.csv apenas da rodada
+    corrente (atualiza sex/ter). Na janela entre rodadas o arquivo nao
+    tem NENHUM jogo futuro; nesse caso as fixtures futuras sao buscadas
+    na The Odds API (odds multi-casa reais) e gravadas no cache local.
+    Fonte primaria nao tem jogo futuro != cobertura total: o fallback
+    nunca e consultado quando o CSV ainda cobre.
     """
     from betgsn.football_data_uk import FootballDataClient
+    from betgsn.fixtures_odds_api import fetch_odds_api_fixtures, has_future_fixture
 
     print("=" * 74)
     print("JOGOS FUTUROS REAIS — football-data.co.uk")
@@ -844,19 +852,72 @@ def import_live_fixtures_cli(args: list[str]) -> int:
     print(f"  periodo         : {inv['first_date']} a {inv['last_date']}")
 
     fixtures = client.load_fixtures()
-    com_odds = [f for f in fixtures if f.has_odds]
-    if com_odds:
-        print(f"\n  proximos jogos com odds:")
-        for f in com_odds[:12]:
-            best = f.best_odds.get("Resultado Final (1X2)", {})
-            if best:
-                odd_txt = "  ".join(
-                    f"{oc}={best[oc]:.2f}({f.best_books['Resultado Final (1X2)'][oc]})"
-                    for oc in ("1", "X", "2") if oc in best
-                )
+
+    # ------------------------------------------------------------------
+    # Fallback: CSV sem NENHUM jogo futuro (janela entre rodadas)
+    # ------------------------------------------------------------------
+    if not has_future_fixture(fixtures):
+        print("\nSem jogos futuros no CSV (janela entre rodadas do site).")
+        from betgsn.providers import OddsApiProvider
+
+        if OddsApiProvider.from_env() is None:
+            print(
+                "AVISO: fallback The Odds API indisponivel "
+                "(sem BETGSN_ODDS_API_KEY no .env)."
+            )
+            print(
+                "O modo REAL continua SEM cobertura ate o site atualizar "
+                "o CSV (sextas e tercas). Nenhum dado foi fabricado."
+            )
+        else:
+            print("Buscando fallback na The Odds API (h2h, regiao eu)...")
+            fb = fetch_odds_api_fixtures(client)
+            for err in fb.errors[:3]:
+                print(f"  ! {err}")
+            if fb.wrote_cache:
+                print(f"  ligas respondidas: {fb.fetched_sports}")
+                print(f"  eventos          : {fb.events}")
+                print(f"  fixtures criadas : {fb.fixtures}")
+                if fb.credits.get("remaining") is not None:
+                    print(
+                        f"  creditos restantes: {fb.credits['remaining']} "
+                        f"(usados: {fb.credits.get('used', '?')})"
+                    )
+                if fb.unresolved_teams:
+                    print(
+                        f"  times sem alias  : {len(fb.unresolved_teams)} "
+                        "(matching so por normalizacao de nome; sem "
+                        "garantia de rating — veja team_aliases.json)"
+                    )
+                fixtures = client.load_fixtures()
             else:
-                odd_txt = "—"
-            print(f"    {f.date} {f.time}  {f.match[:40]:40} {odd_txt}")
+                print(
+                    "AVISO: o fallback falhou (chave/quota/rede). O modo REAL "
+                    "continua sem cobertura; nada foi fabricado."
+                )
+
+    if fixtures:
+        # a amostra mostra jogos FUTUROS (o que o fluxo REAL consome);
+        # jogos passados do CSV da rodada anterior ficam de fora da lista
+        from betgsn.fixtures_odds_api import has_future_fixture as _has_future
+
+        com_odds = [
+            f for f in fixtures
+            if f.has_odds and f.has_kickoff and _has_future([f])
+        ]
+        if com_odds:
+            print(f"\n  proximos jogos futuros com odds ({len(com_odds)} no total):")
+            for f in com_odds[:12]:
+                best = f.best_odds.get("Resultado Final (1X2)", {})
+                if best:
+                    odd_txt = "  ".join(
+                        f"{oc}={best[oc]:.2f}({f.best_books['Resultado Final (1X2)'][oc]})"
+                        for oc in ("1", "X", "2") if oc in best
+                    )
+                else:
+                    odd_txt = "—"
+                origem = " [fallback]" if f.source == "the_odds_api" else ""
+                print(f"    {f.date} {f.time}  {f.match[:40]:40} {odd_txt}{origem}")
 
     # invalida o cache do servico para a tela pegar os dados novos
     from betgsn.real_signals import real_signals_service
@@ -864,7 +925,8 @@ def import_live_fixtures_cli(args: list[str]) -> int:
     real_signals_service.invalidate()
 
     print("\nPronto. A tela SINAIS passa a usar esses jogos (fonte: real).")
-    print("Os arquivos sao atualizados pelo site as sextas e as tercas.")
+    print("Os arquivos CSV sao atualizados pelo site as sextas e as tercas;")
+    print("na janela entre rodadas o fallback The Odds API cobre os jogos futuros.")
     return 0
 
 

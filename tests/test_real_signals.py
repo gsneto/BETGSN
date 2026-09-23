@@ -10,6 +10,8 @@ O que precisa ficar provado:
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from betgsn.football_data_uk import UpcomingFixture
@@ -122,6 +124,88 @@ def test_snapshot_raises_when_fixtures_have_no_odds(monkeypatch):
     )
     with pytest.raises(RealDataError, match="nenhum com odds"):
         svc.snapshot()
+
+
+def test_snapshot_rejects_fixture_in_the_past(monkeypatch):
+    """Fixture com kickoff ANTERIOR ao agora nunca vira jogo futuro.
+
+    E a protecao que impede um cache desatualizado (rodada que ja acabou)
+    de produzir sinais falsos. O fallback da The Odds API nao muda isso.
+    """
+    from betgsn.football_data_uk import FootballDataClient
+
+    ontem = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    passado = UpcomingFixture(
+        division="E0", league="Premier League (England)",
+        date=ontem, time="15:00", timezone="UTC",
+        home="Arsenal", away="Chelsea",
+        odds={"Resultado Final (1X2)": {
+            "Pinnacle": {"1": 1.90, "X": 3.40, "2": 4.20},
+            "Bet365": {"1": 1.85, "X": 3.35, "2": 4.10},
+            "Betfair Exchange": {"1": 1.95, "X": 3.45, "2": 4.30},
+        }},
+        best_odds={"Resultado Final (1X2)": {"1": 1.95, "X": 3.45, "2": 4.30}},
+        best_books={"Resultado Final (1X2)": {
+            "1": "Betfair Exchange", "X": "Betfair Exchange", "2": "Betfair Exchange"}},
+    )
+    assert passado.has_odds and passado.has_kickoff
+    monkeypatch.setattr(
+        FootballDataClient, "load_fixtures", lambda self: [passado],
+        raising=True,
+    )
+    svc = RealSignalsService()
+    with pytest.raises(RealDataError, match="após o instante atual"):
+        svc.snapshot()
+
+
+def test_snapshot_accepts_future_fixture_and_labels_fallback_source(monkeypatch):
+    """Fixture FUTURA com odds entra no snapshot; quando vem do fallback
+    (The Odds API), a fonte aparece em `sources` — proveniencia explicita."""
+    from betgsn import real_signals as mod
+    from betgsn.football_data_uk import FootballDataClient
+
+    amanha = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+    futuro = UpcomingFixture(
+        division="E0", league="Premier League (England)",
+        date=amanha, time="18:00", timezone="UTC",
+        home="Arsenal", away="Chelsea", source="the_odds_api",
+        odds={"Resultado Final (1X2)": {
+            "Pinnacle": {"1": 1.90, "X": 3.40, "2": 4.20},
+            "Bet365": {"1": 1.85, "X": 3.35, "2": 4.10},
+            "Betfair Exchange": {"1": 1.95, "X": 3.45, "2": 4.30},
+        }},
+        best_odds={"Resultado Final (1X2)": {"1": 1.95, "X": 3.45, "2": 4.30}},
+        best_books={"Resultado Final (1X2)": {
+            "1": "Betfair Exchange", "X": "Betfair Exchange", "2": "Betfair Exchange"}},
+    )
+    monkeypatch.setattr(
+        FootballDataClient, "load_fixtures", lambda self: [futuro], raising=True,
+    )
+    # uma partida historica qualquer: o corpus vazio e rejeitado por
+    # contrato (HistoricalCorpus), e o fit real esta mockado acima
+    from betgsn.football_data_uk import CsvMatch
+
+    partida = CsvMatch(
+        division="E0", league="Premier League (England)", season="2025/26",
+        date="2026-01-17", time="15:00", timezone="Europe/London",
+        home="Arsenal", away="Chelsea", home_goals=2, away_goals=1,
+    )
+    monkeypatch.setattr(
+        FootballDataClient, "load_matches", lambda self, **kw: [partida],
+        raising=True,
+    )
+    monkeypatch.setattr(
+        mod,
+        "_fit_on_real_history",
+        lambda client, cutoff=None, window_years=3: (
+            {"Arsenal": _rating("Arsenal"), "Chelsea": _rating("Chelsea")},
+            2.7, ["Arsenal", "Chelsea"], 400, ("2025-01-01", "2026-01-01"),
+        ),
+    )
+    svc = RealSignalsService()
+    snap = svc.snapshot()
+    assert snap.fixtures == [futuro]
+    assert any("The Odds API" in s for s in snap.sources)
 
 
 def test_error_messages_say_how_to_fix():

@@ -187,19 +187,30 @@ class RealSignalsService:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._snapshot: RealSnapshot | None = None
-        self._snapshot_key: tuple[int, int] | None = None
+        self._snapshot_key: tuple[int, int, str] | None = None
 
     # ------------------------------------------------------------- cache
 
-    def _cache_key(self, client: FootballDataClient) -> tuple[int, int]:
-        """Assinatura dos dados: muda quando historico ou fixtures mudam."""
-        main = client._fixtures_dir / "main.csv"
-        extra = client._fixtures_dir / "extra.csv"
-        fixture_mtime = max(
-            (p.stat().st_mtime for p in (main, extra) if p.exists()), default=0.0
+    def _cache_key(self, client: FootballDataClient) -> tuple[int, int, str]:
+        """Assinatura dos dados: muda quando historico ou fixtures mudam.
+
+        Inclui o mtime do cache do fallback (`oddsapi.json`): o corpus
+        signature do cliente so cobre CSVs, e um fallback novo precisa
+        invalidar o snapshot cacheado.
+        """
+        from .fixtures_odds_api import oddsapi_cache_path
+
+        try:
+            fallback_mtime = int(
+                oddsapi_cache_path(client._fixtures_dir).stat().st_mtime
+            )
+        except OSError:
+            fallback_mtime = 0
+        return (
+            client.corpus_signature(),
+            fallback_mtime,
+            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H"),
         )
-        n_files = len(list(client.main_dir.glob("*.csv")))
-        return (client.corpus_signature(), datetime.now(timezone.utc).strftime("%Y-%m-%dT%H"))
 
     def invalidate(self) -> None:
         with self._lock:
@@ -238,7 +249,11 @@ class RealSignalsService:
             if f.has_kickoff and utc_key(f.kickoff, f.timezone) > now
         ]
         if not com_odds:
-            raise RealDataError("nenhum jogo futuro após o instante atual; atualize com --import-fixtures-live")
+            raise RealDataError(
+                "nenhum jogo futuro após o instante atual; atualize com "
+                "--import-fixtures-live (football-data.co.uk, com fallback "
+                "The Odds API quando o CSV da rodada não tem jogos futuros)"
+            )
         # Um único corte conservador, anterior a TODOS os jogos do snapshot.
         cutoff = min(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                      min(utc_key(f.kickoff, f.timezone) for f in com_odds))
@@ -252,6 +267,10 @@ class RealSignalsService:
         sources = [f"football-data.co.uk ({inv['total_mb']} MB de historico)"]
         if inv["extras"]:
             sources.append(f"{len(inv['extras'])} ligas extras")
+        # proveniencia explicita: fixtures servidas pelo fallback
+        n_fallback = sum(1 for f in com_odds if f.source == "the_odds_api")
+        if n_fallback:
+            sources.append(f"The Odds API (fallback, {n_fallback} jogos futuros)")
 
         snap = RealSnapshot(
             fixtures=com_odds,

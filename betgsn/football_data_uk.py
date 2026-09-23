@@ -442,6 +442,10 @@ class UpcomingFixture:
     best_odds: dict[str, dict[str, float]] = field(default_factory=dict)
     #: casa que oferece cada melhor odd
     best_books: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: proveniencia da fixture ("football_data_uk" ou "the_odds_api" no
+    #: fallback). Fixtures do CSV nao precisavam disso porque havia UMA
+    #: fonte; com o fallback, `sources` do snapshot precisa distinguir.
+    source: str = "football_data_uk"
 
     @property
     def kickoff(self) -> str:
@@ -1087,7 +1091,16 @@ class FootballDataClient:
         return out, report
 
     def load_fixtures(self) -> list[UpcomingFixture]:
-        """Le os jogos futuros do cache local. Vazio se nunca baixados."""
+        """Le os jogos futuros do cache local. Vazio se nunca baixados.
+
+        Une DUAS fontes: o CSV do football-data.co.uk (primaria) e o
+        cache do fallback The Odds API (`fixtures/oddsapi.json`, ver
+        `fixtures_odds_api`). Duplicatas (mesma event_key) ficam com o
+        CSV. O filtro temporal — o que e futuro de verdade — continua
+        sendo responsabilidade de quem consome (`real_signals`).
+        """
+        from .fixtures_odds_api import load_cached_fixtures, merge_fixtures
+
         out: list[UpcomingFixture] = []
         main = self._fixtures_dir / "main.csv"
         if main.exists():
@@ -1099,15 +1112,21 @@ class FootballDataClient:
             out.extend(parse_fixtures_csv(
                 extra.read_text(encoding="utf-8"), extra=True
             ))
+        fallback = load_cached_fixtures(self._fixtures_dir)
+        if fallback:
+            out = merge_fixtures(out, fallback)
         # ordena por kickoff, mais proximo primeiro
         out.sort(key=lambda f: (f.date, f.time))
         return out
 
     def fixtures_inventory(self) -> dict[str, Any]:
         """Resumo dos jogos futuros em cache."""
+        from .fixtures_odds_api import read_cache_meta
+
         main = self._fixtures_dir / "main.csv"
         extra = self._fixtures_dir / "extra.csv"
-        if not main.exists() and not extra.exists():
+        fallback = read_cache_meta(self._fixtures_dir)
+        if not main.exists() and not extra.exists() and fallback is None:
             return {"available": False, "n_fixtures": 0}
         fixtures = self.load_fixtures()
         return {
@@ -1121,6 +1140,7 @@ class FootballDataClient:
                 (p.stat().st_mtime for p in (main, extra) if p.exists()),
                 default=0.0,
             ),
+            "fallback_oddsapi": fallback,
         }
 
     # ------------------------------------------------------------ leitura

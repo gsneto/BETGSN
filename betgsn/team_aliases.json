@@ -32,6 +32,900 @@
       "provider": "Botafogo",
       "fduk": "Botafogo RJ",
       "provenance": "captura The Odds API 2026-09-19 x extra.csv 2026-09-19; mesmo confronto na rodada"
+    },
+    {
+      "division": "E0",
+      "provider": "Brighton and Hove Albion",
+      "fduk": "Brighton",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Coventry City",
+      "fduk": "Coventry",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Hull City",
+      "fduk": "Hull",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Ipswich Town",
+      "fduk": "Ipswich",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Leeds United",
+      "fduk": "Leeds",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Manchester City",
+      "fduk": "Man City",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Manchester United",
+      "fduk": "Man United",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Newcastle United",
+      "fduk": "Newcastle",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Nottingham Forest",
+      "fduk": "Nott'm Forest",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Tottenham Hotspur",
+      "fduk": "Tottenham",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "West Ham United",
+      "fduk": "West Ham",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E0",
+      "provider": "Wolverhampton Wanderers",
+      "fduk": "Wolves",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Birmingham City",
+      "fduk": "Birmingham",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Blackburn Rovers",
+      "fduk": "Blackburn",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Bolton Wanderers",
+      "fduk": "Bolton",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Cardiff City",
+      "fduk": "Cardiff",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Charlton Athletic",
+      "fduk": "Charlton",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Derby County",
+      "fduk": "Derby",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Lincoln City",
+      "fduk": "Lincoln",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Norwich City",
+      "fduk": "Norwich",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Preston North End",
+      "fduk": "Preston",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Queens Park Rangers",
+      "fduk": "QPR",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Stoke City",
+      "fduk": "Stoke",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Swansea City",
+      "fduk": "Swansea",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "West Bromwich Albion",
+      "fduk": "West Brom",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Sheffield Wednesday",
+      "fduk": "Sheffield Weds",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "West Ham United",
+      "fduk": "West Ham",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Wolverhampton Wanderers",
+      "fduk": "Wolves",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Coventry City",
+      "fduk": "Coventry",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Hull City",
+      "fduk": "Hull",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Ipswich Town",
+      "fduk": "Ipswich",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E1",
+      "provider": "Leeds United",
+      "fduk": "Leeds",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Bradford City",
+      "fduk": "Bradford",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Bromley FC",
+      "fduk": "Bromley",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Burton Albion",
+      "fduk": "Burton",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Cambridge United",
+      "fduk": "Cambridge",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Doncaster Rovers",
+      "fduk": "Doncaster",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Huddersfield Town",
+      "fduk": "Huddersfield",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Mansfield Town",
+      "fduk": "Mansfield",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Oxford United",
+      "fduk": "Oxford",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Peterborough United",
+      "fduk": "Peterboro",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Plymouth Argyle",
+      "fduk": "Plymouth",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Stockport County FC",
+      "fduk": "Stockport",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Wycombe Wanderers",
+      "fduk": "Wycombe",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E2",
+      "provider": "Sheffield Wednesday",
+      "fduk": "Sheffield Weds",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Accrington Stanley",
+      "fduk": "Accrington",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Bristol Rovers",
+      "fduk": "Bristol Rvs",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Cheltenham Town",
+      "fduk": "Cheltenham",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Colchester United",
+      "fduk": "Colchester",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Crewe Alexandra",
+      "fduk": "Crewe",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Exeter City",
+      "fduk": "Exeter",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Grimsby Town",
+      "fduk": "Grimsby",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Northampton Town",
+      "fduk": "Northampton",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Oldham Athletic",
+      "fduk": "Oldham",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Rotherham United",
+      "fduk": "Rotherham",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Salford City",
+      "fduk": "Salford",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Shrewsbury Town",
+      "fduk": "Shrewsbury",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Swindon Town",
+      "fduk": "Swindon",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "E3",
+      "provider": "Tranmere Rovers",
+      "fduk": "Tranmere",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SC0",
+      "provider": "Falkirk F.C.",
+      "fduk": "Falkirk",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Athletic Bilbao",
+      "fduk": "Ath Bilbao",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Atlético Madrid",
+      "fduk": "Ath Madrid",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "CA Osasuna",
+      "fduk": "Osasuna",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Celta Vigo",
+      "fduk": "Celta",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Deportivo La Coruña",
+      "fduk": "La Coruna",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Espanyol",
+      "fduk": "Espanol",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Málaga",
+      "fduk": "Malaga",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Rayo Vallecano",
+      "fduk": "Vallecano",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Real Betis",
+      "fduk": "Betis",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Real Racing Club de Santander",
+      "fduk": "Santander",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP1",
+      "provider": "Real Sociedad",
+      "fduk": "Sociedad",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP2",
+      "provider": "Girona FC",
+      "fduk": "Girona",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP2",
+      "provider": "Real Sociedad B",
+      "fduk": "Sociedad B",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "SP2",
+      "provider": "Real Valladolid CF",
+      "fduk": "Valladolid",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "I1",
+      "provider": "AS Roma",
+      "fduk": "Roma",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "I1",
+      "provider": "Atalanta BC",
+      "fduk": "Atalanta",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "I1",
+      "provider": "Inter Milan",
+      "fduk": "Inter",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "I1",
+      "provider": "Hellas Verona",
+      "fduk": "Verona",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "I2",
+      "provider": "US Catanzaro 1929",
+      "fduk": "Catanzaro",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "I2",
+      "provider": "Hellas Verona",
+      "fduk": "Verona",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "1. FC Köln",
+      "fduk": "FC Koln",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "Bayer Leverkusen",
+      "fduk": "Leverkusen",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "Borussia Dortmund",
+      "fduk": "Dortmund",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "Borussia Mönchengladbach",
+      "fduk": "M'gladbach",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "Borussia Monchengladbach",
+      "fduk": "M'gladbach",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "Eintracht Frankfurt",
+      "fduk": "Ein Frankfurt",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "FSV Mainz 05",
+      "fduk": "Mainz",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "Hamburger SV",
+      "fduk": "Hamburg",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "TSG Hoffenheim",
+      "fduk": "Hoffenheim",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "D1",
+      "provider": "VfB Stuttgart",
+      "fduk": "Stuttgart",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "F1",
+      "provider": "AS Monaco",
+      "fduk": "Monaco",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "F1",
+      "provider": "Paris Saint Germain",
+      "fduk": "Paris SG",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "F1",
+      "provider": "RC Lens",
+      "fduk": "Lens",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "N1",
+      "provider": "FC Twente Enschede",
+      "fduk": "Twente",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "N1",
+      "provider": "Fortuna Sittard",
+      "fduk": "For Sittard",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "N1",
+      "provider": "NEC Nijmegen",
+      "fduk": "Nijmegen",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "G1",
+      "provider": "AE Kifisia FC",
+      "fduk": "Kifisia",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "G1",
+      "provider": "AEK Athens",
+      "fduk": "AEK",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "G1",
+      "provider": "Aris Thessaloniki",
+      "fduk": "Aris",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "G1",
+      "provider": "Atromitos Athens",
+      "fduk": "Atromitos",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "G1",
+      "provider": "Levadiakos",
+      "fduk": "Levadeiakos",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "G1",
+      "provider": "Olympiakos Piraeus",
+      "fduk": "Olympiakos",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "G1",
+      "provider": "PAOK Thessaloniki",
+      "fduk": "PAOK",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "G1",
+      "provider": "Panetolikos Agrinio",
+      "fduk": "Panetolikos",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "G1",
+      "provider": "Volos FC",
+      "fduk": "Volos NFC",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "AUT",
+      "provider": "Austria Lustenau",
+      "fduk": "A. Lustenau",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "AUT",
+      "provider": "Austria Wien",
+      "fduk": "Austria Vienna",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "AUT",
+      "provider": "RB Salzburg",
+      "fduk": "Salzburg",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "AUT",
+      "provider": "Rapid Wien",
+      "fduk": "SK Rapid",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "AUT",
+      "provider": "Rheindorf Altach",
+      "fduk": "Altach",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "AUT",
+      "provider": "WSG Tirol",
+      "fduk": "Tirol",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "DNK",
+      "provider": "AGF Aarhus",
+      "fduk": "Aarhus",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "DNK",
+      "provider": "Brondby IF",
+      "fduk": "Brondby",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "DNK",
+      "provider": "OB Odense BK",
+      "fduk": "Odense",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "DNK",
+      "provider": "Silkeborg IF",
+      "fduk": "Silkeborg",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "DNK",
+      "provider": "Viborg FF",
+      "fduk": "Viborg",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "NOR",
+      "provider": "Bodø/Glimt",
+      "fduk": "Bodo/Glimt",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "NOR",
+      "provider": "Fredrikstad FK",
+      "fduk": "Fredrikstad",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "NOR",
+      "provider": "IK Start",
+      "fduk": "Start",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "NOR",
+      "provider": "KFUM",
+      "fduk": "KFUM Oslo",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "NOR",
+      "provider": "Kristiansund BK",
+      "fduk": "Kristiansund",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "NOR",
+      "provider": "SK Brann",
+      "fduk": "Brann",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "NOR",
+      "provider": "Sarpsborg FK",
+      "fduk": "Sarpsborg 08",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "NOR",
+      "provider": "Viking FK",
+      "fduk": "Viking",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "IRL",
+      "provider": "Galway United",
+      "fduk": "Galway",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "IRL",
+      "provider": "Shelbourne Dublin",
+      "fduk": "Shelbourne",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "MEX",
+      "provider": "Atlético San Luis",
+      "fduk": "Atl. San Luis",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "MEX",
+      "provider": "Guadalajara",
+      "fduk": "Guadalajara Chivas",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "MEX",
+      "provider": "Pumas",
+      "fduk": "UNAM Pumas",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "MEX",
+      "provider": "Tigres",
+      "fduk": "Tigres UANL",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Aldosivi Mar del Plata",
+      "fduk": "Aldosivi",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Argentinos Juniors",
+      "fduk": "Argentinos Jrs",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Atlético Huracán",
+      "fduk": "Huracan",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Atlético Tucuman",
+      "fduk": "Atl. Tucuman",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Belgrano de Cordoba",
+      "fduk": "Belgrano",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "CA Tigre BA",
+      "fduk": "Tigre",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Deportivo Riestra",
+      "fduk": "Dep. Riestra",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Estudiantes",
+      "fduk": "Estudiantes L.P.",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Estudiantes de Río Cuarto",
+      "fduk": "Estudiantes Rio Cuarto",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Gimnasia La Plata",
+      "fduk": "Gimnasia L.P.",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Independiente Rivadavia",
+      "fduk": "Ind. Rivadavia",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Instituto de Córdoba",
+      "fduk": "Instituto",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Sarmiento de Junin",
+      "fduk": "Sarmiento Junin",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Talleres",
+      "fduk": "Talleres Cordoba",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Union Santa Fe",
+      "fduk": "Union de Santa Fe",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "ARG",
+      "provider": "Velez Sarsfield BA",
+      "fduk": "Velez Sarsfield",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "USA",
+      "provider": "Atlanta United FC",
+      "fduk": "Atlanta Utd",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "USA",
+      "provider": "D.C. United",
+      "fduk": "DC United",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
+    },
+    {
+      "division": "USA",
+      "provider": "LA Galaxy",
+      "fduk": "Los Angeles Galaxy",
+      "provenance": "curadoria manual 2026-09-22: import fallback The Odds API (fixtures futuras 2026-09-23 a 2026-11) confrontado com os CSVs FDUK 2526; identidade do clube conferida manualmente e alvo validado contra o corpus"
     }
   ]
 }

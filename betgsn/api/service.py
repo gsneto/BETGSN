@@ -1043,12 +1043,20 @@ class BetgsnService:
                 status="UPCOMING" if has_odds else "NO_ODDS",
             ))
 
+        # proveniencia honesta: quando o fallback serve parte dos jogos,
+        # o label diz — fixture de The Odds API nao pode aparecer como
+        # se fosse do CSV.
+        origins = {f.source for f in fixtures_raw}
+        fixtures_source = "football-data.co.uk"
+        if "the_odds_api" in origins:
+            fixtures_source += " + The Odds API (fallback)"
+
         return S.FixtureOverview(
             generated_at=now,
             n_fixtures=len(fixture_items),
             n_with_odds=sum(1 for f in fixture_items if f.has_odds),
             fixtures=fixture_items,
-            source="football-data.co.uk",
+            source=fixtures_source,
             data_version=client.corpus_signature() if inv.get("available") else None,
         )
 
