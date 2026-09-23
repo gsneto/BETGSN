@@ -25,9 +25,9 @@ import types
 import pytest
 
 from betgsn.line_shopping_audit import (
-    N_BOOKS_BUCKETS,
     price_of,
     run_line_shopping_audit,
+    strategy_model_decomposition,
 )
 from betgsn.value_walkforward import WalkForwardConfig
 

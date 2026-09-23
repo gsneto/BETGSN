@@ -217,3 +217,77 @@ reavaliado sobre os relatórios já persistidos em `output/engineering/`.
   timestamped de CLV positivo e efeito acima do ruído.
 
 O resultado negativo está preservado, versionado e auditável.
+
+---
+
+## 8. Etapa market/CLV validation (branch agent/market-clv-validation)
+
+### 8.1 Auditoria do line-shopping (o efeito de ~+6,4pp)
+
+`tools/line_shopping_audit.py` decompõe o efeito reportado entre
+strategy_model COM e SEM line-shopping em duas partes, sobre o corpus
+real (587.015 linhas apostáveis):
+
+- **POPULAÇÃO CONSTANTE** (mesmas apostas da regra, preço variando):
+  n=6.751; ROI ao melhor preço +1,61% [bootstrap +0,56%..+2,68%], à
+  segunda melhor +0,71%, à mediana -0,36%, à pior -2,52%. Delta puro de
+  preço **+1,97pp**, positivo em **24/24 janelas**, em todas as odd
+  bands e todos os buckets de bookmakers.
+- **POPULAÇÃO VARIÁVEL** (semântica da ablação `use_median`):
+  reproduz o número reportado e mostra quanto dele é população
+  diferente.
+- **strategy_model (EV>0, n=181.172)**: as MESMAS apostas liquidadas ao
+  melhor preço (-4,89%) e à mediana (-11,13%) → delta puro de preço
+  **+6,24pp** do +6,42pp reportado (~0,18pp é efeito de população).
+
+Leitura honesta: o efeito é essencialmente de PREÇO (best vs median na
+mesma população), estável temporalmente e não depende de poucos books,
+poucas janelas ou bandas específicas. LIMITAÇÕES: as odds do corpus não
+têm timestamp de publicação — quote age e time-to-kickoff históricos
+são indemonstráveis (perguntas B/C/E); o caminho operacional continua
+PIT via `OddsSnapshotStore.line_at` (testado). Auditoria, não tuning:
+nenhum parâmetro foi ajustado.
+
+### 8.2 CLV prospectivo — ciclo de vida e proveniência
+
+Store schema v4: entradas de CLV carregam home/away/league/casa
+representativa/execution_status (migração ALTER TABLE, append-only).
+Estados explícitos do ciclo de vida:
+
+| estado | significado |
+|---|---|
+| PENDING | kickoff no futuro — fechamento ainda pode chegar |
+| NO_CLOSE | kickoff passou sem fechamento válido (nunca CLV=0) |
+| CLOSED | entry < closing < kickoff — CLV calculado |
+| INVALID | dado inconsistente (fechamento antes da entrada etc.) |
+| MISMATCH | entrada sem observação correspondente no store |
+
+`clv_lifecycle_sweep` é a passada operacional (leitura, idempotente).
+Executabilidade: `execution_status=UNKNOWN` — preço observado na decisão
+nunca é presumido igual ao preço executado.
+
+### 8.3 Modelos experimentais nas MESMAS 24 janelas
+
+`tools/ml_oos_validation.py` avalia Elo/XGBoost/LightGBM no MESMO
+protocolo da Etapa 19 (`ml_walkforward.MLWindowAdapter` plugado ao
+`run_model_walkforward` via `model_fn`): features point-in-time,
+treino apenas com partidas anteriores a train_end, early stopping em
+split temporal interno do TRAIN, hiperparâmetros default (sem tuning
+OOS). Ensemble: PENDENTE (exige stacking OOS por janela). Sem ranking,
+sem vencedor, sem promoção.
+
+### 8.4 Observabilidade
+
+`/api/quant/*` (benchmarks, model-vs-market, line-shopping, ml,
+clv/status): leitura pura, fingerprint validado, estados explícitos
+MISSING/STALE/NO_VALID_CACHE. `tools/benchmark_manifest.py` congela a
+referência da Etapa 19 (corpus, protocolo, fingerprints, versões) com
+estado de reprodutibilidade por cache. Frontend: aba Quant.
+
+### 8.5 Conclusão da fase
+
+- O ganho do line-shopping é real COMO PREÇO, mas não muda o veredito:
+  strategy_model segue negativa em qualquer preço.
+- CLV prospectivo: 480 entradas PENDING (kickoffs futuros), n=0 com CLV
+  válido — gate segue bloqueado, **NO BET** permanece.
+- production_eligible = false inalterado; promotion gate intocado.

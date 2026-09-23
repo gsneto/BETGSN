@@ -28,16 +28,6 @@ from typing import Any
 
 from betgsn import __version__
 
-#: caches que compõem a referência oficial, com seus leitores validados.
-#: Um cache que não existe ou não passa no fingerprint entra como
-#: "STALE"/"MISSING" no manifesto — o estado é parte da evidência.
-BENCHMARK_CACHES: tuple[tuple[str, str], ...] = (
-    ("value_validation_oos.json", "value"),
-    ("model_validation_oos.json", "model"),
-    ("value_validation.json", "value_full_sample"),
-)
-
-
 def _cache_status(payload: dict | None, expected: str | None) -> str:
     """Estado do cache: VALID / STALE / MISSING — nunca silencioso."""
     if payload is None:
