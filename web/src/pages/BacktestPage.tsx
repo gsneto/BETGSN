@@ -81,7 +81,6 @@ export default function BacktestPage() {
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [optionsRetry]);
 
   const handleRun = useCallback(

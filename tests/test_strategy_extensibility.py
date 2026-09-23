@@ -534,13 +534,19 @@ def test_api_no_bet_surfaces_with_runner_decision():
     /api/signals nao apresenta stake operacional positivo (a fracao da
     decisao e zero) e as multiplas vem vazias: uma multipla e uma
     aposta, e NO_BET nao constroi aposta.
+
+    O snapshot e criado EXPLICITAMENTE por um recalculate — mesmo ciclo
+    de producao do recalculate assincrono: endpoints GET nao constroem
+    snapshot implicitamente e cold start responde 503 com instrucao.
     """
     from fastapi.testclient import TestClient
 
+    from betgsn.api import schemas as S
     from betgsn.api import server
     from betgsn.api.service import BetgsnService
 
     monkeypatch_service = BetgsnService(source="synthetic")
+    monkeypatch_service.recalculate(S.ModelConfiguration())
     server.service = monkeypatch_service
     try:
         with TestClient(server.app) as client:

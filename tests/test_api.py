@@ -996,22 +996,37 @@ def test_signal_carries_kickoff_provider_and_odd(svc_snapshot, core):
 
 
 def _patch_server_service(monkeypatch):
-    """Troca o service global do servidor por um sintetico isolado."""
+    """Troca o service global do servidor por um sintetico isolado.
+
+    O snapshot e criado EXPLICITAMENTE por um recalculate — mesmo ciclo
+    de producao do recalculate assincrono (cdd91cb): nenhum endpoint GET
+    constroi snapshot implicitamente, e cold start responde 503 com
+    instrucao (ver `_snapshot` no server). Os endpoints de portfolio
+    derivam tudo do snapshot, entao o teste precisa de um snapshot real
+    calculado pelo pipeline, igual a producao.
+    """
     from betgsn.api import server
 
     synthetic = BetgsnService(source="synthetic")
+    synthetic.recalculate(CONFIG)
     monkeypatch.setattr(server, "service", synthetic)
     return synthetic
 
 
 def test_portfolio_exposure_no_bet_creates_no_exposure(monkeypatch):
-    """NO_BET chegando ao portfolio: nenhuma exposicao e criada."""
+    """NO_BET chegando ao portfolio: nenhuma exposicao e criada.
+
+    O contrato tambem carrega o MOTIVO e o status de evidencia da
+    decisao — a UI precisa explicar por que as stakes sao zero.
+    """
     _patch_server_service(monkeypatch)
     with TestClient(app) as c:
         r = c.get("/api/portfolio/exposure")
     assert r.status_code == 200
     body = r.json()
     assert body["decision_action"] == "NO_BET"
+    assert body["decision_reason"]
+    assert body["decision_evidence_status"]
     assert body["total_exposure"] == 0.0
     assert body["total_exposure_pct"] == 0.0
     assert body["within_limits"] is True

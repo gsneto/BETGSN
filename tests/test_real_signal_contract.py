@@ -70,7 +70,7 @@ def _real_report(monkeypatch, fx: UpcomingFixture):
         computed_in_ms=0.0, sources=["controlled-test"],
     )
     svc = RealSignalsService()
-    monkeypatch.setattr(svc, "snapshot", lambda: snap)
+    monkeypatch.setattr(svc, "snapshot", lambda **kwargs: snap)
     report, snap_out = svc.report(market_keys=("1x2",))
     assert report.signals, "cenario de teste precisa produzir sinal"
     return report, snap_out
