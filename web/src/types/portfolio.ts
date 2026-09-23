@@ -42,6 +42,12 @@ export interface ParlayCandidate {
 
 /** Exposicao agregada das apostas simples do snapshot atual. */
 export interface ExposureReport {
+  /** acao da decisao do Quant: "BET" | "NO_BET" | null (sem decisao) */
+  decision_action: string | null;
+  /** motivo da decisao (ver staking.decide_bet) */
+  decision_reason: string | null;
+  /** status de evidencia que fundamentou a decisao */
+  decision_evidence_status: string | null;
   total_exposure: number;
   /** fracao da banca, ja em [0,1] */
   total_exposure_pct: number;

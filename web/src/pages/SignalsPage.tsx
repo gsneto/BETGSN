@@ -48,7 +48,8 @@ export default function SignalsPage() {
         setStatus(s);
       })
       .catch(() => {
-        /* status e opcional: sem ele o seletor fica so no sintetico */
+        /* status e opcional: sem ele o seletor continua utilizavel e a
+           indisponibilidade real (se existir) aparece no fetch de sinais */
       });
     return () => {
       active = false;

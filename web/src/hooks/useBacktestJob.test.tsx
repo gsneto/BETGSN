@@ -20,12 +20,28 @@ vi.mock("@/api/backtest", () => ({
 
 const request = backtestOptions.default_config;
 
+/** Status idle para a consulta de reattach feita no mount do hook. */
+const idleStatus = {
+  job_id: null,
+  phase: "idle" as const,
+  done: 0,
+  total: 0,
+  progress: 0,
+  message: "Pronto.",
+  run_id: null,
+  error: null,
+};
+
 describe("useBacktestJob", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    // por padrao o mount consulta o status e encontra nada em execucao
+    vi.mocked(backtestApi.fetchBacktestStatus).mockResolvedValue(idleStatus);
   });
 
   afterEach(() => {
+    vi.mocked(backtestApi.fetchBacktestStatus).mockReset();
+    vi.mocked(backtestApi.startBacktest).mockReset();
     vi.useRealTimers();
   });
 
@@ -46,6 +62,7 @@ describe("useBacktestJob", () => {
       progress: 0,
     });
     vi.mocked(backtestApi.fetchBacktestStatus)
+      .mockResolvedValueOnce(idleStatus) // consulta de reattach no mount
       .mockResolvedValueOnce(backtestJobStatus)
       .mockResolvedValueOnce({
         ...backtestJobStatus,
@@ -168,5 +185,40 @@ describe("useBacktestJob", () => {
       await vi.advanceTimersByTimeAsync(5000);
     });
     expect(vi.mocked(backtestApi.fetchBacktestStatus).mock.calls.length).toBe(before);
+  });
+
+  it("reanexa um job em execucao no mount (troca de aba e volta)", async () => {
+    // o backend ja esta rodando: o hook adota o estado e continua o
+    // polling em vez de fingir IDLE
+    vi.mocked(backtestApi.fetchBacktestStatus)
+      .mockResolvedValueOnce({ ...backtestJobStatus, phase: "preparing", progress: 0.1 })
+      .mockResolvedValueOnce(backtestJobStatus)
+      .mockResolvedValueOnce({
+        ...backtestJobStatus,
+        phase: "done",
+        progress: 1,
+        run_id: "bt_reattach",
+        message: "Concluído",
+      });
+
+    const onFinished = vi.fn();
+    const { result } = renderHook(() => useBacktestJob(onFinished));
+    // deixa a consulta de reattach do mount resolver
+    await act(async () => {});
+
+    // o mount adotou o job sem nenhum startBacktest
+    expect(backtestApi.startBacktest).not.toHaveBeenCalled();
+    expect(result.current.running).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(result.current.status.phase).toBe("analyzing");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(result.current.status.phase).toBe("done");
+    expect(onFinished).toHaveBeenCalledWith("bt_reattach");
   });
 });

@@ -40,7 +40,11 @@ export default function SignalsSourceBanner({
   decision,
   onChange,
 }: Props) {
-  const realAvailable = status?.real.available ?? false;
+  // Ausencia de observacao do /api/signals/status NAO desabilita a fonte
+  // real: sem status conhecido o seletor permanece utilizavel e o erro
+  // real (se houver) aparece no carregamento dos proprios sinais.
+  const statusUnknown = status == null;
+  const realAvailable = status?.real.available ?? true;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -86,9 +90,11 @@ export default function SignalsSourceBanner({
               disabled={!realAvailable}
               onClick={() => onChange("real")}
               title={
-                realAvailable
-                  ? "Jogos futuros reais com odds reais"
-                  : "Sem jogos em cache: rode --import-fixtures-live"
+                statusUnknown
+                  ? "Disponibilidade não verificada — o carregamento mostra o estado real"
+                  : realAvailable
+                    ? "Jogos futuros reais com odds reais"
+                    : "Sem jogos em cache: rode --import-fixtures-live"
               }
             >
               Reais

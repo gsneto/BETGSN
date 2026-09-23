@@ -23,8 +23,10 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr,
 } from "@/components/ui";
+import { SearchInput } from "@/components/ui/Input";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useStore } from "@/store/context";
 import type { FixtureItem } from "@/types/api";
@@ -40,9 +42,21 @@ function kickoffLabel(f: FixtureItem): string {
   return fmtDateTime(f.kickoff);
 }
 
+/** Chave única: "Casa vs Fora" pode se repetir entre competições. */
+function fixtureKey(f: FixtureItem, i: number): string {
+  return `${f.league}|${f.match}|${f.kickoff || f.kickoff_local}|${i}`;
+}
+
+type SortKey = "kickoff" | "match" | "league" | "n_bookmakers";
+
 export default function FixturesPage() {
   const { dataVersion } = useStore();
   const [filter, setFilter] = useState<"all" | "with_odds" | "no_odds">("all");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
+    key: "kickoff",
+    dir: 1,
+  });
 
   const { data, initialLoading, error, reload } = useApiResource(
     (signal) => fetchFixtures(signal),
@@ -51,10 +65,49 @@ export default function FixturesPage() {
 
   const filtered = useMemo(() => {
     if (!data) return [];
-    if (filter === "with_odds") return data.fixtures.filter((f) => f.has_odds);
-    if (filter === "no_odds") return data.fixtures.filter((f) => !f.has_odds);
-    return data.fixtures;
-  }, [data, filter]);
+    const q = query.trim().toLowerCase();
+    const base = data.fixtures.filter((f) => {
+      if (filter === "with_odds" && !f.has_odds) return false;
+      if (filter === "no_odds" && f.has_odds) return false;
+      if (!q) return true;
+      return (
+        f.match.toLowerCase().includes(q) ||
+        f.league.toLowerCase().includes(q) ||
+        (f.round_label ?? "").toLowerCase().includes(q)
+      );
+    });
+    const sorted = [...base];
+    sorted.sort((a, b) => {
+      let cmp = 0;
+      switch (sort.key) {
+        case "kickoff":
+          cmp = (a.kickoff || a.kickoff_local || "").localeCompare(
+            b.kickoff || b.kickoff_local || "",
+          );
+          break;
+        case "match":
+          cmp = a.match.localeCompare(b.match);
+          break;
+        case "league":
+          cmp = a.league.localeCompare(b.league);
+          break;
+        case "n_bookmakers":
+          cmp = a.n_bookmakers - b.n_bookmakers;
+          break;
+      }
+      return cmp * sort.dir;
+    });
+    return sorted;
+  }, [data, filter, query, sort]);
+
+  const toggleSort = (key: SortKey) => {
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: 1 },
+    );
+  };
+
+  const sortIndicator = (key: SortKey) =>
+    sort.key === key ? (sort.dir === 1 ? " ↑" : " ↓") : "";
 
   if (initialLoading) {
     return (
@@ -77,58 +130,101 @@ export default function FixturesPage() {
 
       <Card
         title="Fixtures"
-        hint={`${fmtInt(data.n_fixtures)} jogos · ${fmtInt(data.n_with_odds)} com odds · atualizado ${fmtDateTime(data.generated_at)}`}
+        hint={`${fmtInt(data.n_fixtures)} jogos · ${fmtInt(data.n_with_odds)} com odds · fonte ${data.source} · atualizado ${fmtDateTime(data.generated_at)}`}
         padded={false}
         action={
           <div className="flex items-center gap-2">
-            {(["all", "with_odds", "no_odds"] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFilter(f)}
-                className={cn(
-                  "label-caps px-2 py-1 rounded text-[11.5px]",
-                  filter === f
-                    ? "bg-accent-400/8 text-accent-300"
-                    : "bg-surface-2 text-ink-3 hover:bg-surface-3",
-                )}
-              >
-                {f === "all" ? "Todos" : f === "with_odds" ? "Com odds" : "Sem odds"}
-              </button>
-            ))}
+            <SearchInput
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onClear={() => setQuery("")}
+              placeholder="Buscar jogo, liga ou rodada…"
+              aria-label="Buscar fixtures"
+              className="w-[260px]"
+            />
+            <div className="flex items-center gap-2">
+              {(["all", "with_odds", "no_odds"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  className={cn(
+                    "label-caps px-2 py-1 rounded text-[11.5px]",
+                    filter === f
+                      ? "bg-accent-400/8 text-accent-300"
+                      : "bg-surface-2 text-ink-3 hover:bg-surface-3",
+                  )}
+                >
+                  {f === "all" ? "Todos" : f === "with_odds" ? "Com odds" : "Sem odds"}
+                </button>
+              ))}
+            </div>
           </div>
         }
       >
         <div className="p-3">
           {filtered.length === 0 ? (
             <EmptyState
-              title={filter === "all" ? "Nenhum fixture" : `Sem jogos ${filter === "with_odds" ? "com odds" : "sem odds"}`}
-              hint="Os fixtures são atualizados pelo football-data.co.uk."
+              title={
+                query
+                  ? "Nenhum fixture corresponde à busca"
+                  : filter === "all"
+                    ? "Nenhum fixture"
+                    : `Sem jogos ${filter === "with_odds" ? "com odds" : "sem odds"}`
+              }
+              hint={
+                query
+                  ? "Limpe a busca para ver todos os fixtures."
+                  : `Fonte atual: ${data.source}. Os fixtures são atualizados pelo importador.`
+              }
             />
           ) : (
-            <TableShell className="max-h-[440px]">
+            <TableShell className="max-h-[480px]">
               <Table>
                 <THead>
                   <Tr className="h-[34px] hover:bg-transparent">
-                    <Th width={220} align="start">Jogo</Th>
-                    <Th width={100} align="start">Liga</Th>
-                    <Th width={100} align="center">Kickoff</Th>
+                    <Th width={230} align="start">
+                      <button type="button" onClick={() => toggleSort("match")} className="hover:text-ink">
+                        Jogo{sortIndicator("match")}
+                      </button>
+                    </Th>
+                    <Th width={110} align="start">
+                      <button type="button" onClick={() => toggleSort("league")} className="hover:text-ink">
+                        Liga{sortIndicator("league")}
+                      </button>
+                    </Th>
+                    <Th width={110} align="center">
+                      <button type="button" onClick={() => toggleSort("kickoff")} className="hover:text-ink">
+                        Kickoff{sortIndicator("kickoff")}
+                      </button>
+                    </Th>
                     <Th width={80} align="center">Odds</Th>
-                    <Th width={80} align="end">Bookmakers</Th>
-                    <Th width={100} align="start">Mercados</Th>
+                    <Th width={90} align="end">
+                      <button type="button" onClick={() => toggleSort("n_bookmakers")} className="hover:text-ink">
+                        Casas{sortIndicator("n_bookmakers")}
+                      </button>
+                    </Th>
+                    <Th width={110} align="start">Mercados</Th>
                   </Tr>
                 </THead>
                 <TBody>
-                  {filtered.map((f) => (
-                    <Tr key={f.match}>
+                  {filtered.map((f, i) => (
+                    <Tr key={fixtureKey(f, i)}>
                       <Td align="start" className="font-medium text-ink">
                         {f.home} vs {f.away}
                         {!f.has_odds && (
                           <Badge tone="neutral" size="sm" className="ms-2">sem odds</Badge>
                         )}
                       </Td>
-                      <Td mono className="text-ink-3">{f.league}</Td>
-                      <Td mono className="text-ink-2">{kickoffLabel(f)}</Td>
+                      <Td className="text-ink-3">
+                        <span className="text-[12.5px]">{f.league}</span>
+                        {f.round_label ? (
+                          <span className="block text-[11px] text-ink-4">{f.round_label}</span>
+                        ) : null}
+                      </Td>
+                      <Td className="text-ink-2">
+                        <span className="text-[12.5px]">{kickoffLabel(f)}</span>
+                      </Td>
                       <Td align="center" mono>
                         {f.has_odds ? (
                           <span className="text-accent-300">sim</span>
@@ -136,10 +232,22 @@ export default function FixturesPage() {
                           <span className="text-ink-4">—</span>
                         )}
                       </Td>
-                      <Td mono className="text-ink-2">{fmtInt(f.n_bookmakers)}</Td>
-                      <Td mono className="text-ink-3">
-                        {f.markets.slice(0, 2).join(", ")}
-                        {f.markets.length > 2 ? ` +${f.markets.length - 2}` : ""}
+                      <Td mono align="end" className="text-ink-2">
+                        <Tooltip
+                          content={
+                            f.bookmakers.length > 0
+                              ? f.bookmakers.join(", ")
+                              : "Nenhum bookmaker observado"
+                          }
+                        >
+                          <span>{fmtInt(f.n_bookmakers)}</span>
+                        </Tooltip>
+                      </Td>
+                      <Td className="text-ink-3">
+                        <span className="text-[12.5px]">
+                          {f.markets.slice(0, 2).join(", ")}
+                          {f.markets.length > 2 ? ` +${f.markets.length - 2}` : ""}
+                        </span>
                       </Td>
                     </Tr>
                   ))}

@@ -176,6 +176,34 @@ export default function PortfolioPage() {
             <ErrorPanel message={exposure.error} onRetry={exposure.reload} />
           ) : null}
 
+          {exp.decision_action === "NO_BET" ? (
+            <Card className="border-warn-500/40 bg-warn-900/20">
+              <div className="flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className="mt-[5px] size-[7px] shrink-0 rounded-full bg-warn-400"
+                />
+                <div className="min-w-0 text-body leading-relaxed text-ink-2">
+                  <p className="font-medium text-warn-300">
+                    Quant decidiu NÃO APOSTAR (NO_BET) — exposição operacional zero
+                  </p>
+                  <p className="mt-1">
+                    {exp.decision_reason ??
+                      "A decisão do Quant zerou todas as stakes: nenhuma exposição foi criada."}{" "}
+                  </p>
+                  <p className="mt-1 text-ink-3">
+                    Os valores exibidos abaixo são apenas diagnósticos do que{" "}
+                    <em>seria</em> a carteira se as regras de evidência permitissem
+                    apostar. Não são apostas autorizadas.
+                    {exp.decision_evidence_status
+                      ? ` Evidência da decisão: ${exp.decision_evidence_status}.`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ) : null}
+
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <KpiCard
               label="Exposição total"

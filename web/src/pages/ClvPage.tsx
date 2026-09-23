@@ -1,8 +1,12 @@
 /**
  * ClvPage — tela de CLV (Closing Line Value).
+ *
+ * Contrato: /api/clv. Tudo vem do backend — inclusive a distinção
+ * honesta entre os status (OK, sem fechamento, entrada pós-fechamento,
+ * sem entrada observada). Nenhum número é fabricado aqui.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { fetchClv } from "@/api/clv";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
@@ -17,11 +21,14 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr,
 } from "@/components/ui";
+import { SearchInput } from "@/components/ui/Input";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useStore } from "@/store/context";
-import { fmtOdd, fmtPct } from "@/utils/format";
+import { cn } from "@/utils/cn";
+import { fmtDateTime, fmtInt, fmtOdd, fmtPct } from "@/utils/format";
 
 /** Rótulos dos status de CLV — mesmos enums do backend. */
 const clvStatusLabel: Record<string, string> = {
@@ -35,22 +42,33 @@ const clvStatusFilter: Array<{ value: string; label: string }> = [
   { value: "all", label: "Todos" },
   { value: "OK", label: "OK" },
   { value: "NO_CLOSING_ODDS", label: "Sem fechamento" },
-  { value: "CLOSING_BEFORE_ENTRY", label: "Entrada pós-fechamento" },
+  { value: "CLOSING_BEFORE_ENTRY", label: "Pós-fechamento" },
   { value: "NO_ENTRY_ODDS", label: "Sem entrada" },
 ];
 
 export default function ClvPage() {
   const { dataVersion } = useStore();
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [query, setQuery] = useState("");
 
   const { data, initialLoading, error, reload } = useApiResource(
     (signal) => fetchClv(signal),
     [dataVersion],
   );
 
-  const entries = data ? (
-    filterStatus === "all" ? data.entries : data.entries.filter((e) => e.status === filterStatus)
-  ) : [];
+  const entries = useMemo(() => {
+    if (!data) return [];
+    const q = query.trim().toLowerCase();
+    return data.entries.filter((e) => {
+      if (filterStatus !== "all" && e.status !== filterStatus) return false;
+      if (!q) return true;
+      return (
+        e.match.toLowerCase().includes(q) ||
+        e.market.toLowerCase().includes(q) ||
+        e.outcome.toLowerCase().includes(q)
+      );
+    });
+  }, [data, filterStatus, query]);
 
   if (initialLoading) {
     return (
@@ -67,6 +85,8 @@ export default function ClvPage() {
 
   if (!data) return null;
 
+  const marketRows = Object.entries(data.by_market ?? {});
+
   return (
     <div className="flex flex-col gap-3">
       {error ? <ErrorPanel message={error} onRetry={reload} /> : null}
@@ -75,27 +95,89 @@ export default function ClvPage() {
         <KpiCard label="Total de bets" value={String(data.total_bets)} />
         <KpiCard label="Com CLV" value={String(data.bets_with_clv)} tone="accent" />
         <KpiCard label="Taxa positiva" value={data.positive_clv_rate != null ? fmtPct(data.positive_clv_rate) : "—"} />
-        <KpiCard label="Avg CLV" value={data.avg_clv_percentage != null ? fmtPct(data.avg_clv_percentage) : "—"} />
+        <KpiCard
+          label="Avg CLV"
+          value={data.avg_clv_percentage != null ? fmtPct(data.avg_clv_percentage) : "—"}
+          context={data.median_clv_percentage != null ? `mediana ${fmtPct(data.median_clv_percentage)}` : undefined}
+        />
       </div>
+
+      {marketRows.length > 0 ? (
+        <Card
+          title="CLV por mercado"
+          hint="Média de CLV% por mercado — apenas linhas com fechamento válido entram na média"
+          padded={false}
+        >
+          <div className="p-3">
+            <TableShell className="max-h-[240px]">
+              <Table>
+                <THead>
+                  <Tr className="h-[34px] hover:bg-transparent">
+                    <Th align="start">Mercado</Th>
+                    <Th align="end" title="Linhas apostáveis do snapshot">Linhas</Th>
+                    <Th align="end" title="Linhas com fechamento válido observado">Com CLV</Th>
+                    <Th align="end" title="Média de CLV% das linhas com fechamento">Avg CLV %</Th>
+                  </Tr>
+                </THead>
+                <TBody>
+                  {marketRows.map(([market, m]) => (
+                    <Tr key={market}>
+                      <Td mono align="start" className="text-ink-2">{market}</Td>
+                      <Td mono align="end">{fmtInt(m.n)}</Td>
+                      <Td mono align="end">{fmtInt(m.with_clv)}</Td>
+                      <Td
+                        mono
+                        align="end"
+                        className={
+                          m.avg_clv_percentage != null && m.avg_clv_percentage > 0
+                            ? "text-pos-400"
+                            : "text-ink-2"
+                        }
+                      >
+                        {m.avg_clv_percentage != null ? fmtPct(m.avg_clv_percentage) : "—"}
+                      </Td>
+                    </Tr>
+                  ))}
+                </TBody>
+              </Table>
+            </TableShell>
+          </div>
+        </Card>
+      ) : null}
 
       <Card
         title="Entradas de CLV"
-        hint={`${data.total_bets} bets · coverage ${data.coverage != null ? fmtPct(data.coverage) : "—"} · atualizado ${data.generated_at}`}
+        hint={`${fmtInt(data.total_bets)} bets · coverage ${
+          data.coverage != null ? fmtPct(data.coverage) : "não medido"
+        } · gerado em ${fmtDateTime(data.generated_at)}`}
         padded={false}
         action={
           <div className="flex items-center gap-2">
-            {clvStatusFilter.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                onClick={() => setFilterStatus(f.value)}
-                className={`label-caps px-2 py-1 rounded text-[11.5px] ${
-                  filterStatus === f.value ? "bg-accent-400/8 text-accent-300" : "bg-surface-2 text-ink-3 hover:bg-surface-3"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+            <SearchInput
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onClear={() => setQuery("")}
+              placeholder="Buscar jogo, mercado ou resultado…"
+              aria-label="Buscar entradas de CLV"
+              className="w-[280px]"
+            />
+            <div className="flex items-center gap-1.5">
+              {clvStatusFilter.map((f) => (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => setFilterStatus(f.value)}
+                  className={cn(
+                    "label-caps px-2 py-1 rounded text-[11.5px]",
+                    filterStatus === f.value
+                      ? "bg-accent-400/8 text-accent-300"
+                      : "bg-surface-2 text-ink-3 hover:bg-surface-3",
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
         }
       >
@@ -103,7 +185,11 @@ export default function ClvPage() {
           {entries.length === 0 ? (
             <EmptyState
               title="Sem entradas de CLV"
-              hint="CLV exige odd de entrada observada antes da decisão e fechamento observado antes do kickoff."
+              hint={
+                data.total_bets === 0
+                  ? "Sem linhas apostáveis observadas: não há população para medir CLV."
+                  : "CLV exige odd de entrada observada antes da decisão e fechamento observado antes do kickoff."
+              }
             />
           ) : (
             <TableShell className="max-h-[440px]">
@@ -113,8 +199,9 @@ export default function ClvPage() {
                     <Th align="start">Jogo</Th>
                     <Th align="start">Mercado</Th>
                     <Th align="center">Odd entrada</Th>
-                    <Th align="start">Entrada em</Th>
+                    <Th align="start" title="Timestamp real da observação de entrada (nunca o instante da previsão)">Entrada em</Th>
                     <Th align="center">Odd fechamento</Th>
+                    <Th align="start" title="Casa da odd de fechamento observada">Fechou em</Th>
                     <Th align="end">CLV %</Th>
                     <Th align="center">Status</Th>
                   </Tr>
@@ -127,12 +214,21 @@ export default function ClvPage() {
                       <Td mono className="text-ink-2">
                         {e.entry_odd != null ? fmtOdd(e.entry_odd) : "—"}
                       </Td>
-                      <Td mono className="text-ink-3">
-                        {e.entry_timestamp ?? "—"}
+                      <Td className="text-ink-3">
+                        {e.entry_timestamp ? fmtDateTime(e.entry_timestamp) : "—"}
                       </Td>
                       <Td mono className="text-ink-2">
-                        {e.closing_odd != null ? fmtOdd(e.closing_odd) : "—"}
+                        <Tooltip
+                          content={
+                            e.closing_timestamp
+                              ? `Fechamento observado em ${fmtDateTime(e.closing_timestamp)}`
+                              : "Sem timestamp de fechamento observado"
+                          }
+                        >
+                          <span>{e.closing_odd != null ? fmtOdd(e.closing_odd) : "—"}</span>
+                        </Tooltip>
                       </Td>
+                      <Td className="text-ink-3">{e.closing_bookmaker ?? "—"}</Td>
                       <Td mono className={e.clv_percentage != null && e.clv_percentage > 0 ? "text-pos-400" : "text-ink-2"}>
                         {e.clv_percentage != null ? fmtPct(e.clv_percentage) : "—"}
                       </Td>

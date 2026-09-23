@@ -6,9 +6,11 @@
  * erro, quota, cobertura.
  */
 
+import Button from "@/components/ui/Button";
 import { useStore } from "@/store/context";
 import { fetchProviders } from "@/api/providers";
 import Badge from "@/components/ui/Badge";
+import type { BadgeTone } from "@/components/ui/badgeTone";
 import Card from "@/components/ui/Card";
 import {
   EmptyState,
@@ -19,18 +21,19 @@ import {
 import { useApiResource } from "@/hooks/useApiResource";
 import { cn } from "@/utils/cn";
 import { fmtInt, fmtDateTime } from "@/utils/format";
-import type { ProviderHealth } from "@/types/api";
+import { RefreshCwIcon } from "@/components/ui/icons";
+import type { ProviderAvailability, ProviderHealth } from "@/types/api";
 
-const statusTone: Record<string, string> = {
+const statusTone: Record<ProviderAvailability, BadgeTone> = {
   HEALTHY: "positive",
-  STALE: "default",
+  STALE: "warning",
   UNAVAILABLE: "negative",
-  NO_COVERAGE: "default",
-  DEGRADED: "default",
-  UNKNOWN: "default",
+  NO_COVERAGE: "neutral",
+  DEGRADED: "warning",
+  UNKNOWN: "neutral",
 };
 
-const statusLabel: Record<string, string> = {
+const statusLabel: Record<ProviderAvailability, string> = {
   HEALTHY: "Saudável",
   STALE: "Desatualizado",
   UNAVAILABLE: "Indisponível",
@@ -42,7 +45,7 @@ const statusLabel: Record<string, string> = {
 export default function ProvidersPage() {
   const { dataVersion } = useStore();
 
-  const { data, initialLoading, error, reload } = useApiResource(
+  const { data, initialLoading, error, reload, loading } = useApiResource(
     (signal) => fetchProviders(signal),
     [dataVersion],
   );
@@ -69,21 +72,45 @@ export default function ProvidersPage() {
 
   if (!data) return null;
 
+  const nStale = data.providers.filter(
+    (p: ProviderHealth) => p.status === "DEGRADED" || p.status === "STALE",
+  ).length;
+
   return (
     <div className="flex flex-col gap-3">
       {error ? <ErrorPanel message={error} onRetry={reload} /> : null}
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Providers" value={String(data.providers.length)} />
-        <KpiCard label="Saudáveis" value={String(data.providers.filter((p: ProviderHealth) => p.status === "HEALTHY").length)} tone="positive" />
-        <KpiCard label="Degradado" value={String(data.providers.filter((p: ProviderHealth) => p.status === "DEGRADED" || p.status === "STALE").length)} tone="default" />
-        <KpiCard label="Indisponíveis" value={String(data.providers.filter((p: ProviderHealth) => p.status === "UNAVAILABLE").length)} tone="negative" />
+        <KpiCard
+          label="Saudáveis"
+          value={String(data.providers.filter((p: ProviderHealth) => p.status === "HEALTHY").length)}
+          tone="positive"
+        />
+        <KpiCard label="Degradados / desatualizados" value={String(nStale)} tone="default" />
+        <KpiCard
+          label="Indisponíveis"
+          value={String(data.providers.filter((p: ProviderHealth) => p.status === "UNAVAILABLE").length)}
+          tone="negative"
+        />
       </div>
 
       <Card
         title="Status dos Providers"
-        hint="Ultima atualização, execução, latência, quota e cobertura"
+        hint={`Gerado em ${fmtDateTime(data.generated_at)} · health real observado pelo Odds Layer`}
         padded={false}
+        action={
+          <Button
+            variant="ghost"
+            size="md"
+            loading={loading}
+            onClick={reload}
+            startIcon={<RefreshCwIcon className="size-4" />}
+            aria-label="Atualizar status dos providers"
+          >
+            Atualizar
+          </Button>
+        }
       >
         <div className="p-3">
           {data.providers.length === 0 ? (
@@ -111,12 +138,14 @@ function ProviderRow({ provider }: { provider: ProviderHealth }) {
           ? "border-pos-700/30 bg-pos-900/5"
           : provider.status === "UNAVAILABLE"
             ? "border-neg-700/30 bg-neg-900/5"
-            : "border-line bg-surface-2",
+            : provider.status === "DEGRADED" || provider.status === "STALE"
+              ? "border-warn-500/30 bg-warn-900/10"
+              : "border-line bg-surface-2",
       )}
     >
       <div className="flex items-center justify-between">
         <span className="font-medium text-ink">{provider.name}</span>
-        <Badge tone={tone as any} size="sm">{statusLabel[provider.status]}</Badge>
+        <Badge tone={tone} size="sm">{statusLabel[provider.status] ?? provider.status}</Badge>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11.5px]">
         <span className="text-ink-3">Última atualização:</span>

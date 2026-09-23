@@ -3,6 +3,8 @@
  */
 
 import { fetchCoverage } from "@/api/coverage";
+import Badge from "@/components/ui/Badge";
+import type { BadgeTone } from "@/components/ui/badgeTone";
 import Card from "@/components/ui/Card";
 import {
   EmptyState,
@@ -13,6 +15,7 @@ import {
 import { useApiResource } from "@/hooks/useApiResource";
 import { useStore } from "@/store/context";
 import { fmtPct } from "@/utils/format";
+import type { ProviderAvailability } from "@/types/api";
 
 /** null = "não medido": ausência de medição, nunca zero fabricado. */
 const fmtCoverage = (v: number | null): string =>
@@ -21,6 +24,25 @@ const fmtCoverage = (v: number | null): string =>
 /** Rótulo do contexto do card de cobertura. */
 const coverageContext = (v: number | null): string =>
   v == null ? "sem população observada" : "sobre fixtures observados";
+
+/** Mesmo vocabulário visual da aba Providers para o MESMO dado. */
+const statusTone: Record<ProviderAvailability, BadgeTone> = {
+  HEALTHY: "positive",
+  STALE: "warning",
+  UNAVAILABLE: "negative",
+  NO_COVERAGE: "neutral",
+  DEGRADED: "warning",
+  UNKNOWN: "neutral",
+};
+
+const statusLabel: Record<ProviderAvailability, string> = {
+  HEALTHY: "Saudável",
+  STALE: "Desatualizado",
+  UNAVAILABLE: "Indisponível",
+  NO_COVERAGE: "Sem cobertura",
+  DEGRADED: "Degradado",
+  UNKNOWN: "Sem observação",
+};
 
 export default function CoveragePage() {
   const { dataVersion } = useStore();
@@ -130,9 +152,9 @@ export default function CoveragePage() {
               {data.providers.map((p) => (
                 <div key={p.name} className="flex items-center gap-3 rounded border border-line bg-surface-2 p-2">
                   <span className="font-medium text-ink w-40">{p.name}</span>
-                  <span className="label-caps px-2 py-0.5 rounded text-[11px]">
-                    {p.status}
-                  </span>
+                  <Badge tone={statusTone[p.status] ?? "default"} size="sm">
+                    {statusLabel[p.status] ?? p.status}
+                  </Badge>
                   <span className="mono text-ink-3 text-[11.5px]">
                     {p.features.length > 0 ? p.features.join(", ") : "—"}
                   </span>
@@ -151,9 +173,12 @@ export default function CoveragePage() {
           <div className="p-3">
             <div className="flex flex-col gap-1">
               {data.gaps.map((g, i) => (
-                <div key={i} className="flex items-center gap-2 text-[12.5px]">
+                <div key={i} className="flex items-baseline gap-2 text-[12.5px]">
                   <span className="font-medium text-ink">{g.provider}</span>
-                  <span className="text-neg-300">{g.detail}</span>
+                  <span className="label-caps shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-ink-3">
+                    {g.gap}
+                  </span>
+                  <span className="min-w-0 text-neg-300">{g.detail}</span>
                 </div>
               ))}
             </div>

@@ -528,6 +528,9 @@ def portfolio_exposure() -> dict:
     report = check_exposure(stakes, snap.config.bankroll, limits)
     return {
         "decision_action": rep.decision.action if rep.decision else None,
+        "decision_reason": rep.decision.reason if rep.decision else None,
+        "decision_evidence_status": (
+            rep.decision.evidence_status if rep.decision else None),
         "total_exposure": report.total_exposure,
         "total_exposure_pct": round(report.total_exposure_pct, 4),
         "n_bets": report.n_bets,
