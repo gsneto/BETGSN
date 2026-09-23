@@ -270,12 +270,38 @@ def _oddspapi_fixtures(tournament_id: int) -> list[dict]:
 
 
 class _OddsPapiRouter(_Router):
-    """Router OddsPapi com /fixtures sensivel ao tournamentId."""
+    """Router OddsPapi com /fixtures por tournamentId e odds por bookmaker.
+
+    O endpoint real exige EXATAMENTE UM bookmaker por request e devolve
+    apenas o bloco daquela casa — o router reproduz o contrato.
+    """
+
+    def __init__(self, routes: dict):
+        super().__init__(routes)
+        self._bookmakers_env: str | None = None
 
     def __call__(self, path: str, params: dict):
         self.calls.append((path, dict(params)))
         if path == "/fixtures":
             return _oddspapi_fixtures(int(params.get("tournamentId", -1))), {}
+        if path == "/odds-by-tournaments":
+            slug = str(params.get("bookmaker") or "")
+            if "," in slug:
+                raise ProviderError(
+                    "Invalid number of bookmakers specified.",
+                    status=400, kind=FAILURE_BAD_RESPONSE,
+                )
+            fixtures = [
+                {
+                    **fx,
+                    "bookmakerOdds": {
+                        s: block for s, block in fx.get("bookmakerOdds", {}).items()
+                        if s == slug
+                    },
+                }
+                for fx in self.routes.get("/odds-by-tournaments", [])
+            ]
+            return fixtures, {}
         route = self.routes.get(path)
         if isinstance(route, ProviderError):
             raise route
@@ -518,6 +544,8 @@ def test_opticodds_satisfies_contract_conformance(monkeypatch):
 
 def test_oddspapi_fetch_odds_quotes_and_real_timestamps(monkeypatch):
     provider = OddsPapiProvider(api_key="k")
+    # multi-bookmaker: as duas casas do catalogo, uma chamada por casa
+    monkeypatch.setenv("BETGSN_ODDSPAPI_BOOKMAKERS", "betano,pinnacle")
     router = _OddsPapiRouter(_oddspapi_routes())
     monkeypatch.setattr(provider, "_get", router)
 

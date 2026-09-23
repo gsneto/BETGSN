@@ -1078,6 +1078,31 @@ DIVISION_TO_ODDSPAPI_TOURNAMENT: dict[str, tuple[str, str]] = {
 }
 
 
+#: Bookmakers consultados por captura. O endpoint odds-by-tournaments
+#: exige EXATAMENTE UM bookmaker por request — comprovado pelo erro real
+#: HTTP 400 ("Please provide exactly one bookmaker using the 'bookmaker'
+#: query parameter") e pelo exemplo oficial da doc
+#: (GET /v4/odds-by-tournaments?bookmaker=pinnacle&tournamentIds=17,8).
+#: Multi-bookmaker = multiplas chamadas independentes, agregadas no
+#: adapter. Default e o slug do exemplo oficial; override via env.
+ODDSPAPI_BOOKMAKERS_ENV = "BETGSN_ODDSPAPI_BOOKMAKERS"
+ODDSPAPI_DEFAULT_BOOKMAKERS = ("pinnacle",)
+
+
+def _oddspapi_selected_bookmakers() -> tuple[str, ...]:
+    """Slugs selecionados via env (default: o exemplo oficial da doc).
+
+    Nao valida contra o catalogo (isso exigiria chamada HTTP): e a lista
+    CANDIDATA — a validacao acontece no fetch, onde o catalogo ja foi
+    lido. Slug inexistente gera erro explicito, nunca chamada inventada.
+    """
+    raw = os.environ.get(ODDSPAPI_BOOKMAKERS_ENV, "").strip()
+    if not raw:
+        return ODDSPAPI_DEFAULT_BOOKMAKERS
+    slugs = tuple(s.strip() for s in raw.split(",") if s.strip())
+    return slugs or ODDSPAPI_DEFAULT_BOOKMAKERS
+
+
 @dataclass
 class OddsPapiProvider:
     """Adapter OddsPapi (api.oddspapi.io/v4): odds multi-casa por liga.
@@ -1089,8 +1114,11 @@ class OddsPapiProvider:
          registrado e o que a API devolve, nunca uma lista fixa);
       3. `GET /v4/fixtures?tournamentId=..&statusId=0` por liga — eventos
          futuros COM nomes dos participantes;
-      4. `GET /v4/odds-by-tournaments?tournamentIds=..` — odds de todos os
-         eventos das ligas em UMA chamada;
+      4. `GET /v4/odds-by-tournaments?bookmaker=<slug>&tournamentIds=..`
+         — EXATAMENTE UM bookmaker por request (erro real 400 + doc
+         oficial); multi-casa sao chamadas independentes agregadas no
+         adapter (slugs de `BETGSN_ODDSPAPI_BOOKMAKERS`, validados no
+         catalogo real);
       5. `GET /v4/account` (nao contabilizado) — quota real
          request_count/request_limit, quando a conta informa.
 
@@ -1133,10 +1161,22 @@ class OddsPapiProvider:
         )
         return body if isinstance(body, list) else []
 
-    def odds_by_tournaments(self, tournament_ids: list[int]) -> list[dict]:
+    def odds_by_tournaments(
+        self, tournament_ids: list[int], bookmaker: str
+    ) -> list[dict]:
+        """Odds dos eventos das ligas para UM bookmaker.
+
+        Contrato REAL do endpoint (erro 400 em producao + doc oficial):
+        `bookmaker` (singular) recebe EXATAMENTE UM slug por request;
+        `tournamentIds` aceita lista separada por virgula. Multi-casa
+        sao multiplas chamadas, agregadas pelo chamador do adapter.
+        """
         body, _ = self._get(
             "/odds-by-tournaments",
-            {"tournamentIds": ",".join(str(t) for t in tournament_ids)},
+            {
+                "tournamentIds": ",".join(str(t) for t in tournament_ids),
+                "bookmaker": str(bookmaker),
+            },
         )
         return body if isinstance(body, list) else []
 
@@ -1378,13 +1418,58 @@ class OddsPapiProvider:
         }
         name_by_slug = {k: v for k, v in name_by_slug.items() if k and v}
 
+        # Bookmakers consultados: os selecionados (env/default) que EXISTEM
+        # no catalogo real. Slug fora do catalogo e erro explicito — a casa
+        # nao e inventada nem consultada às cegas.
+        selected = _oddspapi_selected_bookmakers()
+        for slug in selected:
+            if slug not in name_by_slug:
+                errors.append(
+                    f"bookmaker '{slug}' nao existe no catalogo OddsPapi "
+                    "(/v4/bookmakers) — nao consultado"
+                )
+        bookmakers_to_query = [s for s in selected if s in name_by_slug]
+        if not bookmakers_to_query:
+            return OddsProviderFetch(no_coverage=True, errors=tuple(errors))
+
         fixtures_by_division: list[tuple[str, list[dict]]] = []
         tournament_ids: list[int] = []
         for division, tournament_id in matched:
             fixtures_by_division.append((division, self.fixtures(tournament_id)))
             tournament_ids.append(tournament_id)
 
-        odds_fixtures = self.odds_by_tournaments(tournament_ids)
+        # Uma chamada por bookmaker (exigencia do endpoint), agregando os
+        # blocos bookmakerOdds por fixtureId DENTRO do adapter: o core
+        # continua vendo apenas events multi-casa no shape do parser unico.
+        # Falha de UM bookmaker nao derruba os demais — fica em `errors`,
+        # nunca silenciosa; falha de TODOS sobe alta.
+        odds_by_fixture: dict[str, dict] = {}
+        last_error: ProviderError | None = None
+        for slug in bookmakers_to_query:
+            try:
+                book_odds = self.odds_by_tournaments(tournament_ids, slug)
+            except ProviderError as exc:
+                last_error = exc
+                errors.append(f"bookmaker {slug}: {exc}")
+                continue
+            for odds_fx in book_odds:
+                if not isinstance(odds_fx, dict):
+                    continue
+                fixture_id = str(odds_fx.get("fixtureId") or "")
+                if not fixture_id:
+                    continue
+                target = odds_by_fixture.setdefault(
+                    fixture_id, {"fixtureId": fixture_id}
+                )
+                for key, value in odds_fx.items():
+                    if key != "bookmakerOdds":
+                        target.setdefault(key, value)
+                block = odds_fx.get("bookmakerOdds")
+                if isinstance(block, dict):
+                    target.setdefault("bookmakerOdds", {}).update(block)
+        if not odds_by_fixture and last_error is not None:
+            raise last_error
+        odds_fixtures = list(odds_by_fixture.values())
 
         from .odds_normalize import normalize_events
 
@@ -1411,13 +1496,13 @@ class OddsPapiProvider:
 
     def estimated_cost(self, request) -> int:
         """Chamadas contabilizadas: tournaments + bookmakers + fixtures/liga
-        + odds-by-tournaments (account e livre)."""
+        + odds-by-tournaments (uma POR BOOKMAKER; account e livre)."""
         n_tournaments = len(
             [d for d in request.divisions if d in DIVISION_TO_ODDSPAPI_TOURNAMENT]
         )
         if n_tournaments == 0:
             return 0
-        return 2 + n_tournaments + 1
+        return 2 + n_tournaments + len(_oddspapi_selected_bookmakers())
 
     def divisions_for(self, scope: str) -> tuple[str, ...]:
         return tuple(
