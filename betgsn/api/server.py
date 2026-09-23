@@ -547,15 +547,34 @@ def portfolio_exposure() -> dict:
 
 @app.get("/api/data/providers", tags=["data"])
 def data_providers() -> list[dict]:
-    """Status dos provedores de dados."""
+    """Status dos provedores de dados.
+
+    Bug historico corrigido: o `configured` comparava labels LOCAIS
+    ("odds_api") com as chaves CANONICAS de `available_providers()`
+    ("The Odds API") e devolvia sempre False. Agora o label e traduzido
+    para o nome canonico antes da consulta — o status reflete a
+    configuracao REAL (chave presente).
+    """
     from ..providers import available_providers, env_status
     status = env_status()
     providers = available_providers()
+    #: label da resposta -> nome canonico em available_providers()
+    canonical = {
+        "api_football": "API-Football",
+        "odds_api": "The Odds API",
+        "football_data_org": "Football-Data.org",
+        # football-data.co.uk e corpus CSV local: sem chave, sem API.
+        "football_data_uk": "",
+    }
     return [
         {
             "name": name,
-            "configured": name in providers,
-            "status": "ok" if name in providers else "no_key",
+            "configured": bool(canonical[name] and providers.get(canonical[name])),
+            "status": (
+                "ok"
+                if canonical[name] and providers.get(canonical[name])
+                else "no_key"
+            ),
             "key_env": env,
         }
         for name, env in [
