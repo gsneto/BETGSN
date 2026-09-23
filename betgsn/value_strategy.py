@@ -52,7 +52,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .backtest_data import MatchResult, settle_outcome
-from .odds_normalize import group_by_event, group_by_market
+from .odds_normalize import group_by_event, group_by_market, merge_provider_quotes
 from .odds_provider import OddsFetchRequest, divisions_for
 from .odds_registry import default_odds_registry
 from .providers import ProviderError
@@ -594,11 +594,17 @@ def scan_live(
 ) -> tuple[list[Opportunity], dict[str, Any]]:
     """Busca oportunidades nas odds ao vivo (providers do registry, FASE B).
 
-    Cada esporte e atendido pelo primeiro provider CONFIGURADO que devolve
-    odds utilizaveis — o mesmo fallback do OddsService, sem health tracker
-    (o scanner e uma leitura pontual, nao uma coleta persistida). Provider
-    que falha ou nao cobre o esporte registra e segue para o proximo; sem
-    NENHUM provider configurado, o erro explicito de sempre.
+    MULTI-PROVIDER AGREGACAO: cada esporte e atendido por TODOS os
+    providers configurados que devolvem quotes utilizaveis — as quotes
+    sao mescladas por linha fisica (a observacao com timestamp mais
+    recente da fonte vence; empate fica com a ordem do registry) e o
+    line shopping enxerga as casas de todos os providers de uma vez.
+    Nenhuma quote e perdida porque o primeiro provider respondeu.
+
+    Sem health tracker (o scanner e uma leitura pontual, nao uma coleta
+    persistida). Provider que falha ou nao cobre o esporte registra e
+    segue para o proximo; sem NENHUM provider configurado, o erro
+    explicito de sempre.
     """
     providers = default_odds_registry().available_providers()
     if not providers:
@@ -613,7 +619,13 @@ def scan_live(
         fetched_at = _utcnow()
         sport_error: str | None = None
         served_events = 0
-        sport_ops: list[Opportunity] = []
+        # MULTI-PROVIDER AGREGACAO: todos os providers configurados sao
+        # consultados e as quotes MERGADAS por linha fisica (a mais recente
+        # da fonte vira; empate fica com a prioridade do registry). O
+        # fallback por provider continua valendo INTERNAMENTE (um que
+        # falha nao derruba os outros); nenhuma quote e perdida porque o
+        # primeiro provider respondeu.
+        quotes: list = []
         for _name, provider in providers:
             request = OddsFetchRequest(
                 divisions=divisions_for(provider, sport),
@@ -630,13 +642,15 @@ def scan_live(
                 meta["credits_remaining"] = fetched.credits.remaining
             if fetched.no_coverage:
                 continue
-            quotes = [q for q in fetched.quotes if q.usable]
-            if not quotes:
-                continue
-            sport_ops = _opportunities_from_quotes(quotes, max_odd, min_books)
-            served_events = len({q.event_id for q in quotes})
+            quotes.extend(q for q in fetched.quotes if q.usable)
+
+        if quotes:
+            merged, _collisions = merge_provider_quotes(quotes)
+            sport_ops = _opportunities_from_quotes(merged, max_odd, min_books)
+            served_events = len({q.event_id for q in merged})
             found.extend(sport_ops)
-            break
+        else:
+            sport_ops = []
 
         if sport_ops or served_events:
             meta["sports"][sport] = {

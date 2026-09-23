@@ -116,6 +116,9 @@ _DOMAIN_TO_API_STATUS: dict[str, S.ProviderAvailability] = {
 _PROVIDER_FEATURES: dict[str, list[str]] = {
     "The Odds API": ["odds"],
     "ParlayAPI": ["odds"],
+    "OddsPapi": ["odds"],
+    "Odds-API.io": ["odds"],
+    "OpticOdds": ["odds"],
     "API-Football": ["fixtures", "historical", "statistics"],
     "Football-Data.org": ["fixtures", "historical"],
 }

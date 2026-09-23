@@ -7,12 +7,18 @@ falha de forma explicita (ProviderError) — nunca silenciosa.
 Fontes suportadas:
   - The Odds API  (the-odds-api.com)   -> odds de varias casas, futebol
   - ParlayAPI                          -> odds multi-casa (endpoint configuravel)
+  - OddsPapi    (oddspapi.io)          -> odds multi-casa (API v4, REST)
+  - Odds-API.io (api.odds-api.io)      -> odds de 365+ casas (API v3, REST)
+  - OpticOdds   (api.opticodds.com)    -> odds multi-casa (API v3, REST)
   - API-Football  (api-football.com)   -> historico, estatisticas, xG
   - Football-Data (football-data.org)  -> resultados e tabelas
 
 Chaves via variavel de ambiente OU arquivo .env na raiz do projeto:
   BETGSN_ODDS_API_KEY
   BETGSN_PARLAY_API_KEY   (+ BETGSN_PARLAY_API_BASE, sem ela o adapter fica inerte)
+  BETGSN_ODDSPAPI_API_KEY    (ou ODDSPAPI_API_KEY)
+  BETGSN_ODDS_API_IO_KEY     (ou ODDS_API_IO_KEY)
+  BETGSN_OPTICODDS_API_KEY   (ou OPTICODDS_API_KEY)
   BETGSN_APIFOOTBALL_KEY
   BETGSN_FOOTBALLDATA_KEY
 
@@ -56,7 +62,68 @@ ENV_KEYS = (
     "BETGSN_PARLAY_API_KEY",
     "BETGSN_APIFOOTBALL_KEY",
     "BETGSN_FOOTBALLDATA_KEY",
+    "BETGSN_ODDSPAPI_API_KEY",
+    "BETGSN_ODDS_API_IO_KEY",
+    "BETGSN_OPTICODDS_API_KEY",
 )
+
+
+def _first_env(*names: str) -> str:
+    """Primeira variavel de ambiente nao vazia entre `names` (nunca imprime).
+
+    Providers novos aceitam o nome com prefixo BETGSN_ (padrao do projeto)
+    E o nome sem prefixo usado pela documentacao do provider — a ordem
+    define precedencia, e o valor nunca e exposto em mensagem de erro.
+    """
+    for name in names:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _epoch_to_utc(value: object) -> str:
+    """Epoch (segundos, float aceito) -> chave canonica UTC `...Z`.
+
+    Providers que carimbam odds em epoch (ex.: OpticOdds) precisam do
+    mesmo formato string das demais fontes para as comparacoes temporais
+    (pre_kickoff, dedupe). Valor nao numerico devolve "" — nunca 1970.
+    """
+    try:
+        seconds = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return ""
+    from datetime import datetime, timezone
+
+    try:
+        moment = datetime.fromtimestamp(seconds, tz=timezone.utc)
+    except (OverflowError, OSError, ValueError):
+        return ""
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _request_json(
+    base_url: str,
+    path: str,
+    params: Mapping[str, object],
+    headers: dict[str, str] | None = None,
+    max_attempts: int = 2,
+) -> tuple[dict | list, dict[str, str]]:
+    """GET JSON com querystring (params repetiveis via listas) e retry limitado.
+
+    Monta a URL com `urlencode(doseq=True)` — providers como OpticOdds
+    exigem parametros repetidos (`sportsbook=A&sportsbook=B`). A chave
+    nunca vaza: `redact_url` limpa na origem (query) e headers segredos
+    nao entram em mensagem de erro.
+    """
+    query = urllib.parse.urlencode(
+        {k: v for k, v in params.items() if v is not None and v != ""},  # type: ignore[arg-type]
+        doseq=True,
+    )
+    url = f"{base_url}{path}" + (f"?{query}" if query else "")
+    return request_json_with_retry(
+        url, headers or {"User-Agent": "BETGSN/1.0"}, max_attempts=max_attempts
+    )
 
 # --------------------------------------------------------------------------
 # Classificacao de falhas — a base do fallback e do health check
@@ -858,6 +925,1081 @@ class ParlayApiProvider:
 
 
 # --------------------------------------------------------------------------
+# OddsPapi (oddspapi.io — API v4)
+# --------------------------------------------------------------------------
+
+#: Doc oficial consultada em 2026-09-23: https://oddspapi.io/us/docs.
+#: Host https://api.oddspapi.io, auth via query param `apiKey`.
+ODDSPAPI_BASE = "https://api.oddspapi.io/v4"
+
+#: sportId do futebol na OddsPapi (verificado nos exemplos oficiais da doc:
+#: sportId 10 -> sportName "Soccer").
+ODDSPAPI_SOCCER_ID = 10
+
+#: marketId -> rotulo interno. PROVENIENCIA: catalogo oficial
+#: `GET /v4/markets` da doc — 101 = "Full Time Result" (outcomes 1/X/2),
+#: 104 = "Both Teams To Score" (Yes/No). Totais NAO tem id fixo (uma id
+#: por linha): sao reconhecidos pelo padrao do `bookmakerOutcomeId`
+#: "<linha>/over|under" (verificado no exemplo oficial de
+#: /v4/odds-by-tournaments). Qualquer outro mercado e DESCARTADO.
+_ODDSPAPI_MARKET_IDS: dict[str, str] = {
+    "101": "h2h",
+    "104": "btts",
+}
+
+#: outcomeId -> lado do 1X2 (catalogo oficial /v4/markets, market 101).
+_ODDSPAPI_H2H_OUTCOMES: dict[str, str] = {"101": "home", "102": "draw", "103": "away"}
+
+#: outcomeId -> Yes/No do BTTS (catalogo oficial /v4/markets, market 104).
+_ODDSPAPI_BTTS_OUTCOMES: dict[str, str] = {"104": "yes", "105": "no"}
+
+#: Padrao do bookmakerOutcomeId de totais: "<linha>/over|under".
+_ODDSPAPI_TOTALS_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*/\s*(over|under)$", re.IGNORECASE)
+
+#: divisao FDUK -> (categorySlug, tournamentSlug) esperados no catalogo
+#: `GET /v4/tournaments`. PROVENIENCIA: england/premier-league e
+#: spain/laliga verificados nos exemplos oficiais (2026-09-23); os demais
+#: seguem a convensao de slug do catalogo e so geram chamada quando o
+#: catalogo REAL da conta contem o par EXATO — slug que nao casa e
+#: NO_COVERAGE honesto, nunca adivinhado (sem fuzzy).
+DIVISION_TO_ODDSPAPI_TOURNAMENT: dict[str, tuple[str, str]] = {
+    # main — Inglaterra
+    "E0": ("england", "premier-league"),
+    "E1": ("england", "championship"),
+    "E2": ("england", "league-one"),
+    "E3": ("england", "league-two"),
+    # main — Escocia
+    "SC0": ("scotland", "premiership"),
+    # main — resto da Europa
+    "D1": ("germany", "bundesliga"),
+    "I1": ("italy", "serie-a"),
+    "I2": ("italy", "serie-b"),
+    "SP1": ("spain", "laliga"),
+    "SP2": ("spain", "segunda-division"),
+    "F1": ("france", "ligue-1"),
+    "N1": ("netherlands", "eredivisie"),
+    "G1": ("greece", "super-league"),
+    # extras
+    "BRA": ("brazil", "serie-a"),
+    "ARG": ("argentina", "primera-division"),
+}
+
+
+@dataclass
+class OddsPapiProvider:
+    """Adapter OddsPapi (api.oddspapi.io/v4): odds multi-casa por liga.
+
+    Fluxo (todos REST, sem WebSocket):
+      1. `GET /v4/tournaments?sportId=10` — divisoes FDUK -> tournamentIds
+         por slug EXATO (descoberta dinamica; sem casamento, no_coverage);
+      2. `GET /v4/bookmakers` — slug -> nome real da casa (o bookmaker
+         registrado e o que a API devolve, nunca uma lista fixa);
+      3. `GET /v4/fixtures?tournamentId=..&statusId=0` por liga — eventos
+         futuros COM nomes dos participantes;
+      4. `GET /v4/odds-by-tournaments?tournamentIds=..` — odds de todos os
+         eventos das ligas em UMA chamada;
+      5. `GET /v4/account` (nao contabilizado) — quota real
+         request_count/request_limit, quando a conta informa.
+
+    Timestamp: cada outcome carrega `changedAt` REAL da fonte — e ele quem
+    vira o timestamp da quote (nunca o fetched_at). Quota ausente e None.
+    """
+
+    api_key: str
+    name: str = "OddsPapi"
+
+    @classmethod
+    def from_env(cls) -> "OddsPapiProvider | None":
+        key = _first_env("BETGSN_ODDSPAPI_API_KEY", "ODDSPAPI_API_KEY")
+        return cls(api_key=key) if key else None
+
+    # ------------------------------------------------------------- http
+
+    def _get(self, path: str, params: dict) -> tuple[dict | list, dict[str, str]]:
+        query = dict(params)
+        query.setdefault("apiKey", self.api_key)
+        return _request_json(ODDSPAPI_BASE, path, query)
+
+    # --------------------------------------------------------- descoberta
+
+    def tournaments(self) -> list[dict]:
+        body, _ = self._get("/tournaments", {"sportId": ODDSPAPI_SOCCER_ID})
+        return body if isinstance(body, list) else []
+
+    def bookmakers(self) -> list[dict]:
+        body, _ = self._get("/bookmakers", {})
+        return body if isinstance(body, list) else []
+
+    def account(self) -> dict:
+        body, _ = self._get("/account", {})
+        return body if isinstance(body, dict) else {}
+
+    def fixtures(self, tournament_id: int) -> list[dict]:
+        body, _ = self._get(
+            "/fixtures", {"tournamentId": tournament_id, "statusId": 0}
+        )
+        return body if isinstance(body, list) else []
+
+    def odds_by_tournaments(self, tournament_ids: list[int]) -> list[dict]:
+        body, _ = self._get(
+            "/odds-by-tournaments",
+            {"tournamentIds": ",".join(str(t) for t in tournament_ids)},
+        )
+        return body if isinstance(body, list) else []
+
+    # ------------------------------------------------------------- parse
+
+    def _canonical_events(
+        self, fixtures: list[dict], odds_fixtures: list[dict], bookmaker_names: dict[str, str]
+    ) -> list[dict]:
+        """Fixture + bookmakerOdds -> shape canonico do parser unico.
+
+        Cada outcome nasce com `timestamp` = changedAt da FONTE (horario
+        real da observacao); mercado sem mapeamento verificado e
+        descartado; bookmaker suspenso/inativo e descartado.
+        """
+        odds_by_fixture = {
+            str(f.get("fixtureId") or ""): f for f in odds_fixtures
+        }
+        events: list[dict] = []
+        for fx in fixtures:
+            fixture_id = str(fx.get("fixtureId") or "")
+            odds_fx = odds_by_fixture.get(fixture_id)
+            if odds_fx is None:
+                continue
+            home = str(fx.get("participant1Name") or "").strip()
+            away = str(fx.get("participant2Name") or "").strip()
+            start = str(fx.get("startTime") or "").strip()
+            if not home or not away or not start:
+                continue
+            books: list[dict] = []
+            bookmaker_odds = odds_fx.get("bookmakerOdds") or {}
+            if not isinstance(bookmaker_odds, dict):
+                continue
+            for slug, block in sorted(bookmaker_odds.items()):
+                if not isinstance(block, dict):
+                    continue
+                if block.get("bookmakerIsActive") is False or block.get("suspended") is True:
+                    continue
+                markets = self._canonical_markets(
+                    block.get("markets") or {}, home, away
+                )
+                if not markets:
+                    continue
+                books.append(
+                    {
+                        "key": str(slug),
+                        "title": bookmaker_names.get(str(slug), str(slug)),
+                        "markets": markets,
+                    }
+                )
+            if books:
+                events.append(
+                    {
+                        "id": fixture_id,
+                        "home_team": home,
+                        "away_team": away,
+                        "commence_time": start,
+                        "league": str(fx.get("tournamentName") or ""),
+                        "timestamp": str(fx.get("updatedAt") or ""),
+                        "bookmakers": books,
+                    }
+                )
+        return events
+
+    @staticmethod
+    def _canonical_markets(markets: dict, home: str, away: str) -> list[dict]:
+        out: list[dict] = []
+        for market_key, market in sorted(markets.items()):
+            if not isinstance(market, dict):
+                continue
+            if market.get("marketActive") is False:
+                continue
+            api_market = _ODDSPAPI_MARKET_IDS.get(str(market_key))
+            outcomes: list[dict] = []
+            for outcome_key, outcome in sorted((market.get("outcomes") or {}).items()):
+                if not isinstance(outcome, dict):
+                    continue
+                players = outcome.get("players") or {}
+                player = players.get("0")
+                if not isinstance(player, dict):
+                    continue  # player-prop ou sem preco: fora do escopo
+                if player.get("playerName"):
+                    continue
+                if player.get("active") is False:
+                    continue
+                if player.get("mainLine") is False:
+                    continue  # linha alternativa quando a fonte marca a principal
+                try:
+                    price = float(player["price"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                changed_at = str(player.get("changedAt") or "").strip()
+                outcome_name = OddsPapiProvider._outcome_name(
+                    str(market_key),
+                    str(outcome_key),
+                    str(player.get("bookmakerOutcomeId") or ""),
+                    home,
+                    away,
+                )
+                if outcome_name is None:
+                    continue
+                entry = {"name": outcome_name, "price": price, "timestamp": changed_at}
+                line = OddsPapiProvider._totals_line(
+                    str(player.get("bookmakerOutcomeId") or "")
+                )
+                if line is not None:
+                    entry["point"] = line
+                    # mercado de totais reconhecido ESTRUTURALMENTE (padrao
+                    # "<linha>/over|under"): a id varia por linha, o mapa
+                    # fixo so cobre 1X2/BTTS
+                    api_market = api_market or "totals"
+                outcomes.append(entry)
+            if api_market and outcomes:
+                out.append({"key": api_market, "outcomes": outcomes})
+        return out
+
+    @staticmethod
+    def _outcome_name(
+        market_key: str, outcome_key: str, bookmaker_outcome_id: str, home: str, away: str
+    ) -> str | None:
+        """Nome canonico do outcome, ou None quando nao ha mapeamento seguro."""
+        # 1X2 (market 101): lado pelo outcomeId do catalogo OU pelo
+        # bookmakerOutcomeId "home"/"draw"/"away" (verificado na doc).
+        if market_key == "101":
+            side = _ODDSPAPI_H2H_OUTCOMES.get(outcome_key)
+            if side is None:
+                side = {
+                    "home": "home",
+                    "draw": "draw",
+                    "away": "away",
+                }.get(bookmaker_outcome_id.lower())
+            if side == "home":
+                return home
+            if side == "away":
+                return away
+            if side == "draw":
+                return "Draw"
+            return None
+        # BTTS (market 104): Yes/No pelo outcomeId do catalogo.
+        if market_key == "104":
+            side = _ODDSPAPI_BTTS_OUTCOMES.get(outcome_key)
+            if side == "yes":
+                return "Yes"
+            if side == "no":
+                return "No"
+            lowered = bookmaker_outcome_id.lower()
+            if lowered in ("yes", "no"):
+                return lowered.capitalize()
+            return None
+        # Totais: padrao "<linha>/over|under" do bookmakerOutcomeId.
+        match = _ODDSPAPI_TOTALS_RE.match(bookmaker_outcome_id)
+        if match:
+            return match.group(2).capitalize()
+        return None
+
+    @staticmethod
+    def _totals_line(bookmaker_outcome_id: str) -> float | None:
+        match = _ODDSPAPI_TOTALS_RE.match(bookmaker_outcome_id)
+        if not match:
+            return None
+        try:
+            return float(match.group(1))
+        except ValueError:
+            return None
+
+    def _credits_from_account(self) -> "CreditUpdate | None":
+        """Quota REAL da conta (/v4/account, nao contabilizado). None se ausente."""
+        try:
+            account = self.account()
+        except ProviderError:
+            return None
+        subscriptions = account.get("subscriptions")
+        if not isinstance(subscriptions, list):
+            return None
+        from .odds_provider import CreditUpdate
+
+        for sub in subscriptions:
+            if not isinstance(sub, dict) or not sub.get("is_active"):
+                continue
+            try:
+                used = int(sub["request_count"])
+                limit = int(sub["request_limit"])
+            except (KeyError, TypeError, ValueError):
+                return None
+            return CreditUpdate(used=used, remaining=max(0, limit - used))
+        return None
+
+    # ------------------------------------------------ contrato (FASE B)
+
+    def available(self) -> bool:
+        """True: a instancia so existe com chave."""
+        return True
+
+    def fetch_odds(self, request):
+        from .odds_provider import OddsProviderFetch
+
+        specs = [
+            (div, DIVISION_TO_ODDSPAPI_TOURNAMENT[div])
+            for div in request.divisions
+            if div in DIVISION_TO_ODDSPAPI_TOURNAMENT
+        ]
+        if not specs:
+            return OddsProviderFetch(no_coverage=True)
+
+        # descoberta dinamica: divisao -> tournamentId por slug EXATO
+        tournaments = self.tournaments()
+        by_slug: dict[tuple[str, str], int] = {}
+        for tournament in tournaments:
+            if not isinstance(tournament, dict):
+                continue
+            try:
+                by_slug[
+                    (
+                        str(tournament.get("categorySlug") or ""),
+                        str(tournament.get("tournamentSlug") or ""),
+                    )
+                ] = int(tournament["tournamentId"])
+            except (KeyError, TypeError, ValueError):
+                continue
+
+        errors: list[str] = []
+        matched: list[tuple[str, int]] = []
+        for division, spec in specs:
+            tournament_id = by_slug.get(spec)
+            if tournament_id is None:
+                errors.append(
+                    f"{division}: liga {spec[0]}/{spec[1]} nao encontrada no "
+                    "catalogo OddsPapi — sem cobertura declarada"
+                )
+            else:
+                matched.append((division, tournament_id))
+        if not matched:
+            return OddsProviderFetch(no_coverage=True, errors=tuple(errors))
+
+        # slug -> nome REAL da casa (cobertura e o que a API devolve)
+        name_by_slug = {
+            str(b.get("slug") or ""): str(b.get("bookmakerName") or "")
+            for b in self.bookmakers()
+            if isinstance(b, dict)
+        }
+        name_by_slug = {k: v for k, v in name_by_slug.items() if k and v}
+
+        fixtures_by_division: list[tuple[str, list[dict]]] = []
+        tournament_ids: list[int] = []
+        for division, tournament_id in matched:
+            fixtures_by_division.append((division, self.fixtures(tournament_id)))
+            tournament_ids.append(tournament_id)
+
+        odds_fixtures = self.odds_by_tournaments(tournament_ids)
+
+        from .odds_normalize import normalize_events
+
+        quotes = []
+        raw_events: list[dict] = []
+        for division, division_fixtures in fixtures_by_division:
+            events = self._canonical_events(
+                division_fixtures, odds_fixtures, name_by_slug
+            )
+            raw_events.extend(events)
+            quotes.extend(
+                normalize_events(
+                    events, self.name, request.fetched_at, sport_key=division
+                )
+            )
+        return OddsProviderFetch(
+            quotes=tuple(quotes),
+            raw_events=tuple(raw_events),
+            snapshot_provider="oddspapi-live",
+            credits=self._credits_from_account(),
+            no_coverage=not quotes,
+            errors=tuple(errors),
+        )
+
+    def estimated_cost(self, request) -> int:
+        """Chamadas contabilizadas: tournaments + bookmakers + fixtures/liga
+        + odds-by-tournaments (account e livre)."""
+        n_tournaments = len(
+            [d for d in request.divisions if d in DIVISION_TO_ODDSPAPI_TOURNAMENT]
+        )
+        if n_tournaments == 0:
+            return 0
+        return 2 + n_tournaments + 1
+
+    def divisions_for(self, scope: str) -> tuple[str, ...]:
+        return tuple(
+            d
+            for d in SPORT_KEY_TO_DIVISIONS.get(scope, ())
+            if d in DIVISION_TO_ODDSPAPI_TOURNAMENT
+        )
+
+
+# --------------------------------------------------------------------------
+# Odds-API.io (api.odds-api.io — API v3, REST)
+# --------------------------------------------------------------------------
+
+#: Doc oficial consultada em 2026-09-23: https://docs.odds-api.io
+#: (+ openapi.json). Host https://api.odds-api.io/v3, auth via `apiKey`.
+#: WebSocket EXISTE mas nao e usado: REST primeiro, sem necessidade real
+#: de stream no fluxo atual de captura pontual.
+ODDS_API_IO_BASE = "https://api.odds-api.io/v3"
+
+#: divisao FDUK -> (nome de liga, slug) esperados em `GET /v3/leagues`.
+#: PROVENIENCIA: "England - Premier League" / "england-premier-league"
+#: verificados no openapi oficial (2026-09-23); os demais seguem a
+#: convensao de nome/slug do catalogo e so geram chamada quando o
+#: catalogo REAL contem o par EXATO (nome OU slug) — sem fuzzy.
+DIVISION_TO_ODDS_API_IO_LEAGUE: dict[str, tuple[str, str]] = {
+    "E0": ("England - Premier League", "england-premier-league"),
+    "E1": ("England - Championship", "england-championship"),
+    "E2": ("England - League One", "england-league-one"),
+    "E3": ("England - League Two", "england-league-two"),
+    "SC0": ("Scotland - Premiership", "scotland-premiership"),
+    "D1": ("Germany - Bundesliga", "germany-bundesliga"),
+    "I1": ("Italy - Serie A", "italy-serie-a"),
+    "I2": ("Italy - Serie B", "italy-serie-b"),
+    "SP1": ("Spain - LaLiga", "spain-laliga"),
+    "SP2": ("Spain - Segunda", "spain-segunda"),
+    "F1": ("France - Ligue 1", "france-ligue-1"),
+    "N1": ("Netherlands - Eredivisie", "netherlands-eredivisie"),
+    "G1": ("Greece - Super League", "greece-super-league"),
+    "BRA": ("Brazil - Serie A", "brazil-serie-a"),
+    "ARG": ("Argentina - Liga Profesional", "argentina-liga-profesional"),
+}
+
+#: rotulo interno -> nome EXATO de mercado na Odds-API.io (doc oficial:
+#: ML, Totals, Both Teams To Score, Spread — case-insensitive na API,
+#: passado como na doc). Rotulo sem mapeamento e ignorado.
+_ODDS_API_IO_MARKET_NAMES: dict[str, str] = {
+    "h2h": "ML",
+    "totals": "Totals",
+    "btts": "Both Teams To Score",
+    "spreads": "Spread",
+}
+
+#: Teto de eventos por liga num fetch: protege quota (odds/multi aceita
+#: ate 10 eventos por chamada) sem loop agressivo.
+ODDS_API_IO_MAX_EVENTS_PER_LEAGUE = 30
+
+
+@dataclass
+class OddsApiIoProvider:
+    """Adapter Odds-API.io (api.odds-api.io/v3): 365+ bookmakers via REST.
+
+    Fluxo:
+      1. `GET /v3/leagues?sport=football` — divisao -> slug por par EXATO
+         (nome OU slug do catalogo; sem casamento, no_coverage);
+      2. casas da CONTA: override `BETGSN_ODDS_API_IO_BOOKMAKERS` ou
+         `GET /v3/bookmakers/selected` — o plano define quais casas
+         respondem, o adapter nao presume;
+      3. `GET /v3/events?sport=football&league=<slug>&status=pending`
+         por liga — eventos futuros;
+      4. `GET /v3/odds/multi?eventIds=..` em lotes de ate 10 — 1 request
+         por lote, qualquer quantidade de eventos.
+
+    Timestamp: cada mercado carrega `updatedAt` REAL por casa — e ele o
+    timestamp das quotes daquele bloco (nunca o fetched_at). A API nao
+    informa quota na resposta: credits permanece None.
+    """
+
+    api_key: str
+    bookmakers_env: str = ""
+    name: str = "Odds-API.io"
+
+    @classmethod
+    def from_env(cls) -> "OddsApiIoProvider | None":
+        key = _first_env("BETGSN_ODDS_API_IO_KEY", "ODDS_API_IO_KEY")
+        if not key:
+            return None
+        books = _first_env("BETGSN_ODDS_API_IO_BOOKMAKERS")
+        return cls(api_key=key, bookmakers_env=books)
+
+    # ------------------------------------------------------------- http
+
+    def _get(self, path: str, params: dict) -> tuple[dict | list, dict[str, str]]:
+        query = dict(params)
+        query.setdefault("apiKey", self.api_key)
+        return _request_json(ODDS_API_IO_BASE, path, query)
+
+    # --------------------------------------------------------- descoberta
+
+    def leagues(self) -> list[dict]:
+        body, _ = self._get("/leagues", {"sport": "football"})
+        return body if isinstance(body, list) else []
+
+    def selected_bookmakers(self) -> list[str]:
+        """Casas selecionadas na CONTA (shape tolerante: lista de nomes ou
+        de objetos com `name`). Nunca inventa casa fora da resposta."""
+        if self.bookmakers_env:
+            names = [b.strip() for b in self.bookmakers_env.split(",") if b.strip()]
+            return names[:30]
+        body, _ = self._get("/bookmakers/selected", {})
+        if not isinstance(body, list):
+            return []
+        names: list[str] = []
+        for item in body:
+            if isinstance(item, str) and item.strip():
+                names.append(item.strip())
+            elif isinstance(item, dict):
+                name = str(item.get("name") or "").strip()
+                if name:
+                    names.append(name)
+        return names[:30]
+
+    def events(self, league_slug: str) -> list[dict]:
+        body, _ = self._get(
+            "/events",
+            {
+                "sport": "football",
+                "league": league_slug,
+                "status": "pending",
+                "limit": ODDS_API_IO_MAX_EVENTS_PER_LEAGUE,
+            },
+        )
+        return body if isinstance(body, list) else []
+
+    def odds_multi(self, event_ids: list[int], bookmakers: list[str], markets: list[str]) -> list[dict]:
+        body, _ = self._get(
+            "/odds/multi",
+            {
+                "eventIds": ",".join(str(i) for i in event_ids),
+                "bookmakers": ",".join(bookmakers),
+                "markets": ",".join(markets),
+            },
+        )
+        return body if isinstance(body, list) else []
+
+    # ------------------------------------------------------------- parse
+
+    def _canonical_events(self, events_odds: list[dict]) -> list[dict]:
+        """EventResponse -> shape canonico do parser unico.
+
+        `bookmakers` vem como {casa: [mercado]} com `updatedAt` REAL por
+        bloco de mercado — vira timestamp de cada outcome daquele bloco.
+        Mercado sem mapeamento verificado e descartado.
+        """
+        out: list[dict] = []
+        for event in events_odds:
+            if not isinstance(event, dict):
+                continue
+            home = str(event.get("home") or "").strip()
+            away = str(event.get("away") or "").strip()
+            date = str(event.get("date") or "").strip()
+            if not home or not away or not date:
+                continue
+            league = event.get("league") or {}
+            books: list[dict] = []
+            bookmakers = event.get("bookmakers") or {}
+            if not isinstance(bookmakers, dict):
+                continue
+            for book_name in sorted(bookmakers):
+                markets_out: list[dict] = []
+                for market in bookmakers[book_name] or []:
+                    if not isinstance(market, dict):
+                        continue
+                    api_market = self._api_market_key(str(market.get("name") or ""))
+                    if api_market is None:
+                        continue
+                    updated_at = str(market.get("updatedAt") or "").strip()
+                    outcomes = self._outcomes(
+                        api_market, market.get("odds") or [], home, away, updated_at
+                    )
+                    if outcomes:
+                        markets_out.append({"key": api_market, "outcomes": outcomes})
+                if markets_out:
+                    books.append({"key": book_name, "title": book_name, "markets": markets_out})
+            if books:
+                out.append(
+                    {
+                        "id": event.get("id"),
+                        "home_team": home,
+                        "away_team": away,
+                        "commence_time": date,
+                        "league": str(league.get("name") or "") if isinstance(league, dict) else "",
+                        "bookmakers": books,
+                    }
+                )
+        return out
+
+    @staticmethod
+    def _api_market_key(market_name: str) -> str | None:
+        lowered = market_name.strip().lower()
+        for api_key, name in _ODDS_API_IO_MARKET_NAMES.items():
+            if name.lower() == lowered:
+                return api_key
+        return None
+
+    @staticmethod
+    def _outcomes(
+        api_market: str, odds: list, home: str, away: str, updated_at: str
+    ) -> list[dict]:
+        out: list[dict] = []
+        for entry in odds:
+            if not isinstance(entry, dict):
+                continue
+            if api_market == "h2h":
+                pairs = (
+                    (home, entry.get("home")),
+                    ("Draw", entry.get("draw")),
+                    (away, entry.get("away")),
+                )
+            elif api_market == "btts":
+                pairs = (
+                    ("Yes", entry.get("yes")),
+                    ("No", entry.get("no")),
+                )
+            elif api_market == "totals":
+                pairs = (
+                    ("Over", entry.get("over")),
+                    ("Under", entry.get("under")),
+                )
+            elif api_market == "spreads":
+                pairs = (
+                    (home, entry.get("home")),
+                    (away, entry.get("away")),
+                )
+            else:
+                pairs = ()
+            point = entry.get("max") if api_market == "totals" else entry.get("hdp")
+            for name, raw_price in pairs:
+                try:
+                    price = float(raw_price)  # type: ignore[arg-type]
+                except (TypeError, ValueError):
+                    continue
+                outcome = {"name": name, "price": price}
+                if updated_at:
+                    outcome["timestamp"] = updated_at
+                if api_market in ("totals", "spreads") and point is not None:
+                    try:
+                        outcome["point"] = float(point)  # type: ignore[arg-type]
+                    except (TypeError, ValueError):
+                        continue
+                out.append(outcome)
+        return out
+
+    # ------------------------------------------------ contrato (FASE B)
+
+    def available(self) -> bool:
+        """True: a instancia so existe com chave."""
+        return True
+
+    def fetch_odds(self, request):
+        from .odds_normalize import normalize_events
+        from .odds_provider import OddsProviderFetch
+
+        specs = [
+            (div, DIVISION_TO_ODDS_API_IO_LEAGUE[div])
+            for div in request.divisions
+            if div in DIVISION_TO_ODDS_API_IO_LEAGUE
+        ]
+        if not specs:
+            return OddsProviderFetch(no_coverage=True)
+
+        leagues = self.leagues()
+        by_name: dict[str, str] = {}
+        by_slug: dict[str, str] = {}
+        for league in leagues:
+            if not isinstance(league, dict):
+                continue
+            slug = str(league.get("slug") or "").strip()
+            name = str(league.get("name") or "").strip()
+            if slug:
+                by_slug[slug] = slug
+            if name and slug:
+                by_name[name] = slug
+
+        errors: list[str] = []
+        matched: list[tuple[str, str]] = []
+        for division, (name, slug) in specs:
+            found = by_name.get(name) or by_slug.get(slug)
+            if found is None:
+                errors.append(
+                    f"{division}: liga {name!r} ({slug}) nao encontrada no "
+                    "catalogo Odds-API.io — sem cobertura declarada"
+                )
+            else:
+                matched.append((division, found))
+        if not matched:
+            return OddsProviderFetch(no_coverage=True, errors=tuple(errors))
+
+        bookmakers = self.selected_bookmakers()
+        if not bookmakers:
+            return OddsProviderFetch(
+                no_coverage=True,
+                errors=(
+                    "Odds-API.io: nenhuma casa selecionada na conta "
+                    "(override BETGSN_ODDS_API_IO_BOOKMAKERS vazio)",
+                ),
+            )
+
+        market_names = [
+            _ODDS_API_IO_MARKET_NAMES[label]
+            for label in request.markets
+            if label in _ODDS_API_IO_MARKET_NAMES
+        ] or list(_ODDS_API_IO_MARKET_NAMES.values())
+
+        quotes = []
+        raw_events: list[dict] = []
+        for division, league_slug in matched:
+            events = self.events(league_slug)
+            event_ids = [e.get("id") for e in events if isinstance(e, dict) and e.get("id")]
+            if not event_ids:
+                errors.append(f"{division}: nenhum evento futuro na liga")
+                continue
+            for start in range(0, len(event_ids), 10):
+                batch = event_ids[start : start + 10]
+                odds_events = self.odds_multi(batch, bookmakers, market_names)
+                canonical = self._canonical_events(odds_events)
+                raw_events.extend(canonical)
+                quotes.extend(
+                    normalize_events(
+                        canonical, self.name, request.fetched_at, sport_key=division
+                    )
+                )
+        return OddsProviderFetch(
+            quotes=tuple(quotes),
+            raw_events=tuple(raw_events),
+            snapshot_provider="odds-api-io-live",
+            credits=None,  # quota nao vem na resposta: None, nunca inventada
+            no_coverage=not quotes,
+            errors=tuple(errors),
+        )
+
+    def estimated_cost(self, request) -> int:
+        """Chamadas contabilizadas: leagues + bookmakers/selected (quando
+        sem override) + events/liga + lotes de odds/multi."""
+        n_leagues = len(
+            [d for d in request.divisions if d in DIVISION_TO_ODDS_API_IO_LEAGUE]
+        )
+        if n_leagues == 0:
+            return 0
+        return (1 if not self.bookmakers_env else 0) + 1 + n_leagues + n_leagues
+
+    def divisions_for(self, scope: str) -> tuple[str, ...]:
+        return tuple(
+            d
+            for d in SPORT_KEY_TO_DIVISIONS.get(scope, ())
+            if d in DIVISION_TO_ODDS_API_IO_LEAGUE
+        )
+
+
+# --------------------------------------------------------------------------
+# OpticOdds (api.opticodds.com — API v3)
+# --------------------------------------------------------------------------
+
+#: Doc oficial consultada em 2026-09-23:
+#: https://developer.opticodds.com (+ openapi das referencias).
+#: Host https://api.opticodds.com/api/v3, auth via header X-Api-Key
+#: (header, nao query, para o segredo nao circular em URL).
+OPTICODDS_BASE = "https://api.opticodds.com/api/v3"
+
+#: divisao FDUK -> nome de liga esperado em `GET /leagues?sport=soccer`.
+#: PROVENIENCIA: "England - Premier League" (id england_-_premier_league)
+#: verificado no exemplo oficial de /fixtures (2026-09-23); os demais
+#: seguem a convensao de nome do catalogo e so geram chamada quando o
+#: catalogo REAL contem o nome EXATO — sem fuzzy.
+DIVISION_TO_OPTICODDS_LEAGUE: dict[str, str] = {
+    "E0": "England - Premier League",
+    "E1": "England - Championship",
+    "E2": "England - League One",
+    "E3": "England - League Two",
+    "SC0": "Scotland - Premiership",
+    "D1": "Germany - Bundesliga",
+    "I1": "Italy - Serie A",
+    "I2": "Italy - Serie B",
+    "SP1": "Spain - LaLiga",
+    "SP2": "Spain - Segunda",
+    "F1": "France - Ligue 1",
+    "N1": "Netherlands - Eredivisie",
+    "G1": "Greece - Super League",
+    "BRA": "Brazil - Serie A",
+    "ARG": "Argentina - Liga Profesional",
+}
+
+#: market_id -> rotulo interno. PROVENIENCIA: "moneyline" verificado no
+#: openapi oficial (/sports: market id "moneyline", name "Moneyline");
+#: "total_goals"/"both_teams_to_goal" seguem a convensao de id por
+#: esporte (total_runs/total_points nos exemplos) e so casam por
+#: igualdade EXATA — id diferente e mercado DESCARTADO, nunca renomeado.
+_OPTICODDS_MARKET_IDS: dict[str, str] = {
+    "moneyline": "h2h",
+    "total_goals": "totals",
+    "both_teams_to_goal": "btts",
+}
+
+#: Cesta default de sportsbooks para PEDIR odds (a API exige 1-5 por
+#: chamada). PROVENIENCIA: todos verificados ATIVOS no exemplo oficial de
+#: GET /sportsbooks (2026-09-23) — Betano, Betnacional, Superbet,
+#: Sportingbet, bet365. E uma cesta de REQUEST, nao alegacao de cobertura:
+#: as casas registradas sao SEMPRE as que a resposta real devolver.
+#: Override: BETGSN_OPTICODDS_SPORTSBOOKS (lista separada por virgula).
+OPTICODDS_DEFAULT_SPORTSBOOKS: tuple[str, ...] = (
+    "Betano",
+    "Betnacional",
+    "Superbet",
+    "Sportingbet",
+    "bet365",
+)
+
+#: /fixtures/odds aceita no maximo 5 fixture_ids e 5 sportsbooks por
+#: chamada (limites oficiais da doc).
+OPTICODDS_MAX_FIXTURES_PER_REQUEST = 5
+OPTICODDS_MAX_SPORTSBOOKS_PER_REQUEST = 5
+
+
+@dataclass
+class OpticOddsProvider:
+    """Adapter OpticOdds (api.opticodds.com/api/v3): odds multi-casa.
+
+    Fluxo (REST; SSE streaming existe mas nao e necessario ao fluxo
+    atual de captura pontual):
+      1. `GET /leagues?sport=soccer` — divisao -> league id por nome
+         EXATO (descoberta dinamica; sem casamento, no_coverage);
+      2. `GET /fixtures/active?sport=soccer&league=<id>` por liga —
+         jogos ativos (nunca completados);
+      3. `GET /fixtures/odds?fixture_id=..&sportsbook=..` em lotes de
+         ate 5 fixtures x 5 casas, `odds_format=DECIMAL` e `is_main=true`
+         (linha principal; alternativas ficam de fora por design).
+
+    Timestamp: cada odd carrega `timestamp` epoch REAL — convertido para
+    chave canonica UTC e usado como timestamp da quote (nunca fetched_at).
+    A resposta nao informa quota: credits permanece None.
+    """
+
+    api_key: str
+    sportsbooks_env: str = ""
+    name: str = "OpticOdds"
+
+    @classmethod
+    def from_env(cls) -> "OpticOddsProvider | None":
+        key = _first_env("BETGSN_OPTICODDS_API_KEY", "OPTICODDS_API_KEY")
+        if not key:
+            return None
+        books = _first_env("BETGSN_OPTICODDS_SPORTSBOOKS")
+        return cls(api_key=key, sportsbooks_env=books)
+
+    # ------------------------------------------------------------- http
+
+    def _get(self, path: str, params: dict) -> tuple[dict | list, dict[str, str]]:
+        headers = {"X-Api-Key": self.api_key, "User-Agent": "BETGSN/1.0"}
+        return _request_json(OPTICODDS_BASE, path, params, headers=headers)
+
+    # --------------------------------------------------------- descoberta
+
+    def leagues(self) -> list[dict]:
+        body, _ = self._get("/leagues", {"sport": "soccer"})
+        data = body.get("data") if isinstance(body, dict) else body
+        return data if isinstance(data, list) else []
+
+    def active_fixtures(self, league_id: str) -> list[dict]:
+        body, _ = self._get("/fixtures/active", {"sport": "soccer", "league": league_id})
+        data = body.get("data") if isinstance(body, dict) else body
+        return data if isinstance(data, list) else []
+
+    def fixture_odds(self, fixture_ids: list[str], sportsbooks: list[str]) -> list[dict]:
+        params: dict[str, object] = {
+            "fixture_id": fixture_ids,
+            "sportsbook": sportsbooks,
+            "odds_format": "DECIMAL",
+            "is_main": "true",
+        }
+        body, _ = self._get("/fixtures/odds", params)
+        data = body.get("data") if isinstance(body, dict) else body
+        return data if isinstance(data, list) else []
+
+    # ------------------------------------------------------------- parse
+
+    def _sportsbooks(self) -> list[str]:
+        if self.sportsbooks_env:
+            names = [b.strip() for b in self.sportsbooks_env.split(",") if b.strip()]
+        else:
+            names = list(OPTICODDS_DEFAULT_SPORTSBOOKS)
+        return names[:OPTICODDS_MAX_SPORTSBOOKS_PER_REQUEST]
+
+    def _canonical_events(self, fixtures_with_odds: list[dict]) -> list[dict]:
+        """FixtureWithOdds -> shape canonico do parser unico.
+
+        Odd com timestamp epoch REAL -> chave UTC por outcome; mercado sem
+        market_id mapeado e descartado; preco DECIMAL ja vem da chamada.
+        """
+        out: list[dict] = []
+        for fixture in fixtures_with_odds:
+            if not isinstance(fixture, dict):
+                continue
+            home = self._team_name(fixture, "home")
+            away = self._team_name(fixture, "away")
+            start = str(fixture.get("start_date") or "").strip()
+            if not home or not away or not start:
+                continue
+            league = fixture.get("league") or {}
+            # agrupa odds por sportsbook para o shape do parser unico
+            by_book: dict[str, list[dict]] = {}
+            for odd in fixture.get("odds") or []:
+                if not isinstance(odd, dict):
+                    continue
+                api_market = _OPTICODDS_MARKET_IDS.get(
+                    str(odd.get("market_id") or "")
+                )
+                if api_market is None:
+                    continue
+                outcome = self._outcome(api_market, odd)
+                if outcome is None:
+                    continue
+                book = str(odd.get("sportsbook") or "").strip()
+                if not book:
+                    continue
+                by_book.setdefault(book, {}).setdefault(api_market, []).append(outcome)
+            books = [
+                {"key": book, "title": book, "markets": [
+                    {"key": market, "outcomes": outcomes}
+                    for market, outcomes in sorted(markets.items())
+                ]}
+                for book, markets in sorted(by_book.items())
+            ]
+            if books:
+                out.append(
+                    {
+                        "id": fixture.get("id"),
+                        "home_team": home,
+                        "away_team": away,
+                        "commence_time": start,
+                        "league": str(league.get("name") or "") if isinstance(league, dict) else "",
+                        "bookmakers": books,
+                    }
+                )
+        return out
+
+    @staticmethod
+    def _team_name(fixture: dict, side: str) -> str:
+        display = str(fixture.get(f"{side}_team_display") or "").strip()
+        if display:
+            return display
+        competitors = fixture.get(f"{side}_competitors") or []
+        if competitors and isinstance(competitors[0], dict):
+            return str(competitors[0].get("name") or "").strip()
+        return ""
+
+    @staticmethod
+    def _outcome(api_market: str, odd: dict) -> dict | None:
+        try:
+            price = float(odd["price"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        timestamp = _epoch_to_utc(odd.get("timestamp"))
+        if api_market in ("h2h", "btts"):
+            name = str(odd.get("selection") or odd.get("name") or "").strip()
+            if not name:
+                return None
+            outcome = {"name": name, "price": price}
+            if timestamp:
+                outcome["timestamp"] = timestamp
+            return outcome
+        # totals: lado vem do selection_line (over/under) + points (linha)
+        side = str(odd.get("selection_line") or "").strip().lower()
+        if side not in ("over", "under"):
+            return None
+        try:
+            point = float(odd["points"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        outcome = {"name": side.capitalize(), "price": price, "point": point}
+        if timestamp:
+            outcome["timestamp"] = timestamp
+        return outcome
+
+    # ------------------------------------------------ contrato (FASE B)
+
+    def available(self) -> bool:
+        """True: a instancia so existe com chave."""
+        return True
+
+    def fetch_odds(self, request):
+        from .odds_normalize import normalize_events
+        from .odds_provider import OddsProviderFetch
+
+        specs = [
+            (div, DIVISION_TO_OPTICODDS_LEAGUE[div])
+            for div in request.divisions
+            if div in DIVISION_TO_OPTICODDS_LEAGUE
+        ]
+        if not specs:
+            return OddsProviderFetch(no_coverage=True)
+
+        leagues = self.leagues()
+        id_by_name: dict[str, str] = {}
+        for league in leagues:
+            if not isinstance(league, dict):
+                continue
+            name = str(league.get("name") or "").strip()
+            league_id = str(league.get("id") or "").strip()
+            if name and league_id:
+                id_by_name[name] = league_id
+
+        errors: list[str] = []
+        matched: list[tuple[str, str]] = []
+        for division, league_name in specs:
+            league_id = id_by_name.get(league_name)
+            if league_id is None:
+                errors.append(
+                    f"{division}: liga {league_name!r} nao encontrada no "
+                    "catalogo OpticOdds — sem cobertura declarada"
+                )
+            else:
+                matched.append((division, league_id))
+        if not matched:
+            return OddsProviderFetch(no_coverage=True, errors=tuple(errors))
+
+        sportsbooks = self._sportsbooks()
+        quotes = []
+        raw_events: list[dict] = []
+        for division, league_id in matched:
+            fixtures = [
+                f
+                for f in self.active_fixtures(league_id)
+                if isinstance(f, dict) and str(f.get("status") or "") == "unplayed"
+            ]
+            fixture_ids = [str(f.get("id") or "") for f in fixtures if f.get("id")]
+            if not fixture_ids:
+                errors.append(f"{division}: nenhum jogo ativo com odds na liga")
+                continue
+            for start in range(0, len(fixture_ids), OPTICODDS_MAX_FIXTURES_PER_REQUEST):
+                batch = fixture_ids[start : start + OPTICODDS_MAX_FIXTURES_PER_REQUEST]
+                odds_fixtures = self.fixture_odds(batch, sportsbooks)
+                canonical = self._canonical_events(odds_fixtures)
+                raw_events.extend(canonical)
+                quotes.extend(
+                    normalize_events(
+                        canonical, self.name, request.fetched_at, sport_key=division
+                    )
+                )
+        return OddsProviderFetch(
+            quotes=tuple(quotes),
+            raw_events=tuple(raw_events),
+            snapshot_provider="opticodds-live",
+            credits=None,  # quota nao vem na resposta: None, nunca inventada
+            no_coverage=not quotes,
+            errors=tuple(errors),
+        )
+
+    def estimated_cost(self, request) -> int:
+        """Chamadas contabilizadas: leagues + fixtures/liga + lotes de
+        fixtures/odds (5 fixtures por chamada)."""
+        n_leagues = len(
+            [d for d in request.divisions if d in DIVISION_TO_OPTICODDS_LEAGUE]
+        )
+        if n_leagues == 0:
+            return 0
+        return 1 + n_leagues + n_leagues
+
+    def divisions_for(self, scope: str) -> tuple[str, ...]:
+        return tuple(
+            d
+            for d in SPORT_KEY_TO_DIVISIONS.get(scope, ())
+            if d in DIVISION_TO_OPTICODDS_LEAGUE
+        )
+
+
+# --------------------------------------------------------------------------
 # API-Football
 # --------------------------------------------------------------------------
 
@@ -948,10 +2090,18 @@ class FootballDataProvider:
 
 
 def available_providers() -> dict[str, bool]:
-    """Quais providers tem chave configurada no ambiente ou no .env."""
+    """Quais providers tem chave configurada no ambiente ou no .env.
+
+    Providers opcionais sem chave aparecem como False: o registro existe
+    (a API e o frontend listam o provider como "nao configurado"), mas a
+    fabrica devolve None e nenhuma chamada acontece.
+    """
     return {
         "The Odds API": OddsApiProvider.from_env() is not None,
         "ParlayAPI": ParlayApiProvider.from_env() is not None,
+        "OddsPapi": OddsPapiProvider.from_env() is not None,
+        "Odds-API.io": OddsApiIoProvider.from_env() is not None,
+        "OpticOdds": OpticOddsProvider.from_env() is not None,
         "API-Football": ApiFootballProvider.from_env() is not None,
         "Football-Data.org": FootballDataProvider.from_env() is not None,
     }

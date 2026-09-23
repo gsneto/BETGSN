@@ -135,18 +135,32 @@ class OddsProviderRegistry:
 
 
 def default_odds_registry() -> OddsProviderRegistry:
-    """Registry padrao: The Odds API (priority 1), ParlayAPI (priority 2).
+    """Registry padrao: os CINCO providers de odds, por prioridade.
 
-    Factories: `OddsApiProvider.from_env` / `ParlayApiProvider.from_env`
-    (retornam None sem chave). Um registry NOVO por chamada: cada uso
-    le o ambiente na hora, como `providers.configured_odds_providers`
-    sempre fez — sem estado global escondido entre chamadas.
+    Factories `*.from_env` devolvem None sem chave — provider opcional
+    fica registrado como spec mas NAO entra em `available_providers()`
+    (ausencia de chave e exclusao, nao erro). Um registry NOVO por
+    chamada: cada uso le o ambiente na hora, como
+    `providers.configured_odds_providers` sempre fez — sem estado
+    global escondido entre chamadas.
+
+    Ordem (priority menor = preferido no fallback): The Odds API (1),
+    ParlayAPI (2), OddsPapi (3), Odds-API.io (4), OpticOdds (5).
+    Multi-provider AGREGACAO (OddsService.fetch_aggregated) consulta
+    TODOS os configurados; o priority so decide dono de chave fisica em
+    empate de timestamp e a ordem do fallback.
 
     Import de `providers` acontece AQUI dentro (tardio): `providers`
     importa este modulo no topo, e o import no nivel de modulo criaria
     o ciclo providers -> odds_registry -> providers.
     """
-    from .providers import OddsApiProvider, ParlayApiProvider
+    from .providers import (
+        OddsApiProvider,
+        OddsApiIoProvider,
+        OddsPapiProvider,
+        OpticOddsProvider,
+        ParlayApiProvider,
+    )
 
     registry = OddsProviderRegistry()
     registry.register(
@@ -154,6 +168,7 @@ def default_odds_registry() -> OddsProviderRegistry:
             name="The Odds API",
             factory=OddsApiProvider.from_env,
             priority=1,
+            features=("odds",),
         )
     )
     registry.register(
@@ -161,6 +176,34 @@ def default_odds_registry() -> OddsProviderRegistry:
             name="ParlayAPI",
             factory=ParlayApiProvider.from_env,
             priority=2,
+            # ("odds",) e o valor historico servido pela API antes das
+            # specs carregarem features — preservado de proposito para
+            # nao mudar a resposta existente deste provider.
+            features=("odds",),
+        )
+    )
+    registry.register(
+        ProviderSpec(
+            name="OddsPapi",
+            factory=OddsPapiProvider.from_env,
+            priority=3,
+            features=("odds", "live"),
+        )
+    )
+    registry.register(
+        ProviderSpec(
+            name="Odds-API.io",
+            factory=OddsApiIoProvider.from_env,
+            priority=4,
+            features=("odds", "live"),
+        )
+    )
+    registry.register(
+        ProviderSpec(
+            name="OpticOdds",
+            factory=OpticOddsProvider.from_env,
+            priority=5,
+            features=("odds", "live"),
         )
     )
     return registry

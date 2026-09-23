@@ -39,6 +39,7 @@ from .odds_normalize import (
     MARKET_MAP,
     NormalizedQuote,
     dedupe_quotes,
+    merge_provider_quotes,
     normalize_events,
 )
 from .odds_provider import (
@@ -322,6 +323,142 @@ class OddsService:
 
         result.attempts = attempts
         return self._degraded(sport_key, fetched_at, result)
+
+    # ------------------------------------------------ agregacao multi
+
+    def fetch_aggregated(
+        self,
+        sport_key: str,
+        markets: str = "h2h",
+        regions: Optional[str] = None,
+        cost: int = 1,
+    ) -> OddsFetch:
+        """Coleta de TODOS os providers configurados + merge por linha fisica.
+
+        Diferente de `fetch` (fallback: o primeiro provider com quotes
+        atende e encerra), aqui NENHUMA quote e perdida porque outro
+        provider respondeu: cada provider configurado e saudavel e
+        consultado, e as quotes sao AGREGADAS com `merge_provider_quotes`
+        — uma linha por (evento, casa, mercado, resultado), mantendo a
+        observacao com timestamp MAIS RECENTE; empate fica com o provider
+        de MENOR prioridade (ordem do registry). As colisoes sao
+        devolvidas em `result.errors` como registro EXPLICITO — nunca
+        mascaradas.
+
+        Health/quota seguem separados por provider (mesmos trackers),
+        fallback continua valendo para `fetch`: agregacao e um MODO,
+        nao uma substituicao. Se ninguem responder com quotes, a
+        degradacao controlada (cache + STALE) e a mesma de `fetch`.
+        """
+        fetched_at = self._now()
+        result = OddsFetch(fetched_at=fetched_at)
+        attempts: list[ProviderAttempt] = []
+
+        all_quotes: list[NormalizedQuote] = []
+        events_total = 0
+        contributors: list[str] = []
+        credits_remaining: Optional[int] = None
+
+        for name, provider in self._providers:
+            request = self._build_request(
+                provider, sport_key, markets, regions, fetched_at
+            )
+            spend_cost = (
+                estimated_cost(provider, request) if request is not None else cost
+            )
+            if not self._health.is_available(name):
+                attempts.append(ProviderAttempt(name, "SKIPPED", kind="UNAVAILABLE"))
+                continue
+            if not self._credits.can_spend(name, spend_cost):
+                attempts.append(ProviderAttempt(name, "SKIPPED", kind="NO_CREDITS"))
+                continue
+
+            try:
+                call_started = self._perf()
+                gathered = self._gather(
+                    provider, sport_key, markets, regions, fetched_at, request
+                )
+            except Exception as exc:  # noqa: BLE001 - classificar tudo, nao abortar
+                kind, _retryable = classify_exception(exc)
+                self._health.record_failure(
+                    name, kind, str(exc)[:300], status=getattr(exc, "status", None)
+                )
+                attempts.append(
+                    ProviderAttempt(name, "FAILED", kind=kind, message=str(exc)[:300])
+                )
+                result.errors.append(f"{name}: {exc}")
+                continue
+
+            latency_ms = (self._perf() - call_started) * 1000.0
+
+            if gathered.credits is not None:
+                provider_remaining = self._apply_credit_update(
+                    name, gathered.credits, spend_cost
+                )
+            else:
+                provider_remaining = self._apply_credits(
+                    name, gathered.headers, spend_cost
+                )
+            events = gathered.events
+            if gathered.quotes is None:
+                if not events:
+                    self._health.record_no_coverage(name)
+                    attempts.append(ProviderAttempt(name, "NO_COVERAGE"))
+                    continue
+                quotes = dedupe_quotes(
+                    normalize_events(events, name, fetched_at, sport_key=sport_key)
+                )
+            else:
+                quotes = gathered.quotes
+            if not quotes:
+                self._health.record_no_coverage(name)
+                attempts.append(
+                    ProviderAttempt(
+                        name, "NO_COVERAGE", kind=FAILURE_NO_COVERAGE, events=len(events)
+                    )
+                )
+                continue
+
+            self._health.record_success(
+                name,
+                observations=len(quotes),
+                credits_remaining=provider_remaining,
+                latency_ms=latency_ms,
+            )
+            attempts.append(
+                ProviderAttempt(
+                    name,
+                    "OK",
+                    events=len(events),
+                    quotes=len(quotes),
+                    credits_remaining=provider_remaining,
+                )
+            )
+            all_quotes.extend(quotes)
+            events_total += len(events)
+            contributors.append(name)
+            if provider_remaining is not None:
+                credits_remaining = provider_remaining
+
+        if not all_quotes:
+            result.attempts = attempts
+            return self._degraded(sport_key, fetched_at, result)
+
+        merged, collisions = merge_provider_quotes(all_quotes)
+        for _event_id, book, _market, _sel, kept, dropped in collisions:
+            result.errors.append(
+                f"colisao multi-provider: {book} linha mantida de {kept}, "
+                f"descartada de {dropped} (timestamp mais antigo)"
+            )
+        result.provider = "+".join(contributors)
+        result.state = ProviderState.HEALTHY
+        result.quotes = merged
+        result.events = events_total
+        result.fallback_used = False
+        result.credits_remaining = credits_remaining
+        result.attempts = attempts
+        self._cache[sport_key] = (result.provider, fetched_at, merged, events_total)
+        return result
 
     # ---------------------------------------------------------------- interno
 

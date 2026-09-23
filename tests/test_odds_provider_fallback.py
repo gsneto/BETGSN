@@ -277,9 +277,26 @@ def test_default_registry_order_the_odds_api_before_parlayapi(monkeypatch):
     monkeypatch.setenv("BETGSN_PARLAY_API_KEY", "chave-teste")
     monkeypatch.setenv("BETGSN_PARLAY_API_BASE", "https://parlay.invalid/api/")
 
-    assert default_odds_registry().names() == ["The Odds API", "ParlayAPI"]
+    # CINCO providers registrados; os tres novos so entram em
+    # available_providers() quando a chave existe (factory devolve None).
+    assert default_odds_registry().names() == [
+        "The Odds API",
+        "ParlayAPI",
+        "OddsPapi",
+        "Odds-API.io",
+        "OpticOdds",
+    ]
     pairs = default_odds_registry().available_providers()
     assert [name for name, _ in pairs] == ["The Odds API", "ParlayAPI"]
+
+    # chave nova -> provider novo entra na fila SEM quebrar os existentes
+    monkeypatch.setenv("BETGSN_OPTICODDS_API_KEY", "chave-optic")
+    pairs = default_odds_registry().available_providers()
+    assert [name for name, _ in pairs] == [
+        "The Odds API",
+        "ParlayAPI",
+        "OpticOdds",
+    ]
 
 
 def test_service_prefers_first_healthy_provider():
