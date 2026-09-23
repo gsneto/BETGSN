@@ -7,7 +7,7 @@
  */
 
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import PortfolioPage from "@/pages/PortfolioPage";
 import { StoreContext, type Store } from "@/store/context";

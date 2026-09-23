@@ -805,13 +805,19 @@ class BetgsnService:
     def _game(self, a: FixtureAnalysis, sig_count: dict[str, int]) -> S.GameAnalysis:
         key = f"{a.fixture.home} vs {a.fixture.away}"
         m1 = a.markets.get("Resultado Final (1X2)", {})
+        kickoff = utc_key(a.fixture.kickoff)
+        # id UNICO: "Casa vs Fora" pode se repetir na janela (mesmo
+        # confronto em liga e copa). O id identifica; `match` continua
+        # sendo o rotulo humano. Liga + kickoff distinguem sem inventar
+        # chave opaca — quem le o id sabe exatamente o que ele e.
+        game_id = f"{a.fixture.league}|{key}|{kickoff}" if kickoff else key
         return S.GameAnalysis(
-            id=key,
+            id=game_id,
             match=key,
             home=a.fixture.home,
             away=a.fixture.away,
             league=a.fixture.league,
-            kickoff=utc_key(a.fixture.kickoff),
+            kickoff=kickoff,
             round_label=a.fixture.round_label,
             lambda_home=a.lambdas[0],
             lambda_away=a.lambdas[1],
