@@ -209,6 +209,7 @@ def test_movement_is_no_data_without_history(monkeypatch, tmp_path):
 
 
 def test_clv_finds_persisted_closing_observation(monkeypatch, tmp_path):
+    monkeypatch.setattr("betgsn.odds_snapshots.now_utc", lambda: "2030-01-02T13:00:00Z")
     from betgsn.api.service import BetgsnService
 
     fixture = _fixture()

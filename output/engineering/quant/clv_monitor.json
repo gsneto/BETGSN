@@ -2,7 +2,7 @@
   "kind": "clv_prospective_monitor",
   "status": "BLOCKED",
   "clv": {
-    "mean": 0.0,
+    "mean": null,
     "n": 0,
     "prospective": true
   },
@@ -10,6 +10,14 @@
   "n_valid": 0,
   "n_no_closing": 480,
   "n_closing_before_entry": 0,
+  "lifecycle": {
+    "PENDING": 477,
+    "NO_CLOSE": 3,
+    "CLOSED": 0,
+    "INVALID": 0,
+    "MISMATCH": 0
+  },
+  "lifecycle_note": "PENDING = kickoff no futuro (fechamento ainda pode chegar); NO_CLOSE = kickoff passou sem fechamento valido; CLOSED = CLV calculado; INVALID = dado inconsistente; MISMATCH = entrada sem observacao correspondente. Ausencia de fechamento nunca vira CLV=0.",
   "mean": null,
   "median": null,
   "p10": null,

@@ -218,6 +218,7 @@ def test_movement_single_observation_is_insufficient_data(
 
 
 def test_clv_endpoint_carries_closing_before_entry(monkeypatch, tmp_path):
+    monkeypatch.setattr("betgsn.odds_snapshots.now_utc", lambda: "2030-01-02T13:00:00Z")
     """O estado prospectivo do dominio chega inteiro ao consumidor da API.
 
     Pelo caminho REAL (I-02): a entrada e registrada pelo proprio store

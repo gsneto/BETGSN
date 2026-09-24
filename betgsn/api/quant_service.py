@@ -124,6 +124,10 @@ def line_shopping() -> dict[str, Any]:
 def ml_models() -> dict[str, Any]:
     """Modelos experimentais nas 24 janelas (artefato da tool offline)."""
     payload = _read_artifact("ml_oos_validation.json")
+    from ..ensemble_artifact import load_validated
+    ensemble = load_validated()
+    if ensemble is not None:
+        payload = dict(payload or {}, ensemble=ensemble)
     if payload is None:
         return {
             "status": "MISSING",
@@ -161,6 +165,8 @@ def clv_status() -> dict[str, Any]:
     store = OddsSnapshotStore()
     sweep = store.clv_lifecycle_sweep()
     evidence = vwf.prospective_clv_evidence(store)
+    if not evidence.get("n"):
+        evidence = dict(evidence, mean=None)
     oos = vwf.cached_oos_evidence()
     n_clv = int(evidence.get("n", 0))
     blocked = n_clv < MIN_CLV_SAMPLE
@@ -185,6 +191,8 @@ def clv_status() -> dict[str, Any]:
         "status": "OK",
         "lifecycle": sweep.by_state,
         "n_entries": sweep.n_entries,
+        "entries": [dict(lc.to_dict(), provenance=store.clv_provenance(lc.entry))
+                    for lc in sweep.lifecycles],
         "clv_prospective": evidence,
         "clv_statistics": clv_statistics(sweep),
         # fechamentos encontrados entre entradas elegíveis (kickoff já

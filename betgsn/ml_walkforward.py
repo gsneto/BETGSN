@@ -233,7 +233,7 @@ def _fold_boundaries(
     bounds.append(n)
     # chunks de PREVISÃO (1..n_chunks-1) precisam de amostra mínima
     for k in range(1, n_chunks):
-        if bounds[k] - bounds[k - 1] < min_rows:
+        if bounds[k + 1] - bounds[k] < min_rows:
             return None
     return bounds
 
@@ -518,9 +518,21 @@ class EnsembleWindowAdapter:
     def fit(self, matches: Sequence, train_end: str):
         import numpy as np
 
+        from datetime import timedelta
+        from .temporal import result_time
+        from .timeutil import parse_kickoff, utc_key
+
         corpus = self.corpus
         cutoff = str(train_end)
-        train_idx = [i for i, t in enumerate(corpus.times) if t < cutoff]
+        # Labels must be available, not merely kicked off. Feature cache
+        # contains no publication timestamps: recover them from source rows.
+        available = {
+            (m.home, m.away, str(m.kickoff)[:10]): result_time(m)
+            for m in matches
+        }
+        train_idx = [i for i, t in enumerate(corpus.times)
+                     if t < cutoff and available.get(corpus.rows[i], "9999")
+                     < utc_key(cutoff)]
         if len(train_idx) < MIN_TRAIN_MATCHES:
             return None
         times_train = [corpus.times[i] for i in train_idx]
@@ -552,8 +564,17 @@ class EnsembleWindowAdapter:
                     k, self.n_folds,
                     f"ensemble fold {k}/{self.n_folds} (train_end "
                     f"{cutoff[:10]})")
-            fit_rows = train_idx[:bounds[k]]
             pred_rows = train_idx[bounds[k]:bounds[k + 1]]
+            first_prediction = utc_key(corpus.times[pred_rows[0]])
+            base_cutoff = (parse_kickoff(first_prediction)
+                           - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            fit_rows = [i for i in train_idx[:bounds[k]]
+                        if utc_key(corpus.times[i]) < base_cutoff
+                        and available[corpus.rows[i]] < first_prediction]
+            if not fit_rows:
+                self.last_stack_audit = {"train_end": cutoff,
+                                        "reason": "insufficient embargoed fold"}
+                return None
             predictors: dict[str, Callable] = {}
             for kind in self.kinds:
                 predict = _fit_base(
@@ -568,7 +589,7 @@ class EnsembleWindowAdapter:
                 folds_audit.append({
                     "fold": k,
                     "skipped": True,
-                    "base_train_end": times_train[bounds[k] - 1],
+                    "base_train_end": corpus.times[fit_rows[-1]],
                     "first_prediction": times_train[bounds[k]],
                     "last_prediction": times_train[bounds[k + 1] - 1],
                     "n_base_rows": len(fit_rows),
@@ -588,7 +609,10 @@ class EnsembleWindowAdapter:
             folds_audit.append({
                 "fold": k,
                 "skipped": False,
-                "base_train_end": times_train[bounds[k] - 1],
+                "base_train_end": corpus.times[fit_rows[-1]],
+                "base_cutoff": base_cutoff,
+                "labels_available_until": max(available[corpus.rows[i]] for i in fit_rows),
+                "embargo_days": 2,
                 "first_prediction": times_train[bounds[k]],
                 "last_prediction": times_train[bounds[k + 1] - 1],
                 "n_base_rows": len(fit_rows),
@@ -677,7 +701,7 @@ class EnsembleWindowAdapter:
         upper = (base + timedelta(days=_PREDICT_HORIZON_DAYS)).isoformat()
         targets = [
             i for i, t in enumerate(corpus.times)
-            if lower <= t[:10] <= upper
+            if (base + timedelta(days=2)).isoformat() <= t[:10] <= upper
         ]
         if not targets:
             return {}

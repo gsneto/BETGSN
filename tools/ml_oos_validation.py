@@ -170,6 +170,8 @@ def odds_band_breakdown(rows: list[tuple]) -> list[dict]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--output", default="ml_oos_validation.json",
+                        choices=("ml_oos_validation.json", "ensemble_oos_validation.json"))
     parser.add_argument(
         "--models", default="elo,xgboost,lightgbm",
         help="modelos separados por vírgula "
@@ -182,6 +184,8 @@ def main() -> int:
             return 2
 
     config = WalkForwardConfig()
+    from betgsn.ensemble_artifact import fingerprint
+    implementation_fingerprint = fingerprint()
     print("Validação OOS de modelos experimentais (corpus real, sem rede)")
     print(f"  janelas: train={config.train_days}d test={config.test_days}d "
           f"gap/embargo={config.gap_days}d (MESMAS da Etapa 19)")
@@ -248,6 +252,7 @@ def main() -> int:
 
     payload = {
         "kind": "ml_oos_validation",
+        "implementation_fingerprint": implementation_fingerprint,
         "protocol": {
             "train_days": config.train_days,
             "test_days": config.test_days,
@@ -287,7 +292,7 @@ def main() -> int:
 
     from betgsn.config import output_root
 
-    out = output_root() / "engineering" / "quant" / "ml_oos_validation.json"
+    out = output_root() / "engineering" / "quant" / args.output
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False),
@@ -302,8 +307,16 @@ def main() -> int:
 def _evaluate_adapter(adapter, bets, matches, config,
                       collect_rows: bool = False) -> dict:
     """Roda o adapter no MESMO harness e devolve o resultado serializado."""
+    audits = []
+
+    def fit_window(history, train_end):
+        model = adapter.fit(history, train_end)
+        if isinstance(adapter, EnsembleWindowAdapter):
+            audits.append(adapter.last_stack_audit)
+        return model
+
     comparison = run_model_walkforward(
-        bets, matches, config, _progress, model_fn=adapter.fit,
+        bets, matches, config, _progress, model_fn=fit_window,
         collect_rows=collect_rows)
 
     m_raw = comparison.model_raw
@@ -363,6 +376,8 @@ def _evaluate_adapter(adapter, bets, matches, config,
         # linhas por aposta (in-memory): consumidor imediato é o
         # breakdown por odd band — nunca serializadas no artefato
         out["prediction_rows"] = comparison.prediction_rows
+    if audits:
+        out["stacking_audits"] = audits
     return out
 
 
@@ -377,11 +392,14 @@ def _ensemble_payload(ensemble_result: dict, config,
         "n_folds": ENSEMBLE_FOLDS,
     }
     out = dict(ensemble_result)
-    out["status"] = "OK"
+    out["status"] = ("OK" if out["n_windows_valid"] == out["n_windows"]
+                     and out["n_windows_valid"] > 0 else "INCOMPLETE")
     out["model"] = "ENSEMBLE_STACK_V1 (stacking OOS por janela)"
     out["stacking_protocol"] = {
         "base_models": list(protocol["base_models"]),
         "n_folds": int(protocol["n_folds"]),
+        "internal_embargo_days": 2,
+        "post_calibration": "raw: no in-sample TRAIN predictions exposed",
         "meta_model": "LogisticRegression multinomial (default, sem tuning)",
         "note": (
             "Por janela: TRAIN dividido em chunks temporais; cada fold "

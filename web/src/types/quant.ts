@@ -148,7 +148,7 @@ export interface QuantClvStatus {
   status: "OK";
   lifecycle: Record<string, number>;
   n_entries: number;
-  clv_prospective: { mean: number; n: number; prospective: boolean };
+  clv_prospective: { mean: number | null; n: number; prospective: boolean };
   clv_statistics?: QuantClvStatistics;
   /** CLOSED/(CLOSED+NO_CLOSE) — null quando nada foi medido. */
   close_rate?: number | null;

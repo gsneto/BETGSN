@@ -191,6 +191,11 @@ export default function QuantPage() {
                       </span>
                     </span>
                     <span className="text-[11px] text-ink-4">
+                      Brier {fmtNum(ml.data.ensemble.model_raw?.brier)} · ECE {fmtNum(ml.data.ensemble.model_raw?.ece)} ·
+                      MARKET FAIR LogLoss {fmtNum(ml.data.ensemble.market_fair?.logloss)} ·
+                      delta {fmtNum(ml.data.ensemble.delta_logloss_vs_market_fair)}
+                    </span>
+                    <span className="text-[11px] text-ink-4">
                       {ml.data.ensemble.stacking_protocol
                         ? `stacking OOS por janela: ${ml.data.ensemble.stacking_protocol.base_models.join(" + ")} · ${ml.data.ensemble.stacking_protocol.n_folds} folds rolling-origin no TRAIN`
                         : "stacking OOS por janela"}

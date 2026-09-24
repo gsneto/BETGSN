@@ -8,6 +8,7 @@ observacao valida, o CLV e None — nunca inventado.
 from __future__ import annotations
 
 import sqlite3
+import math
 import statistics
 import threading
 from dataclasses import dataclass, field
@@ -88,7 +89,7 @@ class OddsObservation:
     is_closing: bool = False
 
     def __post_init__(self) -> None:
-        if self.odd <= 1.0:
+        if not math.isfinite(self.odd) or self.odd <= 1.0:
             raise ValueError(f"odd decimal precisa ser > 1.0, recebi {self.odd!r}")
         if not self.timestamp:
             raise ValueError("observacao de odds exige timestamp")
@@ -781,6 +782,7 @@ class OddsSnapshotStore:
         market: str,
         outcome: str,
         window_minutes: float = CLOSING_WINDOW_MINUTES,
+        *, after: str = "",
     ) -> Optional[tuple[float, str, str, float, int]]:
         """Retorna (odd_mediana, book, timestamp, minutos_antes, n_books).
 
@@ -811,7 +813,8 @@ class OddsSnapshotStore:
             return None
         usable = [r for r in rows
                   if r["minutes_before_kickoff"] is not None
-                  and r["minutes_before_kickoff"] <= window_minutes]
+                  and 0 < r["minutes_before_kickoff"] <= window_minutes
+                  and (not after or r["timestamp"] > utc_key(after))]
         if not usable:
             return None
 
@@ -821,7 +824,7 @@ class OddsSnapshotStore:
         return (
             round(median_odd, 4),
             best["bookmaker"],
-            best["timestamp"],
+            max(r["timestamp"] for r in usable),
             round(best["minutes_before_kickoff"], 2),
             len(usable),
         )
@@ -1071,7 +1074,7 @@ class OddsSnapshotStore:
         posteriores nao alteram entry_odd nem entry_timestamp. Devolve
         True somente quando a linha foi inserida AGORA.
         """
-        if entry_odd <= 1.0:
+        if not math.isfinite(entry_odd) or entry_odd <= 1.0:
             raise ValueError("entry_odd precisa ser > 1.0")
         if entry_n_books < 1:
             raise ValueError("entry_n_books precisa ser >= 1")
@@ -1092,6 +1095,8 @@ class OddsSnapshotStore:
                 "observacao pos-decisao nao pode definir a entrada (leakage)"
             )
         kickoff_key = utc_key(kickoff)
+        if prediction_key >= kickoff_key:
+            raise ValueError("prediction_timestamp precisa ser anterior ao kickoff")
         if entry_key >= kickoff_key:
             raise ValueError("entry_timestamp precisa ser anterior ao kickoff")
 
@@ -1143,6 +1148,45 @@ class OddsSnapshotStore:
             for r in rows
         ]
 
+    def clv_provenance(self, entry: ClvEntryRecord) -> dict:
+        """Reconstruct the observed line; representative book is NOT execution.
+
+        A median can lie between two actual quotes. All constituents are
+        returned rather than attributing that synthetic aggregate to one book.
+        """
+        from dataclasses import asdict
+
+        observations = [o for o in self.all_observations(entry.match_key)
+                        if o.market == entry.market and o.outcome == entry.outcome
+                        and utc_key(o.kickoff) == utc_key(entry.kickoff)]
+        original = {}
+        for quote in observations:
+            if quote.timestamp <= utc_key(entry.prediction_timestamp):
+                original[quote.bookmaker] = quote
+        subsequent = [o for o in observations
+                      if o.timestamp > utc_key(entry.prediction_timestamp)]
+        latest = {}
+        for quote in subsequent:
+            if 0 < quote.minutes_before_kickoff <= CLOSING_WINDOW_MINUTES:
+                latest[quote.bookmaker] = quote
+        return {
+            "entry_id": entry.id,
+            "source": entry.source,
+            "decision_price": entry.entry_odd,
+            "decision_timestamp": entry.prediction_timestamp,
+            "observed_price": entry.entry_odd,
+            "observation_timestamp": entry.entry_timestamp,
+            "selected_price": None,
+            "execution_price": None,
+            "execution_status": entry.execution_status,
+            "aggregation": "median_of_latest_per_bookmaker",
+            "original_quotes": [asdict(q) for q in original.values()],
+            "subsequent_quotes": [asdict(q) for q in subsequent],
+            "closing_candidates": [asdict(q) for q in latest.values()],
+            "formula": "decision_price / closing_price - 1",
+            "selected_price_note": "not persisted by historical FIRST_WINS; unknown",
+        }
+
     # ------------------------------------------------------- ciclo de vida
 
     def clv_lifecycle(
@@ -1173,12 +1217,16 @@ class OddsSnapshotStore:
         detail = ""
         result: Optional[CLVResult] = None
 
-        if entry.entry_odd <= 1.0:
+        if not math.isfinite(entry.entry_odd) or entry.entry_odd <= 1.0:
             state = "INVALID"
             detail = f"entry_odd invalida: {entry.entry_odd!r}"
         elif utc_key(entry.entry_timestamp) >= utc_key(entry.kickoff):
             state = "INVALID"
             detail = "entry_timestamp >= kickoff (timestamps fora de ordem)"
+        elif (utc_key(entry.entry_timestamp) > utc_key(entry.prediction_timestamp)
+              or utc_key(entry.prediction_timestamp) >= utc_key(entry.kickoff)):
+            state = "INVALID"
+            detail = "timestamps da decisao fora de ordem"
         else:
             has_obs = any(
                 o.market == entry.market and o.outcome == entry.outcome
@@ -1192,11 +1240,25 @@ class OddsSnapshotStore:
                     "registro e as observacoes da linha"
                 )
             else:
+                if entry.entry_bookmaker and not any(
+                    o.bookmaker == entry.entry_bookmaker
+                    and o.timestamp <= utc_key(entry.prediction_timestamp)
+                    for o in self.all_observations(entry.match_key)
+                    if o.market == entry.market and o.outcome == entry.outcome
+                ):
+                    return ClvLifecycle(entry, "MISMATCH", detail="bookmaker original nao observado")
+                if any(utc_key(o.kickoff) != utc_key(entry.kickoff)
+                       for o in self.all_observations(entry.match_key)
+                       if o.market == entry.market and o.outcome == entry.outcome):
+                    return ClvLifecycle(entry, "MISMATCH", detail="kickoff divergente")
+                if utc_key(now) < utc_key(entry.kickoff):
+                    return ClvLifecycle(entry, "PENDING", detail="kickoff no futuro")
                 result = self.clv_prospective(
                     entry.match_key, entry.market, entry.outcome,
                     entry_odd=entry.entry_odd,
-                    entry_timestamp=entry.entry_timestamp,
+                    entry_timestamp=entry.prediction_timestamp,
                     window_minutes=window_minutes,
+                    strict_components=True,
                 )
                 if result.status == "OK":
                     state = "CLOSED"
@@ -1296,6 +1358,7 @@ class OddsSnapshotStore:
         entry_odd: float,
         entry_timestamp: str,
         window_minutes: float = CLOSING_WINDOW_MINUTES,
+        *, strict_components: bool = False,
     ) -> CLVResult:
         """CLV prospectivo: a entrada TEM de ser anterior ao fechamento.
 
@@ -1308,7 +1371,13 @@ class OddsSnapshotStore:
         if entry_odd <= 1.0:
             raise ValueError("entry_odd precisa ser > 1.0")
         entry_implied = 1.0 / entry_odd
-        closing = self.closing_line(match_key, market, outcome, window_minutes)
+        closing = self.closing_line(
+            match_key, market, outcome, window_minutes,
+            after=entry_timestamp if strict_components else "")
+        # Preserve INVALID diagnostic when observations exist only before
+        # the decision. Such quotes never contribute to a valid aggregate.
+        if closing is None and strict_components:
+            closing = self.closing_line(match_key, market, outcome, window_minutes)
         if closing is None:
             return CLVResult(
                 match_key=match_key, market=market, outcome=outcome,

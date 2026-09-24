@@ -1185,13 +1185,9 @@ def prospective_clv_evidence(store=None) -> dict[str, Any]:
 
     store = store or OddsSnapshotStore()
     pcts: list[float] = []
-    for rec in store.clv_entries():
-        result = store.clv_prospective(
-            rec.match_key, rec.market, rec.outcome,
-            entry_odd=rec.entry_odd,
-            entry_timestamp=rec.entry_timestamp,
-        )
-        if result.status == "OK" and result.clv_percentage is not None:
+    for lifecycle in store.clv_lifecycle_sweep().lifecycles:
+        result = lifecycle.result
+        if lifecycle.state == "CLOSED" and result is not None and result.clv_percentage is not None:
             pcts.append(float(result.clv_percentage))
     n = len(pcts)
     if n == 0:

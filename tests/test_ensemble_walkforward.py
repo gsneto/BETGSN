@@ -148,6 +148,14 @@ def test_ensemble_stack_folds_are_oos_and_inside_train():
     # bases finais (as que preveem o TEST): apenas TRAIN da janela
     assert audit["final_bases"]["last_time"] < train_end
     assert audit["final_bases"]["n_rows"] == frozen.n_matches
+    from betgsn.timeutil import utc_key
+    for fold in audit["folds"]:
+        assert fold["labels_available_until"] < utc_key(fold["first_prediction"])
+        assert utc_key(fold["base_train_end"]) < fold["base_cutoff"]
+        assert fold["embargo_days"] == 2
+    for home, away, day in corpus.rows:
+        if day < train_end:
+            assert frozen.prob_1x2(home, away, day=day) is None
 
 
 def test_ensemble_skipped_folds_are_declared():

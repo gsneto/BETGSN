@@ -24,6 +24,14 @@ import statistics
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def observed_after_fixture_kickoff(monkeypatch):
+    # Closing assertions represent a historical query AFTER these fixtures.
+    # Explicit clock prevents accepting future closing quotes as final today.
+    monkeypatch.setattr("betgsn.odds_snapshots.now_utc",
+                        lambda: "2030-01-02T13:00:00Z")
+
 from betgsn.api.service import BetgsnService
 from betgsn.football_data_uk import UpcomingFixture
 from betgsn.model import TeamRating

@@ -491,7 +491,8 @@ def test_prospective_clv_evidence_empty_store(tmp_path):
     assert ev == {"mean": 0.0, "n": 0, "prospective": True}
 
 
-def test_prospective_clv_evidence_counts_only_ok_results(tmp_path):
+def test_prospective_clv_evidence_counts_only_ok_results(tmp_path, monkeypatch):
+    monkeypatch.setattr("betgsn.odds_snapshots.now_utc", lambda: "2030-06-02T13:00:00Z")
     from betgsn.odds_normalize import event_key
     from betgsn.odds_snapshots import (
         OddsObservation, OddsSnapshotStore, CLV_ENTRY_SOURCE,
