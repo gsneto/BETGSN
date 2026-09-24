@@ -231,3 +231,73 @@ def test_closed_clv_has_entry_lt_closing_lt_kickoff(monkeypatch, tmp_path):
         if o.market == MARKET and o.outcome == "1"
     ]
     assert lc.result.closing_odd in {o.odd for o in raw}
+
+
+# ==========================================================================
+# matching: quote de OUTRO evento nunca fecha a entrada
+# ==========================================================================
+
+
+def test_other_event_quote_never_closes_the_entry(tmp_path):
+    """Entrada do evento A; quote de fechamento plausível gravada sob a
+    chave do evento B (mesmo mercado/resultado, dentro da janela). A
+    entrada de A NÃO fecha com a odd de B: matching por match_key, não
+    por semelhança de mercado."""
+    db = tmp_path / "odds.db"
+    store = OddsSnapshotStore(db)
+    store.add([_obs("1", "Pinnacle", 2.20, "2030-01-01T09:55:00Z")])
+    assert store.register_entry(
+        match_key=KEY, market=MARKET, outcome="1",
+        entry_odd=2.20, entry_timestamp="2030-01-01T09:55:00Z",
+        entry_n_books=1, kickoff=KICKOFF,
+        prediction_timestamp=DECISION_TS,
+    )
+    other_key = event_key("City", "United", utc_key(KICKOFF))
+    # fechamento VÁLIDO para a linha — mas do OUTRO evento
+    store.add([OddsObservation(
+        match_key=other_key, market=MARKET, outcome="1",
+        bookmaker="Pinnacle", odd=1.50,
+        timestamp="2030-01-01T11:30:00Z", kickoff=KICKOFF,
+        provider="The Odds API",
+    )])
+
+    sweep = store.clv_lifecycle_sweep(now="2030-01-01T13:00:00Z")
+    lc = next(l for l in sweep.lifecycles
+              if l.entry.match_key == KEY)
+    # kickoff passou sem fechamento DA LINHA: NO_CLOSE — nunca CLOSED
+    # com o preço de outro evento
+    assert lc.state == "NO_CLOSE"
+    assert lc.result is None or lc.result.closing_odd != 1.50
+
+
+def test_closing_bookmaker_and_timestamp_are_observed(tmp_path):
+    """CLOSED: bookmaker e timestamp do fechamento existem nas quotes
+    cruas DA LINHA (mesmo match_key/mercado/resultado) — atribuição
+    fabricada não passa na auditoria."""
+    db = tmp_path / "odds.db"
+    store = OddsSnapshotStore(db)
+    store.add([
+        _obs("1", "Pinnacle", 2.20, "2030-01-01T09:55:00Z"),
+        _obs("1", "Bet365", 2.10, "2030-01-01T09:50:00Z"),
+        _obs("1", "Pinnacle", 2.00, "2030-01-01T11:30:00Z"),
+        _obs("1", "Bet365", 1.95, "2030-01-01T11:25:00Z"),
+    ])
+    assert store.register_entry(
+        match_key=KEY, market=MARKET, outcome="1",
+        entry_odd=2.15, entry_timestamp="2030-01-01T09:55:00Z",
+        entry_n_books=2, kickoff=KICKOFF,
+        prediction_timestamp=DECISION_TS,
+    )
+
+    sweep = store.clv_lifecycle_sweep(now="2030-01-01T13:00:00Z")
+    lc = next(l for l in sweep.lifecycles if l.state == "CLOSED")
+    line_obs = [
+        o for o in store.all_observations(KEY)
+        if o.market == MARKET and o.outcome == "1"
+    ]
+    assert lc.result.closing_bookmaker in {
+        o.bookmaker for o in line_obs}
+    assert lc.result.closing_timestamp in {o.timestamp for o in line_obs}
+    # o bookmaker de fechamento é o REPRESENTATIVO da mediana — sempre
+    # uma casa que realmente observou a linha
+    assert lc.result.n_books_closing >= 1

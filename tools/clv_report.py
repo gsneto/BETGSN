@@ -50,22 +50,18 @@ def build_report(store: OddsSnapshotStore | None = None) -> dict:
     # distribuição e cobertura a partir das entradas reais
     entries = store.clv_entries()
     results = []
-    for rec in entries:
-        result = store.clv_prospective(
-            rec.match_key, rec.market, rec.outcome,
-            entry_odd=rec.entry_odd,
-            entry_timestamp=rec.entry_timestamp,
-        )
-        results.append((rec, result))
+    for lc in sweep.lifecycles:
+        if lc.result is not None:
+            results.append((lc.entry, lc.result))
 
     valid = [(rec, r) for rec, r in results if r.status == "OK"]
     pcts = [float(r.clv_percentage) for _, r in valid]
-    no_closing = sum(1 for _, r in results if r.status == "NO_CLOSING_ODDS")
+    no_closing = lifecycle["PENDING"] + lifecycle["NO_CLOSE"]
     before_entry = sum(
         1 for _, r in results if r.status == "CLOSING_BEFORE_ENTRY")
 
-    matches = sorted({rec.match_key for rec, _ in results})
-    kickoffs = sorted({rec.kickoff for rec, _ in results})
+    matches = sorted({rec.match_key for rec in entries})
+    kickoffs = sorted({rec.kickoff for rec in entries})
     books = sorted({
         r.closing_bookmaker for _, r in valid if r.closing_bookmaker
     })
@@ -78,6 +74,8 @@ def build_report(store: OddsSnapshotStore | None = None) -> dict:
         return ordered[idx]
 
     n = len(pcts)
+    if not n:
+        evidence = dict(evidence, mean=None)
     status = "BLOCKED" if n < MIN_CLV_SAMPLE else "READY"
     return {
         "kind": "clv_prospective_monitor",

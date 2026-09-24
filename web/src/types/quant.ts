@@ -106,8 +106,41 @@ export interface QuantMl {
       delta_logloss_vs_market_raw?: number | null;
     }
   >;
-  ensemble?: { status: string; reason?: string };
+  /** Ensemble: PENDENTE (motivo) ou OK com métricas do stacking OOS. */
+  ensemble?: {
+    status: string;
+    reason?: string;
+    model?: string;
+    n_bets_oos?: number;
+    model_raw?: QuantSourceMetrics;
+    model_calibrated?: QuantSourceMetrics;
+    market_raw?: QuantSourceMetrics;
+    market_fair?: QuantSourceMetrics;
+    delta_logloss_vs_market_raw?: number | null;
+    delta_logloss_vs_market_fair?: number | null;
+    paired_model_vs_raw?: QuantPairedComparison | null;
+    paired_model_vs_fair?: QuantPairedComparison | null;
+    stacking_protocol?: {
+      base_models: string[];
+      n_folds: number;
+      meta_model: string;
+      note: string;
+    };
+  };
   declarations?: string[];
+}
+
+/** Estatísticas nulas-seguras do CLV válido (n=0 => mean/median null). */
+export interface QuantClvStatistics {
+  n: number;
+  mean: number | null;
+  median: number | null;
+  p10: number | null;
+  p25: number | null;
+  p75: number | null;
+  p90: number | null;
+  positive_rate: number | null;
+  last_closing_timestamp: string | null;
 }
 
 /** GET /api/quant/clv/status */
@@ -115,7 +148,28 @@ export interface QuantClvStatus {
   status: "OK";
   lifecycle: Record<string, number>;
   n_entries: number;
-  clv_prospective: { mean: number; n: number; prospective: boolean };
+  clv_prospective: { mean: number | null; n: number; prospective: boolean };
+  clv_statistics?: QuantClvStatistics;
+  /** CLOSED/(CLOSED+NO_CLOSE) — null quando nada foi medido. */
+  close_rate?: number | null;
+  /** 1 - MISMATCH/n — entradas que resolvem a observações do store. */
+  resolve_rate?: number | null;
+  capture?: {
+    last_observation_timestamp: string | null;
+    n_observations: number;
+    n_matches: number;
+    providers: Record<string, number>;
+  };
+  provider_health?: Record<
+    string,
+    {
+      state: string;
+      consecutive_failures: number;
+      last_success_at: string;
+      last_error: string;
+    }
+  >;
+  provider_issues?: string[];
   promotion_gate_note: string;
   oos_windows_valid: number;
   lifecycle_note: string;

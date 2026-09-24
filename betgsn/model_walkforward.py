@@ -265,22 +265,34 @@ class ModelComparisonResult:
     #: a decomposição preço/seleção do efeito reportado). Nada de decisão
     #: aqui: é evidência de auditoria, não caminho de aposta.
     strategy_rows: list[dict] = field(default_factory=list)
+    #: linhas de predição por aposta do TEST (apenas com
+    #: collect_rows=True): (window, odd, p_raw, p_fair, p_model, p_cal,
+    #: y) — população EXATA da avaliação, insumo do breakdown por odd
+    #: band sem re-rodar janelas. NÃO serializado (o cache fica leve).
+    prediction_rows: list[tuple] = field(default_factory=list)
     embargo_days: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        # strategy_rows NAO e serializado: ~181k linhas (~31MB) que
-        # nenhum leitor de cache consome — a auditoria do line-shopping
-        # usa o objeto em memoria (tools/line_shopping_audit.py). O
-        # cache de modelo continua leve e o endpoint de API nao
-        # reler megabytes por request. (O campo sai ANTES do asdict:
-        # deep-copy de 181k dicts custa segundos por nada.)
+        # strategy_rows e prediction_rows NAO sao serializados: ~181k
+        # linhas que nenhum leitor de cache consome — as auditorias usam
+        # o objeto em memoria. O cache de modelo continua leve e o
+        # endpoint de API nao reler megabytes por request. (Os campos
+        # saem ANTES do asdict: deep-copy de 181k dicts custa segundos
+        # por nada.)
         saved = self.strategy_rows
+        saved_pred = self.prediction_rows
         self.strategy_rows = []
+        self.prediction_rows = []
         try:
             out = asdict(self)
         finally:
             self.strategy_rows = saved
+            self.prediction_rows = saved_pred
         out["windows"] = [w.to_dict() for w in self.windows]
+        # asdict enumera TODOS os campos (mesmo vazios): as linhas de
+        # auditoria saem do payload — quem precisa delas usa o objeto
+        out.pop("strategy_rows", None)
+        out.pop("prediction_rows", None)
         return out
 
 
@@ -322,6 +334,7 @@ def run_model_walkforward(
     progress: Any = None,
     *,
     model_fn: Callable[[Sequence, str], Any] | None = None,
+    collect_rows: bool = False,
 ) -> ModelComparisonResult:
     """Executa modelo vs mercado nas MESMAS janelas da estratégia.
 
@@ -336,6 +349,11 @@ def run_model_walkforward(
     (Elo/XGBoost/LightGBM, ver `ml_walkforward`) nas mesmas 24 janelas:
     mesmo harness, sem caminho paralelo de avaliação. Sem `model_fn`,
     o modelo de produção BASELINE_V1 é avaliado como sempre.
+
+    `collect_rows` (opcional): além dos agregados, acumula
+    `prediction_rows` — (window, odd, p_raw, p_fair, p_model, p_cal, y)
+    por aposta do TEST — para breakdown post-hoc (odd bands) sem
+    re-rodar as janelas. Memória ~500k tuplas; o campo não serializa.
     """
     config = config or WalkForwardConfig()
     config.validate()
@@ -474,6 +492,18 @@ def run_model_walkforward(
             win.model_calibrated.logloss or 0.0)
 
         # ---- STRATEGY MODEL (EV>0, separada da performance do modelo) ----
+        # ---- linhas de predição por aposta (collect_rows) ----
+        if collect_rows:
+            for r, p_cal in zip(rows, ps_cal):
+                result.prediction_rows.append((
+                    window.index,
+                    float(r["b"]["odd"]),
+                    r["p_raw"],
+                    r["p_fair"],
+                    r["p_model"],
+                    float(p_cal),
+                    1 if r["b"]["res"] == "win" else 0,
+                ))
         for r, p_cal in zip(rows, ps_cal):
             ev = p_cal * float(r["b"]["odd"]) - 1.0
             if ev > MODEL_EV_THRESHOLD:

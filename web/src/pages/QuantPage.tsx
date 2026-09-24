@@ -21,7 +21,7 @@ import Card from "@/components/ui/Card";
 import { KpiCard } from "@/components/ui";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useStore } from "@/store/context";
-import { fmtInt, fmtPct } from "@/utils/format";
+import { fmtDateTime, fmtInt, fmtPct } from "@/utils/format";
 
 function fmtDelta(value: number | null | undefined): string {
   if (value == null) return "—";
@@ -178,8 +178,34 @@ export default function QuantPage() {
               </li>
             ))}
             {ml.data.ensemble ? (
-              <li className="text-ink-4">
-                Ensemble: {ml.data.ensemble.status} — {ml.data.ensemble.reason}
+              <li className="flex flex-col gap-1 border-t border-surface-2 pt-2">
+                {ml.data.ensemble.status === "OK" ? (
+                  <>
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="label-caps text-ink-3">ensemble</span>
+                      <span className="mono text-ink-2">
+                        LogLoss {fmtNum(ml.data.ensemble.model_raw?.logloss)} vs mercado{" "}
+                        {fmtNum(ml.data.ensemble.market_raw?.logloss)} · delta{" "}
+                        {fmtNum(ml.data.ensemble.delta_logloss_vs_market_raw)} · n{" "}
+                        {fmtInt(ml.data.ensemble.n_bets_oos ?? 0)}
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-ink-4">
+                      Brier {fmtNum(ml.data.ensemble.model_raw?.brier)} · ECE {fmtNum(ml.data.ensemble.model_raw?.ece)} ·
+                      MARKET FAIR LogLoss {fmtNum(ml.data.ensemble.market_fair?.logloss)} ·
+                      delta {fmtNum(ml.data.ensemble.delta_logloss_vs_market_fair)}
+                    </span>
+                    <span className="text-[11px] text-ink-4">
+                      {ml.data.ensemble.stacking_protocol
+                        ? `stacking OOS por janela: ${ml.data.ensemble.stacking_protocol.base_models.join(" + ")} · ${ml.data.ensemble.stacking_protocol.n_folds} folds rolling-origin no TRAIN`
+                        : "stacking OOS por janela"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-ink-4">
+                    Ensemble: {ml.data.ensemble.status} — {ml.data.ensemble.reason}
+                  </span>
+                )}
               </li>
             ) : null}
           </ul>
@@ -206,6 +232,46 @@ export default function QuantPage() {
                 ),
               )}
             </div>
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-5">
+              <KpiCard
+                label="CLV válido n"
+                value={String(clvStatus.data.clv_statistics?.n ?? 0)}
+                context="apenas CLOSED entra na amostra"
+              />
+              <KpiCard
+                label="CLV médio"
+                value={clvStatus.data.clv_statistics?.mean != null ? fmtPct(clvStatus.data.clv_statistics.mean) : "—"}
+                context={
+                  clvStatus.data.clv_statistics?.median != null
+                    ? `mediana ${fmtPct(clvStatus.data.clv_statistics.median)}`
+                    : "sem amostra"
+                }
+              />
+              <KpiCard
+                label="Taxa de fechamento"
+                value={clvStatus.data.close_rate != null ? fmtPct(clvStatus.data.close_rate) : "não medido"}
+                context="CLOSED / (CLOSED + NO_CLOSE)"
+              />
+              <KpiCard
+                label="Última captura"
+                value={clvStatus.data.capture?.last_observation_timestamp ? fmtDateTime(clvStatus.data.capture.last_observation_timestamp) : "—"}
+                context={`${fmtInt(clvStatus.data.capture?.n_observations ?? 0)} observações`}
+              />
+              <KpiCard
+                label="Último fechamento"
+                value={clvStatus.data.clv_statistics?.last_closing_timestamp ? fmtDateTime(clvStatus.data.clv_statistics.last_closing_timestamp) : "—"}
+                context={clvStatus.data.provider_issues?.length ? "providers com problema" : "identidade casada"}
+              />
+            </div>
+            {clvStatus.data.provider_issues?.length ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {clvStatus.data.provider_issues.map((name) => (
+                  <Badge key={name} tone="warning" size="sm">
+                    {`${name}: ${clvStatus.data?.provider_health?.[name]?.state ?? "?"}`}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
             <p className="text-xs text-ink-3">{clvStatus.data.promotion_gate_note}</p>
             <p className="text-[11px] text-ink-4">
               CLV prospectivo n={clvStatus.data.clv_prospective.n} · coverage das entradas registradas{" "}

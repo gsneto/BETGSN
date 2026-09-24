@@ -7,12 +7,28 @@
 # o lote antes de gravar. Falha de um provider não interrompe os demais
 # (o CLI registra sucesso/falha por provider e segue).
 #
+# Após a captura, roda o RELATÓRIO de CLV (`tools/clv_report.py`):
+# leitura idempotente do store (sweep do lifecycle PENDING/NO_CLOSE/
+# CLOSED/INVALID/MISMATCH) — é o passo que transforma capturas novas
+# em fechamentos classificados. Rodar o script de novo não duplica
+# nada (nada é gravado pelo relatório). Use -SkipClvReport para pular.
+#
+# CADÊNCIA IMPORTANTE para o CLV: o fechamento exige observação dentro
+# da janela de 120 min do kickoff (CLOSING_WINDOW_MINUTES). Uma única
+# captura de manhã deixa a maioria dos jogos fora da janela (NO_CLOSE
+# por ausência, não por falha). Para acumular fechamentos reais,
+# agende o script VÁRIAS vezes ao dia (ex.: horário em dias de jogo):
+#
+#   schtasks /Create /SC HOURLY /TN BETGSN-capture-odds ^
+#     /TR "pwsh -NoProfile -File C:\...\BETGSN\scripts\capture_daily.ps1"
+#
 # Uso manual:
 #   .\scripts\capture_daily.ps1
 #   .\scripts\capture_daily.ps1 -Providers "The Odds API,ParlayAPI,OddsPapi"
+#   .\scripts\capture_daily.ps1 -SkipClvReport
 #
-# Agendamento (Task Scheduler) — configurar EXPLICITAMENTE, este script
-# NÃO cria tarefa sozinho:
+# Agendamento diário (Task Scheduler) — configurar EXPLICITAMENTE, este
+# script NÃO cria tarefa sozinho:
 #   schtasks /Create /SC DAILY /ST 09:00 /TN BETGSN-capture-odds ^
 #     /TR "pwsh -NoProfile -File C:\...\BETGSN\scripts\capture_daily.ps1"
 #
@@ -26,7 +42,9 @@ param(
     # Mercados pedidos aos providers (default do CLI: h2h,totals,btts).
     [string]$Markets = "",
     # Diretório do projeto (default: pai deste script).
-    [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
+    [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot),
+    # Pular o relatório de CLV pós-captura (default: rodar).
+    [switch]$SkipClvReport
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,7 +69,26 @@ Write-Output "log: $log"
 Push-Location $ProjectRoot
 try {
     & $python @cliArgs 2>&1 | Tee-Object -FilePath $log
-    exit $LASTEXITCODE
+    $exitCode = $LASTEXITCODE
+
+    # ---- sweep + relatório de CLV (leitura idempotente) ----
+    # Transforma as observações recém-capturadas em fechamentos
+    # classificados (PENDING -> CLOSED/NO_CLOSE conforme o observado).
+    # NÃO altera o código de saída da captura: falha do relatório é
+    # avisada, mas a captura em si é o que importa aqui.
+    if (-not $SkipClvReport) {
+        Write-Output ""
+        Write-Output "=== CLV lifecycle sweep (pós-captura, leitura) ==="
+        try {
+            & $python "tools\clv_report.py" 2>&1 | Tee-Object -FilePath $log -Append
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "relatório de CLV terminou com código $LASTEXITCODE (captura não afetada)"
+            }
+        } catch {
+            Write-Warning "falha ao rodar tools/clv_report.py: $_ (captura não afetada)"
+        }
+    }
+    exit $exitCode
 } finally {
     Pop-Location
 }
