@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from betgsn.api.server import app
@@ -239,6 +241,114 @@ def test_quant_clv_status_empty_store(monkeypatch, tmp_path):
     assert body["status"] == "OK"
     assert body["n_entries"] == 0
     assert body["lifecycle"]["CLOSED"] == 0
+    # observabilidade nula-segura: nada medido => None, nunca 0
+    assert body["clv_statistics"]["n"] == 0
+    assert body["clv_statistics"]["mean"] is None
+    assert body["clv_statistics"]["last_closing_timestamp"] is None
+    assert body["close_rate"] is None
+    assert body["resolve_rate"] is None
+    assert body["capture"]["last_observation_timestamp"] is None
+    assert body["capture"]["n_observations"] == 0
+    assert body["provider_issues"] == []
+
+
+def _patch_isolated_store(monkeypatch, tmp_path):
+    """Store SQLite isolado no tmp_path para o /api/quant/clv/status."""
+    from betgsn import odds_snapshots as snap_mod
+
+    real_cls = snap_mod.OddsSnapshotStore
+    db = tmp_path / "odds.db"
+
+    def _store(*a, **k):
+        return real_cls(db)
+
+    monkeypatch.setattr(snap_mod, "OddsSnapshotStore", _store)
+    return real_cls(db)
+
+
+def test_quant_clv_status_observability_closed(monkeypatch, tmp_path):
+    """Entrada CLOSED: estatísticas reais + capture + rates no corpo."""
+    from datetime import datetime, timedelta, timezone
+
+    from betgsn.odds_normalize import event_key
+    from betgsn.odds_snapshots import OddsObservation
+    from betgsn.timeutil import utc_key
+
+    _forbid_recompute(monkeypatch)
+    store = _patch_isolated_store(monkeypatch, tmp_path)
+
+    now = datetime.now(timezone.utc)
+    kickoff = (now - timedelta(days=1)).replace(
+        hour=12, minute=0, second=0, microsecond=0)
+    kickoff_s = kickoff.strftime("%Y-%m-%dT%H:%M:%SZ")
+    key = event_key("Arsenal", "Chelsea", utc_key(kickoff_s))
+    market = "Resultado Final (1X2)"
+
+    def _o(odd: float, ts: datetime) -> OddsObservation:
+        return OddsObservation(
+            match_key=key, market=market, outcome="1",
+            bookmaker="Pinnacle", odd=odd,
+            timestamp=ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            kickoff=kickoff_s,
+            provider="The Odds API",
+        )
+
+    entry_ts = kickoff - timedelta(hours=4)
+    close_ts = kickoff - timedelta(hours=1)
+    store.add([_o(2.00, entry_ts)])
+    store.register_entry(
+        match_key=key, market=market, outcome="1",
+        entry_odd=2.00,
+        entry_timestamp=entry_ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        entry_n_books=1,
+        kickoff=kickoff_s,
+        prediction_timestamp=(
+            entry_ts + timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+    store.add([_o(2.20, close_ts)])
+
+    body = client.get("/api/quant/clv/status").json()
+    assert body["status"] == "OK"
+    assert body["lifecycle"]["CLOSED"] == 1
+    stats = body["clv_statistics"]
+    assert stats["n"] == 1
+    assert stats["mean"] is not None
+    assert stats["mean"] == pytest.approx(2.0 / 2.2 - 1.0, abs=1e-6)
+    assert stats["median"] is not None
+    assert stats["last_closing_timestamp"] == (
+        close_ts.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    assert body["close_rate"] == 1.0
+    assert body["resolve_rate"] == 1.0
+    capture = body["capture"]
+    assert capture["last_observation_timestamp"] == (
+        close_ts.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    assert capture["n_observations"] == 2
+    assert capture["n_matches"] == 1
+    assert capture["providers"] == {"The Odds API": 2}
+
+
+def test_quant_clv_status_provider_issues(monkeypatch, tmp_path):
+    """Providers com problema (estado != HEALTHY) aparecem nominalmente."""
+    _forbid_recompute(monkeypatch)
+    store = _patch_isolated_store(monkeypatch, tmp_path)
+    store.save_provider_health(
+        {
+            "The Odds API": {"state": "HEALTHY", "observations": 1},
+            "ParlayAPI": {
+                "state": "DEGRADED", "consecutive_failures": 2,
+                "last_error": "timeout",
+            },
+        },
+        {},
+    )
+
+    body = client.get("/api/quant/clv/status").json()
+    assert body["status"] == "OK"
+    assert body["provider_issues"] == ["ParlayAPI"]
+    health = body["provider_health"]
+    assert health["ParlayAPI"]["state"] == "DEGRADED"
+    assert health["ParlayAPI"]["consecutive_failures"] == 2
+    assert health["The Odds API"]["state"] == "HEALTHY"
 
 
 # ==========================================================================

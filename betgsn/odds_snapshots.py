@@ -357,6 +357,79 @@ class ClvLifecycleSummary:
         }
 
 
+def _quantile(values: list[float], q: float) -> Optional[float]:
+    """Quantil empirico (mesma definicao do clv_report)."""
+    if not values:
+        return None
+    ordered = sorted(values)
+    idx = min(len(ordered) - 1, int(q * len(ordered)))
+    return round(ordered[idx], 6)
+
+
+def clv_statistics(summary: ClvLifecycleSummary) -> dict:
+    """Estatisticas do CLV VALIDO (estado CLOSED) de um sweep.
+
+    Nulas-seguras por contrato: n=0 => mean/median/quantis/positive_rate
+    None — nunca 0 (0 diria "medimos e o CLV e zero", mentira). O CLV
+    so existe no estado CLOSED; PENDING/NO_CLOSE/INVALID/MISMATCH nao
+    entram na amostra e nao viram zero.
+    """
+    pcts = [
+        lc.result.clv_percentage
+        for lc in summary.lifecycles
+        if lc.state == "CLOSED" and lc.result is not None
+        and lc.result.clv_percentage is not None
+    ]
+    closings = [
+        lc.result.closing_timestamp
+        for lc in summary.lifecycles
+        if lc.state == "CLOSED" and lc.result is not None
+        and lc.result.closing_timestamp
+    ]
+    return {
+        "n": len(pcts),
+        "mean": round(statistics.fmean(pcts), 6) if pcts else None,
+        "median": (
+            round(statistics.median(pcts), 6) if pcts else None),
+        "p10": _quantile(pcts, 0.10),
+        "p25": _quantile(pcts, 0.25),
+        "p75": _quantile(pcts, 0.75),
+        "p90": _quantile(pcts, 0.90),
+        "positive_rate": (
+            round(sum(1 for p in pcts if p > 0) / len(pcts), 6)
+            if pcts else None
+        ),
+        "last_closing_timestamp": max(closings) if closings else None,
+    }
+
+
+def sweep_close_rate(summary: ClvLifecycleSummary) -> Optional[float]:
+    """Taxa de fechamento: CLOSED / (CLOSED + NO_CLOSE).
+
+    Populacao: entradas validas cujo kickoff ja passou (o fechamento ja
+    podia ter sido observado). PENDING sai do denominador (ainda pode
+    fechar); INVALID/MISMATCH sao problemas de dado, medidos a parte.
+    Sem populacao => None (taxa nao medida), nunca 0.
+    """
+    closed = summary.by_state.get("CLOSED", 0)
+    no_close = summary.by_state.get("NO_CLOSE", 0)
+    denominator = closed + no_close
+    if not denominator:
+        return None
+    return round(closed / denominator, 4)
+
+
+def sweep_resolve_rate(summary: ClvLifecycleSummary) -> Optional[float]:
+    """Taxa de resolucao de identidade: 1 - MISMATCH/n_entries.
+
+    Entradas que resolvem a observacoes do store (identidade canonica
+    casada). Store vazio => None (nao medido)."""
+    if not summary.n_entries:
+        return None
+    mismatch = summary.by_state.get("MISMATCH", 0)
+    return round(1.0 - mismatch / summary.n_entries, 4)
+
+
 class OddsSnapshotStore:
     """Store append-only de observacoes de odds."""
 

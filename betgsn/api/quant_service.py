@@ -142,10 +142,21 @@ def ml_models() -> dict[str, Any]:
 
 
 def clv_status() -> dict[str, Any]:
-    """Ciclo de vida do CLV prospectivo (store operacional, leitura)."""
+    """Ciclo de vida do CLV prospectivo (store operacional, leitura).
+
+    Observabilidade completa do pipeline CLV: lifecycle, estatísticas
+    nulas-seguras (n=0 => mean/median None), taxa de fechamento,
+    resolução de identidade, última captura e providers com problema —
+    tudo observado, nada recalculado ou fabricado.
+    """
     from .. import value_walkforward as vwf
     from ..models.promotion import MIN_CLV_SAMPLE
-    from ..odds_snapshots import OddsSnapshotStore
+    from ..odds_snapshots import (
+        OddsSnapshotStore,
+        clv_statistics,
+        sweep_close_rate,
+        sweep_resolve_rate,
+    )
 
     store = OddsSnapshotStore()
     sweep = store.clv_lifecycle_sweep()
@@ -153,11 +164,42 @@ def clv_status() -> dict[str, Any]:
     oos = vwf.cached_oos_evidence()
     n_clv = int(evidence.get("n", 0))
     blocked = n_clv < MIN_CLV_SAMPLE
+
+    stats = store.stats()
+    health = store.load_provider_health()
+    provider_health = {
+        name: {
+            "state": record.get("state", ""),
+            "consecutive_failures": record.get("consecutive_failures", 0),
+            "last_success_at": record.get("last_success_at", ""),
+            "last_error": record.get("last_error", ""),
+        }
+        for name, record in sorted(health.items())
+    }
+    provider_issues = sorted(
+        name for name, record in health.items()
+        if record.get("state", "") != "HEALTHY"
+    )
+
     return {
         "status": "OK",
         "lifecycle": sweep.by_state,
         "n_entries": sweep.n_entries,
         "clv_prospective": evidence,
+        "clv_statistics": clv_statistics(sweep),
+        # fechamentos encontrados entre entradas elegíveis (kickoff já
+        # passado); None quando nada foi medido
+        "close_rate": sweep_close_rate(sweep),
+        # entradas que resolvem a observações do store (identidade casada)
+        "resolve_rate": sweep_resolve_rate(sweep),
+        "capture": {
+            "last_observation_timestamp": stats.get("last_timestamp") or None,
+            "n_observations": stats.get("observations", 0),
+            "n_matches": stats.get("matches", 0),
+            "providers": stats.get("providers", {}),
+        },
+        "provider_health": provider_health,
+        "provider_issues": provider_issues,
         "promotion_gate_note": (
             f"o gate consome CLV prospectivo com n >= {MIN_CLV_SAMPLE} "
             f"(MIN_CLV_SAMPLE); atualmente n={n_clv} — "
