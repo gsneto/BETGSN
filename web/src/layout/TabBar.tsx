@@ -28,6 +28,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "coverage", label: "Coverage" },
   { key: "clv", label: "CLV" },
   { key: "movement", label: "Movimento" },
+  { key: "quant", label: "Quant" },
 ];
 
 export default function TabBar() {

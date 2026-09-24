@@ -134,6 +134,26 @@ class FrozenModel:
     train_end: str
     n_matches: int
 
+    def prob_1x2(self, home: str, away: str, day: str | None = None):
+        """(p1, pX, p2) do modelo CONGELADO; None sem rating de algum lado.
+
+        Contrato de provider: qualquer fonte de probabilidade 1X2 que
+        queira ser avaliada nas MESMAS janelas implementa este método —
+        o harness não conhece a família do modelo, só o contrato.
+        `day` (dia do kickoff da linha consultada) desambigua
+        temporadas de um mesmo confronto; o BASELINE_V1 é
+        independente da data e o ignora.
+        """
+        hr = self.ratings.get(home)
+        ar = self.ratings.get(away)
+        if hr is None or ar is None:
+            return None
+        lam_h, lam_a = expected_goals(
+            hr, ar, self.league_goals, home_advantage=HOME_ADVANTAGE,
+        )
+        matrix = build_score_matrix(lam_h, lam_a)
+        return matrix.prob_home_win(), matrix.prob_draw(), matrix.prob_away_win()
+
 
 def fit_model_on_train(
     matches: Sequence, train_end: str,
@@ -166,17 +186,16 @@ def fit_model_on_train(
     )
 
 
-def _prob_1x2(model: FrozenModel, home: str, away: str):
-    """(p1, pX, p2) do modelo CONGELADO; None sem rating de algum lado."""
-    hr = model.ratings.get(home)
-    ar = model.ratings.get(away)
-    if hr is None or ar is None:
-        return None
-    lam_h, lam_a = expected_goals(
-        hr, ar, model.league_goals, home_advantage=HOME_ADVANTAGE,
-    )
-    matrix = build_score_matrix(lam_h, lam_a)
-    return matrix.prob_home_win(), matrix.prob_draw(), matrix.prob_away_win()
+def _prob_1x2(model: FrozenModel, home: str, away: str, day: str | None = None):
+    """(p1, pX, p2) do modelo CONGELADO; None sem rating de algum lado.
+
+    Mantido como wrapper do contrato `model.prob_1x2` — providers
+    externos (Elo/XGBoost/LightGBM, ver `ml_walkforward`) implementam o
+    mesmo método e entram no MESMO harness sem caminho paralelo. `day`
+    desambigua confrontos repetidos (o provider baseado em features
+    precisa do dia; o BASELINE_V1 ignora).
+    """
+    return model.prob_1x2(home, away, day=day)
 
 
 def _outcome_index(oc: str) -> int:
@@ -237,14 +256,30 @@ class ModelComparisonResult:
     paired_model_vs_fair: dict | None = None
     paired_model_vs_raw: dict | None = None
     windows: list[ModelWindowResult] = field(default_factory=list)
-    #: strategy_model agregada (EV>0 com prob do modelo)
+    #: strategy_model nesta janela
     strategy_model: dict = field(default_factory=dict)
     #: drift: metricas por janela por fonte
     drift: dict = field(default_factory=dict)
+    #: linhas da strategy_model (EV>0), com odd best E mediana da MESMA
+    #: linha — insumo da auditoria do line-shopping (população constante:
+    #: a decomposição preço/seleção do efeito reportado). Nada de decisão
+    #: aqui: é evidência de auditoria, não caminho de aposta.
+    strategy_rows: list[dict] = field(default_factory=list)
     embargo_days: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        out = asdict(self)
+        # strategy_rows NAO e serializado: ~181k linhas (~31MB) que
+        # nenhum leitor de cache consome — a auditoria do line-shopping
+        # usa o objeto em memoria (tools/line_shopping_audit.py). O
+        # cache de modelo continua leve e o endpoint de API nao
+        # reler megabytes por request. (O campo sai ANTES do asdict:
+        # deep-copy de 181k dicts custa segundos por nada.)
+        saved = self.strategy_rows
+        self.strategy_rows = []
+        try:
+            out = asdict(self)
+        finally:
+            self.strategy_rows = saved
         out["windows"] = [w.to_dict() for w in self.windows]
         return out
 
@@ -285,15 +320,26 @@ def run_model_walkforward(
     matches: Sequence,
     config: WalkForwardConfig | None = None,
     progress: Any = None,
+    *,
+    model_fn: Callable[[Sequence, str], Any] | None = None,
 ) -> ModelComparisonResult:
     """Executa modelo vs mercado nas MESMAS janelas da estratégia.
 
     `bets`: linhas apostáveis canônicas (collect_bets) com home/away/oc/
     odd/median/fair/res. `matches`: corpus histórico (para fit ratings).
     Violação temporal das janelas levanta — não mede.
+
+    `model_fn` (opcional): fonte de probabilidade alternativa avaliada
+    no MESMO protocolo — recebe (matches, train_end) e devolve um
+    objeto CONGELADO com `prob_1x2(home, away)` e `n_matches` (o
+    contrato de `FrozenModel`). É o gancho dos modelos experimentais
+    (Elo/XGBoost/LightGBM, ver `ml_walkforward`) nas mesmas 24 janelas:
+    mesmo harness, sem caminho paralelo de avaliação. Sem `model_fn`,
+    o modelo de produção BASELINE_V1 é avaliado como sempre.
     """
     config = config or WalkForwardConfig()
     config.validate()
+    model_fn = model_fn or fit_model_on_train
     result = ModelComparisonResult(
         config=config, embargo_days=config.gap_days,
     )
@@ -330,7 +376,7 @@ def run_model_walkforward(
             progress(w_i + 1, len(windows),
                      f"janela {window.index}: modelo vs mercado")
 
-        model = fit_model_on_train(matches, window.train_end)
+        model = model_fn(matches, window.train_end)
         train_bets = [
             b for b in bets
             if window.train_start <= str(b["d"]) < window.train_end
@@ -352,7 +398,12 @@ def run_model_walkforward(
             continue
 
         # ---- probabilidade do modelo por aposta (modelo CONGELADO) ----
-        prob_cache: dict[tuple[str, str], tuple] = {}
+        # chave (home, away, dia): confrontos repetidos na MESMA janela
+        # de teste são partidas diferentes — cada uma recebe a
+        # probabilidade do SEU dia (providers de features dependem do
+        # dia; o BASELINE_V1 ignora e o cache por tripla evita chamadas
+        # extras).
+        prob_cache: dict[tuple[str, str, str], tuple] = {}
         rows: list[dict] = []
         for b in test_bets:
             if b.get("res") == "push":
@@ -360,9 +411,13 @@ def run_model_walkforward(
             idx = _outcome_index(b.get("oc", ""))
             if idx < 0:
                 continue
-            key = (str(b.get("home", "")), str(b.get("away", "")))
+            key = (
+                str(b.get("home", "")), str(b.get("away", "")),
+                str(b.get("d", "")),
+            )
             if key not in prob_cache:
-                prob_cache[key] = _prob_1x2(model, key[0], key[1])
+                prob_cache[key] = _prob_1x2(
+                    model, key[0], key[1], day=key[2])
             probs = prob_cache[key]
             if probs is None:
                 continue
@@ -424,6 +479,24 @@ def run_model_walkforward(
             if ev > MODEL_EV_THRESHOLD:
                 strat_model_rets.append(
                     _ret(float(r["b"]["odd"]), r["b"]["res"]))
+                # linha da strategy_model com os DOIS preços da mesma
+                # linha (best e mediana): a auditoria do line-shopping
+                # liquida a MESMA população nos dois preços e isola
+                # preço de seleção.
+                result.strategy_rows.append({
+                    "window": window.index,
+                    "d": str(r["b"].get("d", "")),
+                    "lg": str(r["b"].get("lg", "")),
+                    "home": str(r["b"].get("home", "")),
+                    "away": str(r["b"].get("away", "")),
+                    "oc": str(r["b"].get("oc", "")),
+                    "odd": float(r["b"]["odd"]),
+                    "median": float(r["b"].get("median") or r["b"]["odd"]),
+                    "n_books": int(r["b"].get("n_books", 0)),
+                    "res": r["b"]["res"],
+                    "p_calibrated": float(p_cal),
+                    "ev_best": float(ev),
+                })
         win.strategy_model_n = sum(
             1 for r, p in zip(rows, ps_cal)
             if p * float(r["b"]["odd"]) - 1.0 > MODEL_EV_THRESHOLD
@@ -549,7 +622,9 @@ def _rows_with_model_probs(
         idx = _outcome_index(b.get("oc", ""))
         if idx < 0:
             continue
-        probs = _prob_1x2(model, str(b.get("home", "")), str(b.get("away", "")))
+        probs = _prob_1x2(
+            model, str(b.get("home", "")), str(b.get("away", "")),
+            day=str(b.get("d", "")))
         if probs is None:
             continue
         row = dict(b)

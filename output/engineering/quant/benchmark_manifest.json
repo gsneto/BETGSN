@@ -1,0 +1,153 @@
+{
+  "kind": "benchmark_manifest",
+  "generated_at": "2026-09-23 20:39:16",
+  "code_version": "1.1.0",
+  "benchmark_reference": "ETAPA_19",
+  "corpus": {
+    "signature": "583|1790124446",
+    "source": "football-data.co.uk (CSVs locais)",
+    "main_files": 565,
+    "extra_files": 16,
+    "total_mb": 63.06
+  },
+  "protocol": {
+    "train_days": 730,
+    "test_days": 365,
+    "gap_days_embargo": 2,
+    "candidate_max_odds": [
+      1.2,
+      1.25,
+      1.3,
+      1.4
+    ],
+    "min_train_bets": 150,
+    "min_test_bets": 10,
+    "bootstrap_resamples": 2000,
+    "bootstrap_seed": 424242,
+    "bootstrap_resamples_full_sample": 4000,
+    "bootstrap_seed_full_sample": 424242,
+    "rule": {
+      "max_odd": 1.3,
+      "min_books": 3,
+      "odd_bands": [
+        [
+          1.0,
+          1.15
+        ],
+        [
+          1.15,
+          1.2
+        ],
+        [
+          1.2,
+          1.25
+        ],
+        [
+          1.25,
+          1.3
+        ],
+        [
+          1.3,
+          1.4
+        ],
+        [
+          1.4,
+          1.6
+        ],
+        [
+          1.6,
+          2.0
+        ],
+        [
+          2.0,
+          3.0
+        ],
+        [
+          3.0,
+          99.0
+        ]
+      ]
+    }
+  },
+  "schemas": {
+    "value_oos": 2,
+    "value_full_sample": 3
+  },
+  "caches": {
+    "value_validation_oos.json": {
+      "status": "VALID",
+      "expected_fingerprint": "4050608b5d4f10b2",
+      "aggregate": {
+        "n_windows": 24,
+        "n_windows_valid": 24,
+        "n_bets_oos": 7277,
+        "roi": 0.018964,
+        "roi_se": 0.005559,
+        "roi_t": 3.4115,
+        "wilson_low": 0.816586,
+        "wilson_high": 0.834026,
+        "bootstrap_low": 0.007475,
+        "bootstrap_high": 0.030161,
+        "market_brier": 0.141444,
+        "market_logloss": 0.453418,
+        "market_ece": 0.01534,
+        "calibrated_brier": 0.141438,
+        "calibrated_logloss": 0.457396,
+        "calibrated_ece": 0.009018,
+        "avg_odd": 1.2396,
+        "max_drawdown": 0.2364,
+        "embargo_days": 2
+      }
+    },
+    "model_validation_oos.json": {
+      "status": "VALID",
+      "expected_fingerprint": "ce88b90b30fdaac2",
+      "model": "BASELINE_V1 (Poisson bivariado + Dixon-Coles, fit_ratings)",
+      "aggregate": {
+        "n_bets_oos": 490736,
+        "n_windows_valid": 24,
+        "n_windows": 24,
+        "market_raw": {
+          "brier": 0.200495,
+          "logloss": 0.586882,
+          "ece": 0.011435,
+          "n": 490736
+        },
+        "market_fair": {
+          "brier": 0.200506,
+          "logloss": 0.586979,
+          "ece": 0.006437,
+          "n": 490736
+        },
+        "model_raw": {
+          "brier": 0.209143,
+          "logloss": 0.607036,
+          "ece": 0.002688,
+          "n": 490736
+        },
+        "model_calibrated": {
+          "brier": 0.209479,
+          "logloss": 0.608331,
+          "ece": 0.01473,
+          "n": 490736
+        }
+      }
+    },
+    "value_validation.json": {
+      "status": "STALE",
+      "expected_fingerprint": "4ada48c09bb8d2b0",
+      "n_bets": null,
+      "roi": null
+    }
+  },
+  "windows": {
+    "n_windows": 24,
+    "n_windows_valid": 24,
+    "embargo_days": 2,
+    "n_bets_oos": 7277
+  },
+  "reproducibility": {
+    "all_valid": false,
+    "note": "VALID = cache legivel para a configuracao atual sobre o corpus atual (fingerprint confere). STALE/MISSING = a medicao precisa ser reexecutada pela tool offline correspondente; o numero anterior NAO e servido como atual."
+  }
+}

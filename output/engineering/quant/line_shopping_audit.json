@@ -1,0 +1,716 @@
+{
+  "kind": "line_shopping_audit",
+  "audit": {
+    "config": {
+      "train_days": 730,
+      "test_days": 365,
+      "gap_days": 2,
+      "bootstrap_resamples": 2000,
+      "bootstrap_seed": 424242,
+      "max_odd": 1.3,
+      "min_books": 3
+    },
+    "n_lines_total": 587015,
+    "n_lines_rule": 6751,
+    "rule_population_by_price": {
+      "best": {
+        "n": 6751,
+        "roi": 0.016102,
+        "roi_se": 0.005397,
+        "roi_t": 2.9834,
+        "wilson_low": 0.832902,
+        "wilson_high": 0.850312,
+        "bootstrap_low": 0.005645,
+        "bootstrap_high": 0.026824
+      },
+      "second": {
+        "n": 6751,
+        "roi": 0.007108,
+        "roi_se": 0.005349,
+        "roi_t": 1.329,
+        "wilson_low": 0.832902,
+        "wilson_high": 0.850312,
+        "bootstrap_low": -0.00326,
+        "bootstrap_high": 0.017708
+      },
+      "median": {
+        "n": 6751,
+        "roi": -0.003555,
+        "roi_se": 0.005291,
+        "roi_t": -0.672,
+        "wilson_low": 0.832902,
+        "wilson_high": 0.850312,
+        "bootstrap_low": -0.013736,
+        "bootstrap_high": 0.007067
+      },
+      "mean": {
+        "n": 6751,
+        "roi": -0.003964,
+        "roi_se": 0.005288,
+        "roi_t": -0.7497,
+        "wilson_low": 0.832902,
+        "wilson_high": 0.850312,
+        "bootstrap_low": -0.014201,
+        "bootstrap_high": 0.00661
+      },
+      "worst": {
+        "n": 6751,
+        "roi": -0.025246,
+        "roi_se": 0.005175,
+        "roi_t": -4.8783,
+        "wilson_low": 0.832902,
+        "wilson_high": 0.850312,
+        "bootstrap_low": -0.035253,
+        "bootstrap_high": -0.014852
+      }
+    },
+    "ablation_semantics": {
+      "note": "ablação use_median troca eligibilidade E preço: populações diferentes. O delta aqui reproduz a semântica do número reportado; o isolamento correto do efeito PREÇO está em rule_population_by_price.",
+      "population_best": {
+        "n": 6751,
+        "roi_best": 0.016102
+      },
+      "population_median": {
+        "n": 8597,
+        "roi_median": -0.007873
+      },
+      "delta_reported_semantics": -0.023975
+    },
+    "by_window": [
+      {
+        "window": 0,
+        "test_start": "2002-07-30",
+        "test_end": "2003-07-30",
+        "n": 179,
+        "roi_best": 0.037039,
+        "roi_median": 0.014497,
+        "delta_best_minus_median": 0.022542
+      },
+      {
+        "window": 1,
+        "test_start": "2003-07-30",
+        "test_end": "2004-07-29",
+        "n": 227,
+        "roi_best": 0.075885,
+        "roi_median": 0.054211,
+        "delta_best_minus_median": 0.021674
+      },
+      {
+        "window": 2,
+        "test_start": "2004-07-29",
+        "test_end": "2005-07-29",
+        "n": 221,
+        "roi_best": 0.007968,
+        "roi_median": -0.011457,
+        "delta_best_minus_median": 0.019425
+      },
+      {
+        "window": 3,
+        "test_start": "2005-07-29",
+        "test_end": "2006-07-29",
+        "n": 238,
+        "roi_best": 0.071487,
+        "roi_median": 0.044202,
+        "delta_best_minus_median": 0.027285
+      },
+      {
+        "window": 4,
+        "test_start": "2006-07-29",
+        "test_end": "2007-07-29",
+        "n": 243,
+        "roi_best": -0.027984,
+        "roi_median": -0.050391,
+        "delta_best_minus_median": 0.022407
+      },
+      {
+        "window": 5,
+        "test_start": "2007-07-29",
+        "test_end": "2008-07-28",
+        "n": 205,
+        "roi_best": -0.019659,
+        "roi_median": -0.04178,
+        "delta_best_minus_median": 0.022121
+      },
+      {
+        "window": 6,
+        "test_start": "2008-07-28",
+        "test_end": "2009-07-28",
+        "n": 196,
+        "roi_best": 0.008469,
+        "roi_median": -0.014668,
+        "delta_best_minus_median": 0.023137
+      },
+      {
+        "window": 7,
+        "test_start": "2009-07-28",
+        "test_end": "2010-07-28",
+        "n": 236,
+        "roi_best": 0.031949,
+        "roi_median": 0.00911,
+        "delta_best_minus_median": 0.022839
+      },
+      {
+        "window": 8,
+        "test_start": "2010-07-28",
+        "test_end": "2011-07-28",
+        "n": 206,
+        "roi_best": 0.00699,
+        "roi_median": -0.015,
+        "delta_best_minus_median": 0.02199
+      },
+      {
+        "window": 9,
+        "test_start": "2011-07-28",
+        "test_end": "2012-07-27",
+        "n": 255,
+        "roi_best": 0.002173,
+        "roi_median": -0.018467,
+        "delta_best_minus_median": 0.02064
+      },
+      {
+        "window": 10,
+        "test_start": "2012-07-27",
+        "test_end": "2013-07-27",
+        "n": 235,
+        "roi_best": 0.010128,
+        "roi_median": -0.012881,
+        "delta_best_minus_median": 0.023009
+      },
+      {
+        "window": 11,
+        "test_start": "2013-07-27",
+        "test_end": "2014-07-27",
+        "n": 302,
+        "roi_best": 0.034182,
+        "roi_median": 0.015447,
+        "delta_best_minus_median": 0.018735
+      },
+      {
+        "window": 12,
+        "test_start": "2014-07-27",
+        "test_end": "2015-07-27",
+        "n": 276,
+        "roi_best": 0.056449,
+        "roi_median": 0.037971,
+        "delta_best_minus_median": 0.018478
+      },
+      {
+        "window": 13,
+        "test_start": "2015-07-27",
+        "test_end": "2016-07-26",
+        "n": 271,
+        "roi_best": 0.022472,
+        "roi_median": 0.002454,
+        "delta_best_minus_median": 0.020018
+      },
+      {
+        "window": 14,
+        "test_start": "2016-07-26",
+        "test_end": "2017-07-26",
+        "n": 318,
+        "roi_best": 0.003616,
+        "roi_median": -0.017075,
+        "delta_best_minus_median": 0.020691
+      },
+      {
+        "window": 15,
+        "test_start": "2017-07-26",
+        "test_end": "2018-07-26",
+        "n": 383,
+        "roi_best": 0.02564,
+        "roi_median": 0.006188,
+        "delta_best_minus_median": 0.019452
+      },
+      {
+        "window": 16,
+        "test_start": "2018-07-26",
+        "test_end": "2019-07-26",
+        "n": 344,
+        "roi_best": -0.00439,
+        "roi_median": -0.020901,
+        "delta_best_minus_median": 0.016511
+      },
+      {
+        "window": 17,
+        "test_start": "2019-07-26",
+        "test_end": "2020-07-25",
+        "n": 287,
+        "roi_best": 0.011463,
+        "roi_median": -0.005662,
+        "delta_best_minus_median": 0.017125
+      },
+      {
+        "window": 18,
+        "test_start": "2020-07-25",
+        "test_end": "2021-07-25",
+        "n": 248,
+        "roi_best": -0.025444,
+        "roi_median": -0.043649,
+        "delta_best_minus_median": 0.018205
+      },
+      {
+        "window": 19,
+        "test_start": "2021-07-25",
+        "test_end": "2022-07-25",
+        "n": 284,
+        "roi_best": 0.006268,
+        "roi_median": -0.011549,
+        "delta_best_minus_median": 0.017817
+      },
+      {
+        "window": 20,
+        "test_start": "2022-07-25",
+        "test_end": "2023-07-25",
+        "n": 313,
+        "roi_best": 0.02377,
+        "roi_median": 0.007524,
+        "delta_best_minus_median": 0.016246
+      },
+      {
+        "window": 21,
+        "test_start": "2023-07-25",
+        "test_end": "2024-07-24",
+        "n": 372,
+        "roi_best": 0.015726,
+        "roi_median": 0.000578,
+        "delta_best_minus_median": 0.015148
+      },
+      {
+        "window": 22,
+        "test_start": "2024-07-24",
+        "test_end": "2025-07-24",
+        "n": 322,
+        "roi_best": 0.005342,
+        "roi_median": -0.011568,
+        "delta_best_minus_median": 0.01691
+      },
+      {
+        "window": 23,
+        "test_start": "2025-07-24",
+        "test_end": "2026-07-24",
+        "n": 266,
+        "roi_best": 0.019962,
+        "roi_median": 7.5e-05,
+        "delta_best_minus_median": 0.019887
+      }
+    ],
+    "by_band": [
+      {
+        "segment": "1.00-1.15",
+        "n": 890,
+        "roi_best": 0.014592,
+        "roi_median": 0.000103,
+        "delta_best_minus_median": 0.014489
+      },
+      {
+        "segment": "1.15-1.20",
+        "n": 1282,
+        "roi_best": 0.028916,
+        "roi_median": 0.011548,
+        "delta_best_minus_median": 0.017368
+      },
+      {
+        "segment": "1.20-1.25",
+        "n": 2035,
+        "roi_best": 0.006796,
+        "roi_median": -0.011887,
+        "delta_best_minus_median": 0.018683
+      },
+      {
+        "segment": "1.25-1.30",
+        "n": 2544,
+        "roi_best": 0.017618,
+        "roi_median": -0.005782,
+        "delta_best_minus_median": 0.0234
+      }
+    ],
+    "by_league": [
+      {
+        "segment": "Bundesliga (Germany)",
+        "n": 423,
+        "roi_best": -0.037922,
+        "roi_median": -0.057053,
+        "delta_best_minus_median": 0.019131
+      },
+      {
+        "segment": "Eredivisie (Netherlands)",
+        "n": 839,
+        "roi_best": 0.012896,
+        "roi_median": -0.006297,
+        "delta_best_minus_median": 0.019193
+      },
+      {
+        "segment": "Jupiler League (Belgium)",
+        "n": 306,
+        "roi_best": 0.024369,
+        "roi_median": 0.004279,
+        "delta_best_minus_median": 0.02009
+      },
+      {
+        "segment": "La Liga (Spain)",
+        "n": 665,
+        "roi_best": 0.016475,
+        "roi_median": -0.001329,
+        "delta_best_minus_median": 0.017804
+      },
+      {
+        "segment": "Ligue 1 (France)",
+        "n": 256,
+        "roi_best": -0.005586,
+        "roi_median": -0.024668,
+        "delta_best_minus_median": 0.019082
+      },
+      {
+        "segment": "Premier League (England)",
+        "n": 678,
+        "roi_best": 0.004733,
+        "roi_median": -0.013218,
+        "delta_best_minus_median": 0.017951
+      },
+      {
+        "segment": "Premiership (Scotland)",
+        "n": 688,
+        "roi_best": 0.008706,
+        "roi_median": -0.010393,
+        "delta_best_minus_median": 0.019099
+      },
+      {
+        "segment": "Primeira Liga (Portugal)",
+        "n": 780,
+        "roi_best": 0.042544,
+        "roi_median": 0.023053,
+        "delta_best_minus_median": 0.019491
+      },
+      {
+        "segment": "Serie A (Italy)",
+        "n": 520,
+        "roi_best": 0.016937,
+        "roi_median": -0.002244,
+        "delta_best_minus_median": 0.019181
+      },
+      {
+        "segment": "Super League (Greece)",
+        "n": 589,
+        "roi_best": 0.075934,
+        "roi_median": 0.052733,
+        "delta_best_minus_median": 0.023201
+      },
+      {
+        "segment": "Süper Lig (Turkey)",
+        "n": 373,
+        "roi_best": -0.017523,
+        "roi_median": -0.040088,
+        "delta_best_minus_median": 0.022565
+      }
+    ],
+    "by_n_books": [
+      {
+        "segment": "10+",
+        "n": 1156,
+        "roi_best": 0.006396,
+        "roi_median": -0.015806,
+        "delta_best_minus_median": 0.022202
+      },
+      {
+        "segment": "5-6",
+        "n": 2621,
+        "roi_best": 0.009731,
+        "roi_median": -0.008012,
+        "delta_best_minus_median": 0.017743
+      },
+      {
+        "segment": "7-9",
+        "n": 2736,
+        "roi_best": 0.025536,
+        "roi_median": 0.005019,
+        "delta_best_minus_median": 0.020517
+      }
+    ],
+    "price_uplift": {
+      "best_vs_median": {
+        "mean": 0.019734,
+        "median": 0.017391,
+        "p10": 0.004016,
+        "p90": 0.036036
+      },
+      "best_vs_second": {
+        "mean": 0.008918,
+        "median": 0.008,
+        "p10": 0.0,
+        "p90": 0.02459
+      },
+      "dispersion_over_median": {
+        "mean": 0.014229,
+        "median": 0.01374,
+        "p10": 0.008035,
+        "p90": 0.0208
+      },
+      "n_books_distribution": {
+        "10+": 1156,
+        "3": 54,
+        "4": 184,
+        "5-6": 2621,
+        "7-9": 2736
+      }
+    },
+    "answers": {
+      "A_ganho_e_do_melhor_preco": {
+        "resposta": "mesma população (regra de produção), ROI ao melhor preço 0.016102 vs mediana -0.003555 (delta 0.019657, t≈2.60)",
+        "roi_por_preco": {
+          "best": 0.016102,
+          "second": 0.007108,
+          "median": -0.003555,
+          "mean": -0.003964,
+          "worst": -0.025246
+        },
+        "n": 6751
+      },
+      "B_melhor_preco_disponivel_na_decisao": "INDEMONSTRÁVEL no corpus (odds sem timestamp de publicação); no caminho operacional, garantido por line_at (PIT) e verificado por teste de leakage",
+      "C_existe_look_ahead": "look-ahead de RESULTADO impossível (odds pré-kickoff); look-ahead de QUOTE indemonstrável sem timestamps — declarado",
+      "D_cotacao_rastreavel_ate_snapshot": "sim, no corpus: cada linha traça até as colunas de bookmaker do CSV; no caminho operacional, até odds_observations do store",
+      "E_restricao_a_quotes_ate_o_instante": "N/A no corpus (sem timestamps); no operacional, line_at só usa timestamp <= decisão (testado)",
+      "F_depende_de_poucos_bookmakers": {
+        "por_bucket_de_casas": {
+          "10+": {
+            "n": 1156,
+            "delta": 0.022202
+          },
+          "5-6": {
+            "n": 2621,
+            "delta": 0.017743
+          },
+          "7-9": {
+            "n": 2736,
+            "delta": 0.020517
+          }
+        }
+      },
+      "G_depende_de_poucas_janelas": {
+        "n_janelas_com_efeito": 24,
+        "n_janelas_positivas": 24
+      },
+      "H_permece_nas_odd_bands": {
+        "por_banda": {
+          "1.00-1.15": {
+            "n": 890,
+            "roi_best": 0.014592,
+            "roi_median": 0.000103,
+            "delta": 0.014489
+          },
+          "1.15-1.20": {
+            "n": 1282,
+            "roi_best": 0.028916,
+            "roi_median": 0.011548,
+            "delta": 0.017368
+          },
+          "1.20-1.25": {
+            "n": 2035,
+            "roi_best": 0.006796,
+            "roi_median": -0.011887,
+            "delta": 0.018683
+          },
+          "1.25-1.30": {
+            "n": 2544,
+            "roi_best": 0.017618,
+            "roi_median": -0.005782,
+            "delta": 0.0234
+          }
+        }
+      },
+      "I_depende_de_jogos_com_muitas_casas": "ver F: distribuição por bucket de bookmakers e delta por bucket"
+    },
+    "limitations": [
+      "odds do corpus football-data.co.uk são de abertura, SEM timestamp de publicação: quote age e time-to-kickoff não são mensuráveis no histórico (perguntas B/E); no caminho operacional o PIT é garantido por OddsSnapshotStore.line_at e testado em test_clv_prospective_real.py",
+      "melhor preço é seleção cross-sectional entre casas pré-kickoff; a cotação escolhida traça até as colunas de bookmaker do CSV (pergunta D), mas o instante exato de cada cotação não existe no corpus",
+      "auditoria é diagnóstica: nenhum parâmetro foi ajustado para maximizar resultado"
+    ]
+  },
+  "strategy_model_decomposition": {
+    "note": "strategy_model (EV>0 com prob do modelo): MESMAS apostas liquidadas ao melhor preço e à mediana. O delta aqui é puro efeito PREÇO; o número reportado pela ablação use_median também troca a população (EV recalculado).",
+    "population": "EV>0 ao melhor preço (strategy_model reportada)",
+    "n_rows": 181172,
+    "roi_best": -0.048872,
+    "roi_best_bootstrap": [
+      -0.057113,
+      -0.040456
+    ],
+    "roi_median": -0.11132,
+    "roi_median_bootstrap": [
+      -0.118852,
+      -0.103585
+    ],
+    "delta_price_effect": 0.062448,
+    "by_window": [
+      {
+        "window": 0,
+        "n": 4217,
+        "roi_best": -0.109337,
+        "roi_median": -0.164698,
+        "delta_best_minus_median": 0.055361
+      },
+      {
+        "window": 1,
+        "n": 4490,
+        "roi_best": -0.100994,
+        "roi_median": -0.157804,
+        "delta_best_minus_median": 0.05681
+      },
+      {
+        "window": 2,
+        "n": 4717,
+        "roi_best": -0.041992,
+        "roi_median": -0.109621,
+        "delta_best_minus_median": 0.067629
+      },
+      {
+        "window": 3,
+        "n": 5189,
+        "roi_best": -0.06206,
+        "roi_median": -0.137948,
+        "delta_best_minus_median": 0.075888
+      },
+      {
+        "window": 4,
+        "n": 6012,
+        "roi_best": -0.021464,
+        "roi_median": -0.105339,
+        "delta_best_minus_median": 0.083875
+      },
+      {
+        "window": 5,
+        "n": 6163,
+        "roi_best": -0.059896,
+        "roi_median": -0.144311,
+        "delta_best_minus_median": 0.084415
+      },
+      {
+        "window": 6,
+        "n": 6224,
+        "roi_best": -0.052079,
+        "roi_median": -0.134572,
+        "delta_best_minus_median": 0.082493
+      },
+      {
+        "window": 7,
+        "n": 7099,
+        "roi_best": -0.093809,
+        "roi_median": -0.166751,
+        "delta_best_minus_median": 0.072942
+      },
+      {
+        "window": 8,
+        "n": 7282,
+        "roi_best": -0.044626,
+        "roi_median": -0.120939,
+        "delta_best_minus_median": 0.076313
+      },
+      {
+        "window": 9,
+        "n": 7386,
+        "roi_best": -0.058789,
+        "roi_median": -0.130871,
+        "delta_best_minus_median": 0.072082
+      },
+      {
+        "window": 10,
+        "n": 7839,
+        "roi_best": -0.000176,
+        "roi_median": -0.075903,
+        "delta_best_minus_median": 0.075727
+      },
+      {
+        "window": 11,
+        "n": 8924,
+        "roi_best": -0.065712,
+        "roi_median": -0.134868,
+        "delta_best_minus_median": 0.069156
+      },
+      {
+        "window": 12,
+        "n": 9439,
+        "roi_best": -0.033116,
+        "roi_median": -0.100212,
+        "delta_best_minus_median": 0.067096
+      },
+      {
+        "window": 13,
+        "n": 9365,
+        "roi_best": -0.020226,
+        "roi_median": -0.084276,
+        "delta_best_minus_median": 0.06405
+      },
+      {
+        "window": 14,
+        "n": 9321,
+        "roi_best": -0.082941,
+        "roi_median": -0.140012,
+        "delta_best_minus_median": 0.057071
+      },
+      {
+        "window": 15,
+        "n": 9463,
+        "roi_best": -0.05496,
+        "roi_median": -0.11278,
+        "delta_best_minus_median": 0.05782
+      },
+      {
+        "window": 16,
+        "n": 8917,
+        "roi_best": -0.030959,
+        "roi_median": -0.077996,
+        "delta_best_minus_median": 0.047037
+      },
+      {
+        "window": 17,
+        "n": 7778,
+        "roi_best": -0.012949,
+        "roi_median": -0.060122,
+        "delta_best_minus_median": 0.047173
+      },
+      {
+        "window": 18,
+        "n": 8609,
+        "roi_best": -0.025038,
+        "roi_median": -0.071994,
+        "delta_best_minus_median": 0.046956
+      },
+      {
+        "window": 19,
+        "n": 8626,
+        "roi_best": -0.049919,
+        "roi_median": -0.100364,
+        "delta_best_minus_median": 0.050445
+      },
+      {
+        "window": 20,
+        "n": 8057,
+        "roi_best": -0.068967,
+        "roi_median": -0.119389,
+        "delta_best_minus_median": 0.050422
+      },
+      {
+        "window": 21,
+        "n": 8547,
+        "roi_best": -0.058897,
+        "roi_median": -0.108399,
+        "delta_best_minus_median": 0.049502
+      },
+      {
+        "window": 22,
+        "n": 8907,
+        "roi_best": -0.03713,
+        "roi_median": -0.088976,
+        "delta_best_minus_median": 0.051846
+      },
+      {
+        "window": 23,
+        "n": 8601,
+        "roi_best": -0.043766,
+        "roi_median": -0.105244,
+        "delta_best_minus_median": 0.061478
+      }
+    ],
+    "n_windows_positive": 24,
+    "n_windows": 24
+  }
+}

@@ -149,7 +149,15 @@ export default function ClvPage() {
         title="Entradas de CLV"
         hint={`${fmtInt(data.total_bets)} bets · coverage ${
           data.coverage != null ? fmtPct(data.coverage) : "não medido"
-        } · gerado em ${fmtDateTime(data.generated_at)}`}
+        } · gerado em ${fmtDateTime(data.generated_at)}${
+          data.lifecycle
+            ? ` · ciclo de vida: PENDING ${data.lifecycle.PENDING ?? 0} · NO_CLOSE ${
+                data.lifecycle.NO_CLOSE ?? 0
+              } · CLOSED ${data.lifecycle.CLOSED ?? 0} · INVALID ${
+                data.lifecycle.INVALID ?? 0
+              } · MISMATCH ${data.lifecycle.MISMATCH ?? 0}`
+            : ""
+        }`}
         padded={false}
         action={
           <div className="flex items-center gap-2">

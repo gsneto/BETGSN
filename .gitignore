@@ -14,6 +14,10 @@ output/backtest_cache/
 output/backtests/*.db
 output/*.png
 
+# Generated runtime/validation artifacts
+output/logs/
+output/value_validation_oos.json
+
 # CSVs baixados do football-data.co.uk (reproduziveis via --import-fduk).
 output/football_data_uk/
 
@@ -26,6 +30,9 @@ output/engineering/**/*.zip
 
 # Benchmark temporario de teste (nao e resultado final).
 output/engineering/benchmark/corners_test/
+
+# Cache do corpus de features dos modelos ML (reproduzivel, grande).
+output/engineering/quant/ml_feature_corpus_*.pkl
 
 # ---------------------------------------------------------------------------
 # Python

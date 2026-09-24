@@ -42,6 +42,11 @@ def build_report(store: OddsSnapshotStore | None = None) -> dict:
     store = store or OddsSnapshotStore()
     evidence = prospective_clv_evidence(store)
 
+    # ciclo de vida operacional: PENDING / NO_CLOSE / CLOSED / INVALID /
+    # MISMATCH (leitura idempotente — rodar duas vezes nao cria nada)
+    sweep = store.clv_lifecycle_sweep()
+    lifecycle = sweep.by_state
+
     # distribuição e cobertura a partir das entradas reais
     entries = store.clv_entries()
     results = []
@@ -82,6 +87,14 @@ def build_report(store: OddsSnapshotStore | None = None) -> dict:
         "n_valid": n,
         "n_no_closing": no_closing,
         "n_closing_before_entry": before_entry,
+        "lifecycle": lifecycle,
+        "lifecycle_note": (
+            "PENDING = kickoff no futuro (fechamento ainda pode chegar); "
+            "NO_CLOSE = kickoff passou sem fechamento valido; CLOSED = CLV "
+            "calculado; INVALID = dado inconsistente; MISMATCH = entrada "
+            "sem observacao correspondente. Ausencia de fechamento nunca "
+            "vira CLV=0."
+        ),
         "mean": (statistics.fmean(pcts) if pcts else None),
         "median": (statistics.median(pcts) if pcts else None),
         "p10": _quantile(pcts, 0.10),
@@ -142,7 +155,9 @@ def print_report(report: dict) -> None:
 def main() -> int:
     report = build_report()
     print_report(report)
-    out = ROOT / "output" / "engineering" / "quant" / "clv_monitor.json"
+    from betgsn.config import output_root
+
+    out = output_root() / "engineering" / "quant" / "clv_monitor.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(report, indent=2, ensure_ascii=False, allow_nan=False),
