@@ -28,6 +28,11 @@ _PROD_OUTPUT = _REPO / "output"
 TMP_OUTPUT = Path(tempfile.mkdtemp(prefix="betgsn-tests-"))
 os.environ["BETGSN_OUTPUT_DIR"] = str(TMP_OUTPUT)
 
+#: O REALTIME ENGINE nunca sobe dentro da suíte de testes: o autostart do
+#: lifespan chamaria providers REAIS (rede, creditos). Os testes do
+#: terminal injetam engines construidos com providers fake.
+os.environ["BETGSN_REALTIME"] = "0"
+
 #: Caches de leitura copiados. Tudo que fica de fora nasce vazio — em
 #: particular os bancos SQLite de escrita, que nunca devem apontar para
 #: o `output/` real durante os testes.

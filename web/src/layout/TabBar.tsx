@@ -14,6 +14,7 @@ import { cn } from "@/utils/cn";
 import type { TabKey } from "@/types/api";
 
 const TABS: { key: TabKey; label: string }[] = [
+  { key: "live", label: "LIVE" },
   { key: "signals", label: "Sinais" },
   { key: "games", label: "Jogos" },
   { key: "odds", label: "Casas / Odds" },

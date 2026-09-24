@@ -80,11 +80,33 @@ while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 2
 }
 
-# 4. Abre o navegador
+# 4. Estado do REALTIME ENGINE (sobe junto com o backend, a menos que
+#    BETGSN_REALTIME=0). O bootstrap e em background: pode levar alguns
+#    segundos carregando fixtures.
+$realtime = "inicializando..."
+try {
+    $rt = Invoke-RestMethod -Uri "$apiUrl/api/realtime/status" -TimeoutSec 3
+    if ($null -eq $rt.engine) {
+        $realtime = "aguardando bootstrap"
+    } elseif ($rt.engine.running) {
+        $providers = ($rt.engine.providers.PSObject.Properties.Name) -join ", "
+        $realtime = "RODANDO (providers: $providers)"
+    } else {
+        $realtime = "PARADO (POST $apiUrl/api/realtime/start)"
+    }
+} catch {
+    $realtime = "indisponivel (backend antigo?)"
+}
+
+# 5. Abre o navegador
 Write-Host ""
 Write-Host "BETGSN no ar:" -ForegroundColor Green
-Write-Host "  Frontend  $url" -ForegroundColor Green
+Write-Host "  Frontend  $url  (aba LIVE = terminal em tempo real)" -ForegroundColor Green
 Write-Host "  Backend   $apiUrl/docs" -ForegroundColor Green
+Write-Host "  Realtime  $realtime" -ForegroundColor Green
+Write-Host "  Health    $apiUrl/api/realtime/status" -ForegroundColor Green
 Write-Host ""
-Start-Process $url
+Write-Host "Para PARAR TUDO: .\stop.ps1   |   Para ver estado: .\status.ps1"
 Write-Host "Navegador aberto. Feche as janelas minimizadas para encerrar os servidores."
+
+Start-Process $url

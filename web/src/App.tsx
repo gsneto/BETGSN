@@ -32,12 +32,14 @@ import AppHeader from "@/layout/AppHeader";
 import ControlBar from "@/layout/ControlBar";
 import StatusBar from "@/layout/StatusBar";
 import TabBar from "@/layout/TabBar";
+import LivePage from "@/pages/LivePage";
 import { ErrorPanel, ToastStack } from "@/components/ui";
 import { AppStoreProvider } from "@/store/AppStore";
 import { useStore } from "@/store/context";
 import type { RecalculateJobStatus, TabKey } from "@/types/api";
 
 const PAGES: Record<TabKey, () => React.JSX.Element | null> = {
+  live: LivePage,
   signals: SignalsPage,
   games: GamesPage,
   odds: OddsPage,
@@ -86,7 +88,9 @@ function Terminal() {
 
       <main className="flex min-h-0 flex-1 flex-col gap-3 p-4">
         {summary && <DataProvenance data={summary.provenance} updated={summary.generated_at} />}
-        {coldBoot ? (
+        {tab === "live" ? (
+          <Page />
+        ) : coldBoot ? (
           <BootProgress job={recalcJob} />
         ) : !summary && !recalculating ? (
           <ErrorPanel

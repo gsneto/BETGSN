@@ -1038,6 +1038,7 @@ class LiveOddsCapture:
         aliases: Mapping[tuple[str, str], str] | None = None,
         perf: "Callable[[], float]" = time.perf_counter,
         providers: "Sequence[OddsApiProvider] | None" = None,
+        observer: "Callable[[str, Sequence, Sequence, Mapping[str, str]], None] | None" = None,
     ) -> None:
         #: um provider legado OU uma sequencia (contrato da FASE B). O
         #: nome do parametro `provider` e preservado: todos os call-sites
@@ -1054,6 +1055,11 @@ class LiveOddsCapture:
         self.store = store
         #: relogio de performance injetavel (testes) para latencia REAL.
         self._perf = perf
+        #: callback opcional para o realtime engine: recebe, por lote,
+        #: (provider, quotes, observacoes, match_keys) DEPOIS da
+        #: contabilizacao. Falha do observer vira erro de report —
+        #: nunca silencio — mas NAO derruba a captura.
+        self.observer = observer
         #: indice de fixtures para resolucao de identidade (I-01): evento de
         #: provider -> event_key do FIXTURE. Sem fixtures, as observacoes sao
         #: gravadas sob a chave canonica do provider (comportamento anterior).
@@ -1332,8 +1338,8 @@ class LiveOddsCapture:
         from .odds_normalize import dedupe_quotes
 
         quotes = dedupe_quotes(result.quotes)
-        observations, matched, unmatched, ambiguous = self._resolve_and_observe(
-            quotes, request.divisions
+        observations, matched, unmatched, ambiguous, match_keys = (
+            self._resolve_and_observe(quotes, request.divisions)
         )
         counts = _provider_counts(report, name)
         counts["quotes"] += len(quotes)
@@ -1346,6 +1352,7 @@ class LiveOddsCapture:
         report.events_matched += matched
         report.events_unmatched += unmatched
         report.events_ambiguous += ambiguous
+        self._notify_observer(name, quotes, observations, match_keys, report)
 
     def _contract_market_labels(self) -> tuple[str, ...]:
         """Rotulos internos equivalentes aos mercados pedidos na captura.
@@ -1370,7 +1377,7 @@ class LiveOddsCapture:
         self,
         quotes: Sequence,
         divisions: Sequence[str],
-    ) -> tuple[list, int, int, int]:
+    ) -> tuple[list, int, int, int, dict[str, str]]:
         """Resolve identidade e converte quotes em observacoes.
 
         Com um indice de fixtures, cada evento e casado contra os
@@ -1380,7 +1387,9 @@ class LiveOddsCapture:
         do provider. Nunca ha falso positivo.
 
         Devolve (observacoes, eventos_casados, eventos_nao_casados,
-        eventos_ambiguos).
+        eventos_ambiguos, match_keys) — `match_keys` mapeia event_id de
+        provider -> event_key do fixture casado (consumido pelo observer
+        do realtime engine).
         """
         match_keys: dict[str, str] = {}
         seen_events: set[str] = set()
@@ -1402,7 +1411,30 @@ class LiveOddsCapture:
                     unmatched += 1
 
         observations = observations_from_quotes(quotes, match_keys=match_keys)
-        return observations, matched, unmatched, ambiguous
+        return observations, matched, unmatched, ambiguous, match_keys
+
+    def _notify_observer(
+        self,
+        provider: str,
+        quotes: Sequence,
+        observations: Sequence,
+        match_keys: Mapping[str, str],
+        report: CaptureReport,
+    ) -> None:
+        """Entrega o lote ao observer (realtime engine), sem derrubar a captura.
+
+        O observer recebe as quotes normalizadas, as observacoes que foram
+        para o store e o mapa de casamento (event_id de provider ->
+        event_key do fixture). Falha do observer e registrada no report —
+        nunca engolida — mas nao aborta o lote: capturar dados e mais
+        importante que notificar o terminal.
+        """
+        if self.observer is None:
+            return
+        try:
+            self.observer(provider, quotes, observations, match_keys)
+        except Exception as exc:  # noqa: BLE001 - captura sobrevive ao observer
+            report.errors.append(f"observer/{provider}: {exc}")
 
     def _persist_observations(
         self,
@@ -1446,8 +1478,8 @@ class LiveOddsCapture:
             normalize_events(events, LIVE_ODDS_PROVIDER, stamp, sport_key=sport)
         )
         divisions = SPORT_KEY_TO_DIVISIONS.get(sport, [])
-        observations, matched, unmatched, ambiguous = self._resolve_and_observe(
-            quotes, divisions
+        observations, matched, unmatched, ambiguous, match_keys = (
+            self._resolve_and_observe(quotes, divisions)
         )
         counts = _provider_counts(report, LIVE_ODDS_PROVIDER)
         counts["quotes"] += len(quotes)
@@ -1456,6 +1488,9 @@ class LiveOddsCapture:
         counts["events_matched"] += matched
         counts["events_unmatched"] += unmatched
         counts["events_ambiguous"] += ambiguous
+        self._notify_observer(
+            LIVE_ODDS_PROVIDER, quotes, observations, match_keys, report
+        )
         return saved, matched, unmatched, ambiguous
 
     def _fetch_with_fallback(

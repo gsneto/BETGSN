@@ -105,6 +105,10 @@ async def lifespan(_app: FastAPI):
     (processamento pesado fora do event loop). `run_coroutine_threadsafe`
     e o que permite publicar progresso no WebSocket a partir dessas
     threads.
+
+    O REALTIME ENGINE tambem sobe aqui (a menos que BETGSN_REALTIME=0):
+    a construcao (fixtures/providers) acontece em thread propria para
+    nao travar o startup.
     """
     loop = asyncio.get_running_loop()
 
@@ -115,6 +119,15 @@ async def lifespan(_app: FastAPI):
 
     get_backtest_service().set_broadcaster(schedule)
     _svc().set_broadcaster(schedule)
+
+    from .realtime import ensure_engine_started
+    from ..realtime.config import RealtimeConfig
+
+    try:
+        if RealtimeConfig.from_env().enabled:
+            ensure_engine_started()
+    except Exception as exc:  # noqa: BLE001 - config invalida nao derruba a API
+        print(f"realtime engine nao iniciado: {exc}")
     yield
 
 
@@ -133,6 +146,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+#: terminal de mercado em tempo real (SSE + board + sinais)
+from .realtime import register_realtime_routes  # noqa: E402
+
+register_realtime_routes(app)
 
 
 def _svc() -> BetgsnService:

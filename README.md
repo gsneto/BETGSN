@@ -4,6 +4,11 @@ Aplicativo desktop que estima probabilidades de mercados de futebol a partir
 de um modelo estatistico, compara com as odds de varias casas de aposta e
 gera sinais (dicas) ranqueados por valor esperado (EV).
 
+**BETGSN LIVE**: alem do preditor, o BETGSN agora e um **terminal de mercado
+de odds em tempo real** — captura continua de 3 providers, movimento,
+market fair, line-shopping e sinais EXPLICAVEIS via SSE. Ver secao
+"Terminal de mercado em tempo real" abaixo.
+
 Nao promete lucro. Mede edge. Se a probabilidade do modelo estiver errada,
 o resultado estara errado — isso e matematica, nao promessa.
 
@@ -155,6 +160,108 @@ espelhados em `web/src/types/api.ts`.
 | WS | `/api/ws` | status/progresso em tempo real |
 
 Docs interativas em `http://127.0.0.1:8787/docs`.
+
+## Terminal de mercado em tempo real (BETGSN LIVE)
+
+A aba **LIVE** e um market terminal — nao uma pagina de jogos e muito
+menos um bot de apostas. O fluxo:
+
+```
+PROVIDERS -> ODDS EM TEMPO REAL -> NORMALIZACAO -> EVENT MATCHING ->
+SNAPSHOT STORE (append-only) -> MOVEMENT -> MARKET FAIR -> LINE
+SHOPPING -> MICROSTRUCTURE -> SIGNALS -> TERMINAL -> USUARIO DECIDE
+```
+
+### Como iniciar / parar / verificar
+
+```powershell
+.\start.ps1     # backend + realtime engine + frontend + navegador
+.\stop.ps1     # para TUDO (engine graceful, backend, frontend)
+.\status.ps1   # "o sistema esta vivo?" — providers, ticks, ultimos eventos
+```
+
+O engine sobe junto com o backend (a menos que `BETGSN_REALTIME=0`).
+A captura roda em loop com intervalo configuravel — ver tabela abaixo.
+
+### O que o terminal responde em segundos
+
+- quais jogos estao por vir e quais mercados tem odds;
+- quantas casas cotam, qual a melhor odd (e DE QUEM), a mediana, o fair;
+- o que mudou, quando mudou e quais casas moveram;
+- onde ha dispersao e line-shopping;
+- quais sinais estao ativos, DE ONDE vem e POR QUE;
+- quao recente e cada quote (FRESH / RECENT / STALE / UNKNOWN com idade).
+
+### Sinais informativos (nunca apostas)
+
+Tipos emitidos pelo signal engine (`betgsn/realtime/signals.py`), todos
+carregando `reason` (o por que), `evidence` (os numeros), bookmakers
+participantes, `observed_at` e `production: NO_BET`:
+
+| Tipo | O que significa |
+| --- | --- |
+| `STALE_PRICE` | uma casa continua com quote antiga enquanto as demais atualizaram |
+| `BOOKMAKER_OUTLIER` | preco desvia da mediana das DEMAIS casas |
+| `CONSENSUS_MOVE` | varias casas moveram na mesma direcao na mesma janela |
+| `BOOKMAKER_LEAD` / `BOOKMAKER_LAG` | quem moveu primeiro e quem so moveu depois |
+| `RAPID_CONVERGENCE` | spread entre casas encolheu apos movimentos |
+| `DISPERSION_SPIKE` | dispersao entre casas disparou |
+| `PRICE_REVERSAL` | uma casa inverteu a direcao do movimento |
+| `BEST_PRICE_GAP` | melhor preco acima da mediana (line-shopping) |
+
+Sinais envelhecem: ACTIVE -> STALE -> EXPIRED (TTL configuravel) e a
+condicao que sumiu expira o sinal com motivo (`CONDITION_CLEARED`).
+Evento UNMATCHED (sem fixture correspondente) nunca gera sinal.
+
+MARKET (mediana entre casas), MARKET_FAIR (devig) e MODEL (pipeline)
+sao apresentados SEPARADOS no detalhe do jogo. `model_minus_market` e
+informacao quantitativa — a evidencia OOS atual mostra que os modelos
+experimentais NAO superam o mercado.
+
+### Endpoints realtime
+
+| Metodo | Rota | Conteudo |
+| --- | --- |
+| GET | `/api/realtime/status` | retrato do sistema (engine, providers, ultimos eventos) |
+| GET | `/api/realtime/board` | signal board: eventos + mercados + sinais + movimentos |
+| GET | `/api/realtime/match?event_key=` | detalhe: grid por casa, timeline, fair, modelo, CLV |
+| GET | `/api/realtime/signals` | sinais ativos + registro de alphas |
+| GET | `/api/realtime/providers` | saude dos providers (loop + store) |
+| GET | `/api/realtime/stream` | SSE: ODDS_UPDATE, MOVEMENT, SIGNAL_*, PROVIDER_STATUS, HEALTH_UPDATE |
+| POST | `/api/realtime/start` / `stop` | liga / desliga o engine |
+
+O frontend consome o SSE apenas como gatilho de "algo mudou": os dados
+vem dos endpoints tipados (sem estado duplicado no cliente). O stream
+encerra com `event: CLOSE` apos `max_seconds` e o EventSource reconecta
+sozinho.
+
+### Configuracao por ambiente
+
+| Variavel | Default | Efeito |
+| --- | --- | --- |
+| `BETGSN_REALTIME` | `1` | `0` desliga o engine |
+| `BETGSN_REALTIME_INTERVAL` | `300` | segundos entre ticks (minimo 30) |
+| `BETGSN_REALTIME_PROVIDERS` | The Odds API, ParlayAPI, OddsPapi | providers operacionais |
+| `BETGSN_REALTIME_SPORTS` | derivado dos fixtures | sport keys capturados |
+| `BETGSN_REALTIME_MARKETS` | `h2h,totals,btts` | mercados pedidos |
+| `BETGSN_REALTIME_FRESH/RECENT/STALE_SECONDS` | 300/900/3600 | thresholds de frescor |
+| `BETGSN_REALTIME_CONSENSUS_BOOKS` | `3` | casas minimas para CONSENSUS_MOVE |
+
+Providers da operacao atual: **The Odds API**, **ParlayAPI**, **OddsPapi**.
+Odds-API.io e OpticOdds existem no registry mas NAO sao consultados pelo
+engine. Nenhum provider derruba o sistema: falha vira health/erro
+contabilizado e o tick seguinte segue. O log operacional fica em
+`output/logs/realtime.jsonl` (rotativo, fora do Git).
+
+### Honestidade de dados (regras fixas)
+
+- quote sem timestamp real nao entra; carimbo futuro e rejeitado e vira
+  problema de qualidade visivel no terminal;
+- o snapshot store e append-only e deduplicado por
+  (match, market, outcome, book, timestamp) — nada e sobrescrito;
+- CLV nunca fabrica close: `n = 0, mean = null` quando nao ha entradas;
+- promotion gate e NO BET permanecem intactos: sinal informativo NAO e
+  acao elegivel de producao.
 
 ## Backtest (validacao historica)
 

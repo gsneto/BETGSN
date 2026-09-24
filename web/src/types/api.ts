@@ -592,6 +592,7 @@ export interface ApiErrorBody {
 /* ------------------------------------------------------------- UI locais */
 
 export type TabKey =
+  | "live"
   | "signals"
   | "games"
   | "odds"
