@@ -276,6 +276,23 @@ split temporal interno do TRAIN, hiperparâmetros default (sem tuning
 OOS). Ensemble: PENDENTE (exige stacking OOS por janela). Sem ranking,
 sem vencedor, sem promoção.
 
+Resultado real (546.533 linhas OOS, 24/24 janelas válidas, corpus
+2026-09-23):
+
+| modelo | LogLoss (raw) | delta vs market_raw | veredito pareado |
+|---|---:|---:|---|
+| MARKET_RAW | 0,5875 | — | — |
+| MARKET_FAIR | 0,5876 | — | — |
+| Elo | 0,5973 | +0,0097 | piora_robusta |
+| XGBoost | 0,5949 | +0,0073 | piora_robusta |
+| LightGBM | 0,5948 | +0,0073 | piora_robusta |
+
+**Nenhum modelo experimental adiciona informação além do mercado** —
+todos pioram de forma robusta contra market_raw E market_fair
+(block bootstrap por mês). Os boosters superam o BASELINE_V1
+(0,6070), mas continuam abaixo do mercado. Nenhum ranking, nenhum
+vencedor, nenhuma promoção.
+
 ### 8.4 Observabilidade
 
 `/api/quant/*` (benchmarks, model-vs-market, line-shopping, ml,
