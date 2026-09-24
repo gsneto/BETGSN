@@ -334,7 +334,7 @@ def _evaluate_adapter(adapter, bets, matches, config,
             print(f"  {label}: {paired.get('verdict')} "
                   f"(delta {paired.get('delta_mean')})")
 
-    return {
+    out = {
         "n_windows": comparison.n_windows,
         "n_windows_valid": comparison.n_windows_valid,
         "n_bets_oos": comparison.n_bets_oos,
@@ -350,6 +350,11 @@ def _evaluate_adapter(adapter, bets, matches, config,
         "drift": comparison.drift,
         "windows": [w.to_dict() for w in comparison.windows],
     }
+    if collect_rows:
+        # linhas por aposta (in-memory): consumidor imediato é o
+        # breakdown por odd band — nunca serializadas no artefato
+        out["prediction_rows"] = comparison.prediction_rows
+    return out
 
 
 def _ensemble_payload(ensemble_result: dict, config) -> dict:
