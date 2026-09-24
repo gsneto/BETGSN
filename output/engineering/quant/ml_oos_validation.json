@@ -1,0 +1,3176 @@
+{
+  "kind": "ml_oos_validation",
+  "protocol": {
+    "train_days": 730,
+    "test_days": 365,
+    "gap_days_embargo": 2,
+    "note": "MESMAS 24 janelas walk-forward da Etapa 19 (mesmo WalkForwardConfig/embargo). Treino apenas com partidas anteriores a train_end; features point-in-time via FeatureBuilder; hiperparâmetros DEFAULT (sem tuning OOS).",
+    "n_windows": 24,
+    "n_windows_valid": 24
+  },
+  "models": {
+    "elo": {
+      "n_windows": 24,
+      "n_windows_valid": 24,
+      "n_bets_oos": 546533,
+      "market_raw": {
+        "brier": 0.200774,
+        "logloss": 0.587537,
+        "ece": 0.011563,
+        "n": 546533
+      },
+      "market_fair": {
+        "brier": 0.20078,
+        "logloss": 0.587617,
+        "ece": 0.006335,
+        "n": 546533
+      },
+      "model_raw": {
+        "brier": 0.204886,
+        "logloss": 0.597268,
+        "ece": 0.00522,
+        "n": 546533
+      },
+      "model_calibrated": {
+        "brier": 0.205176,
+        "logloss": 0.59885,
+        "ece": 0.014421,
+        "n": 546533
+      },
+      "delta_logloss_vs_market_raw": 0.009731,
+      "delta_logloss_vs_market_fair": 0.009651,
+      "paired_model_vs_raw": {
+        "mean_diff": -0.009730841186286067,
+        "se": 0.00018411974438562563,
+        "ci_low": -0.010302906117125308,
+        "ci_high": -0.009146168876738739,
+        "p_value": 0.0,
+        "distinguishable": true,
+        "confidence": 0.95,
+        "resamples": 2000,
+        "n": 546533,
+        "n_blocks": 280,
+        "metric": "logloss",
+        "mean_a": 0.58753710780471,
+        "mean_b": 0.5972679489909961,
+        "relative_improvement": -0.016562087835855464,
+        "verdict": "piora_robusta",
+        "meets_min_effect": false
+      },
+      "paired_model_vs_fair": {
+        "mean_diff": -0.009650982120200532,
+        "se": 0.00017231911134289076,
+        "ci_low": -0.01020923895163949,
+        "ci_high": -0.00907671060878235,
+        "p_value": 0.0,
+        "distinguishable": true,
+        "confidence": 0.95,
+        "resamples": 2000,
+        "n": 546533,
+        "n_blocks": 280,
+        "metric": "logloss",
+        "mean_a": 0.5876169668707956,
+        "mean_b": 0.5972679489909961,
+        "relative_improvement": -0.01642393372607056,
+        "verdict": "piora_robusta",
+        "meets_min_effect": false
+      },
+      "strategy_model": {
+        "n_bets": 167356,
+        "roi": -0.057647,
+        "roi_se": 0.004115,
+        "roi_t": -14.008,
+        "wilson_low": 0.298729,
+        "wilson_high": 0.303123,
+        "bootstrap_low": -0.065922,
+        "bootstrap_high": -0.049565,
+        "ev_threshold": 0.0,
+        "note": "STRATEGY performance (EV>0 com prob do modelo calibrado): inclui line-shopping (best odd) — NÃO é performance do modelo"
+      },
+      "drift": {
+        "market_raw": {
+          "n_windows": 24,
+          "logloss_first_third": 0.590745,
+          "logloss_last_third": 0.585127,
+          "delta": -0.005617,
+          "stdev_across_windows": 0.004193,
+          "drift": "STABLE"
+        },
+        "market_fair": {
+          "n_windows": 24,
+          "logloss_first_third": 0.590402,
+          "logloss_last_third": 0.585256,
+          "delta": -0.005146,
+          "stdev_across_windows": 0.003967,
+          "drift": "STABLE"
+        },
+        "model_raw": {
+          "n_windows": 24,
+          "logloss_first_third": 0.599226,
+          "logloss_last_third": 0.595707,
+          "delta": -0.00352,
+          "stdev_across_windows": 0.003906,
+          "drift": "STABLE"
+        },
+        "model_calibrated": {
+          "n_windows": 24,
+          "logloss_first_third": 0.603051,
+          "logloss_last_third": 0.596293,
+          "delta": -0.006757,
+          "stdev_across_windows": 0.005242,
+          "drift": "STABLE"
+        }
+      },
+      "windows": [
+        {
+          "index": 0,
+          "train_start": "2000-07-28",
+          "train_end": "2002-07-28",
+          "test_start": "2002-07-30",
+          "test_end": "2003-07-30",
+          "gap_days": 2,
+          "n_train_matches": 13708,
+          "n_test_bets": 20505,
+          "market_raw": {
+            "brier": 0.203197,
+            "logloss": 0.59324,
+            "ece": 0.027678,
+            "n": 20505
+          },
+          "market_fair": {
+            "brier": 0.202763,
+            "logloss": 0.592174,
+            "ece": 0.008427,
+            "n": 20505
+          },
+          "model_raw": {
+            "brier": 0.2083,
+            "logloss": 0.605172,
+            "ece": 0.015199,
+            "n": 20505
+          },
+          "model_calibrated": {
+            "brier": 0.209316,
+            "logloss": 0.614256,
+            "ece": 0.03377,
+            "n": 20505
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 3048,
+          "strategy_model_roi": -0.111515,
+          "strategy_market_n": 179,
+          "strategy_market_roi": 0.037039
+        },
+        {
+          "index": 1,
+          "train_start": "2001-07-28",
+          "train_end": "2003-07-28",
+          "test_start": "2003-07-30",
+          "test_end": "2004-07-29",
+          "gap_days": 2,
+          "n_train_matches": 20602,
+          "n_test_bets": 21132,
+          "market_raw": {
+            "brier": 0.202222,
+            "logloss": 0.590744,
+            "ece": 0.027467,
+            "n": 21132
+          },
+          "market_fair": {
+            "brier": 0.201882,
+            "logloss": 0.590043,
+            "ece": 0.00911,
+            "n": 21132
+          },
+          "model_raw": {
+            "brier": 0.205704,
+            "logloss": 0.599246,
+            "ece": 0.008487,
+            "n": 21132
+          },
+          "model_calibrated": {
+            "brier": 0.206425,
+            "logloss": 0.60645,
+            "ece": 0.027206,
+            "n": 21132
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 3385,
+          "strategy_model_roi": -0.137086,
+          "strategy_market_n": 227,
+          "strategy_market_roi": 0.075885
+        },
+        {
+          "index": 2,
+          "train_start": "2002-07-28",
+          "train_end": "2004-07-27",
+          "test_start": "2004-07-29",
+          "test_end": "2005-07-29",
+          "gap_days": 2,
+          "n_train_matches": 27702,
+          "n_test_bets": 21243,
+          "market_raw": {
+            "brier": 0.202811,
+            "logloss": 0.592382,
+            "ece": 0.022891,
+            "n": 21243
+          },
+          "market_fair": {
+            "brier": 0.202424,
+            "logloss": 0.591544,
+            "ece": 0.007349,
+            "n": 21243
+          },
+          "model_raw": {
+            "brier": 0.205189,
+            "logloss": 0.598147,
+            "ece": 0.005101,
+            "n": 21243
+          },
+          "model_calibrated": {
+            "brier": 0.206087,
+            "logloss": 0.603788,
+            "ece": 0.028041,
+            "n": 21243
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 3201,
+          "strategy_model_roi": -0.072265,
+          "strategy_market_n": 221,
+          "strategy_market_roi": 0.007968
+        },
+        {
+          "index": 3,
+          "train_start": "2003-07-28",
+          "train_end": "2005-07-27",
+          "test_start": "2005-07-29",
+          "test_end": "2006-07-29",
+          "gap_days": 2,
+          "n_train_matches": 34786,
+          "n_test_bets": 23388,
+          "market_raw": {
+            "brier": 0.202228,
+            "logloss": 0.590666,
+            "ece": 0.020454,
+            "n": 23388
+          },
+          "market_fair": {
+            "brier": 0.202155,
+            "logloss": 0.590637,
+            "ece": 0.007081,
+            "n": 23388
+          },
+          "model_raw": {
+            "brier": 0.205773,
+            "logloss": 0.599044,
+            "ece": 0.007235,
+            "n": 23388
+          },
+          "model_calibrated": {
+            "brier": 0.206433,
+            "logloss": 0.600945,
+            "ece": 0.027506,
+            "n": 23388
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 3955,
+          "strategy_model_roi": -0.088747,
+          "strategy_market_n": 238,
+          "strategy_market_roi": 0.071487
+        },
+        {
+          "index": 4,
+          "train_start": "2004-07-27",
+          "train_end": "2006-07-27",
+          "test_start": "2006-07-29",
+          "test_end": "2007-07-29",
+          "gap_days": 2,
+          "n_train_matches": 42572,
+          "n_test_bets": 23427,
+          "market_raw": {
+            "brier": 0.202092,
+            "logloss": 0.590912,
+            "ece": 0.019945,
+            "n": 23427
+          },
+          "market_fair": {
+            "brier": 0.201929,
+            "logloss": 0.590445,
+            "ece": 0.006686,
+            "n": 23427
+          },
+          "model_raw": {
+            "brier": 0.205719,
+            "logloss": 0.599553,
+            "ece": 0.004087,
+            "n": 23427
+          },
+          "model_calibrated": {
+            "brier": 0.206162,
+            "logloss": 0.600912,
+            "ece": 0.0219,
+            "n": 23427
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 4348,
+          "strategy_model_roi": -0.030062,
+          "strategy_market_n": 243,
+          "strategy_market_roi": -0.027984
+        },
+        {
+          "index": 5,
+          "train_start": "2005-07-27",
+          "train_end": "2007-07-27",
+          "test_start": "2007-07-29",
+          "test_end": "2008-07-28",
+          "gap_days": 2,
+          "n_train_matches": 50382,
+          "n_test_bets": 23403,
+          "market_raw": {
+            "brier": 0.202443,
+            "logloss": 0.591548,
+            "ece": 0.017611,
+            "n": 23403
+          },
+          "market_fair": {
+            "brier": 0.202347,
+            "logloss": 0.591334,
+            "ece": 0.005614,
+            "n": 23403
+          },
+          "model_raw": {
+            "brier": 0.205805,
+            "logloss": 0.599383,
+            "ece": 0.00684,
+            "n": 23403
+          },
+          "model_calibrated": {
+            "brier": 0.206144,
+            "logloss": 0.600331,
+            "ece": 0.021677,
+            "n": 23403
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 4710,
+          "strategy_model_roi": -0.069673,
+          "strategy_market_n": 205,
+          "strategy_market_roi": -0.019659
+        },
+        {
+          "index": 6,
+          "train_start": "2006-07-27",
+          "train_end": "2008-07-26",
+          "test_start": "2008-07-28",
+          "test_end": "2009-07-28",
+          "gap_days": 2,
+          "n_train_matches": 58192,
+          "n_test_bets": 23379,
+          "market_raw": {
+            "brier": 0.202122,
+            "logloss": 0.590901,
+            "ece": 0.015574,
+            "n": 23379
+          },
+          "market_fair": {
+            "brier": 0.20217,
+            "logloss": 0.591057,
+            "ece": 0.006999,
+            "n": 23379
+          },
+          "model_raw": {
+            "brier": 0.205116,
+            "logloss": 0.597952,
+            "ece": 0.005693,
+            "n": 23379
+          },
+          "model_calibrated": {
+            "brier": 0.205539,
+            "logloss": 0.600823,
+            "ece": 0.018051,
+            "n": 23379
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 5488,
+          "strategy_model_roi": -0.061454,
+          "strategy_market_n": 196,
+          "strategy_market_roi": 0.008469
+        },
+        {
+          "index": 7,
+          "train_start": "2007-07-27",
+          "train_end": "2009-07-26",
+          "test_start": "2009-07-28",
+          "test_end": "2010-07-28",
+          "gap_days": 2,
+          "n_train_matches": 66002,
+          "n_test_bets": 22875,
+          "market_raw": {
+            "brier": 0.199956,
+            "logloss": 0.585565,
+            "ece": 0.014519,
+            "n": 22875
+          },
+          "market_fair": {
+            "brier": 0.200069,
+            "logloss": 0.585979,
+            "ece": 0.008771,
+            "n": 22875
+          },
+          "model_raw": {
+            "brier": 0.204031,
+            "logloss": 0.595315,
+            "ece": 0.002887,
+            "n": 22875
+          },
+          "model_calibrated": {
+            "brier": 0.204543,
+            "logloss": 0.5969,
+            "ece": 0.016941,
+            "n": 22875
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 5825,
+          "strategy_model_roi": -0.086955,
+          "strategy_market_n": 236,
+          "strategy_market_roi": 0.031949
+        },
+        {
+          "index": 8,
+          "train_start": "2008-07-26",
+          "train_end": "2010-07-26",
+          "test_start": "2010-07-28",
+          "test_end": "2011-07-28",
+          "gap_days": 2,
+          "n_train_matches": 73636,
+          "n_test_bets": 23301,
+          "market_raw": {
+            "brier": 0.202378,
+            "logloss": 0.591443,
+            "ece": 0.01186,
+            "n": 23301
+          },
+          "market_fair": {
+            "brier": 0.202562,
+            "logloss": 0.591932,
+            "ece": 0.003972,
+            "n": 23301
+          },
+          "model_raw": {
+            "brier": 0.205987,
+            "logloss": 0.599783,
+            "ece": 0.004886,
+            "n": 23301
+          },
+          "model_calibrated": {
+            "brier": 0.206199,
+            "logloss": 0.600427,
+            "ece": 0.016622,
+            "n": 23301
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 5957,
+          "strategy_model_roi": -0.057385,
+          "strategy_market_n": 206,
+          "strategy_market_roi": 0.00699
+        },
+        {
+          "index": 9,
+          "train_start": "2009-07-26",
+          "train_end": "2011-07-26",
+          "test_start": "2011-07-28",
+          "test_end": "2012-07-27",
+          "gap_days": 2,
+          "n_train_matches": 81404,
+          "n_test_bets": 21705,
+          "market_raw": {
+            "brier": 0.200028,
+            "logloss": 0.585667,
+            "ece": 0.010259,
+            "n": 21705
+          },
+          "market_fair": {
+            "brier": 0.200145,
+            "logloss": 0.586066,
+            "ece": 0.009114,
+            "n": 21705
+          },
+          "model_raw": {
+            "brier": 0.203296,
+            "logloss": 0.593683,
+            "ece": 0.003932,
+            "n": 21705
+          },
+          "model_calibrated": {
+            "brier": 0.203626,
+            "logloss": 0.594685,
+            "ece": 0.013533,
+            "n": 21705
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 6343,
+          "strategy_model_roi": -0.063494,
+          "strategy_market_n": 255,
+          "strategy_market_roi": 0.002173
+        },
+        {
+          "index": 10,
+          "train_start": "2010-07-26",
+          "train_end": "2012-07-25",
+          "test_start": "2012-07-27",
+          "test_end": "2013-07-27",
+          "gap_days": 2,
+          "n_train_matches": 89654,
+          "n_test_bets": 23271,
+          "market_raw": {
+            "brier": 0.203678,
+            "logloss": 0.594406,
+            "ece": 0.006209,
+            "n": 23271
+          },
+          "market_fair": {
+            "brier": 0.203789,
+            "logloss": 0.594717,
+            "ece": 0.002378,
+            "n": 23271
+          },
+          "model_raw": {
+            "brier": 0.207827,
+            "logloss": 0.604397,
+            "ece": 0.009039,
+            "n": 23271
+          },
+          "model_calibrated": {
+            "brier": 0.20789,
+            "logloss": 0.604704,
+            "ece": 0.016427,
+            "n": 23271
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8082,
+          "strategy_model_roi": -0.045979,
+          "strategy_market_n": 235,
+          "strategy_market_roi": 0.010128
+        },
+        {
+          "index": 11,
+          "train_start": "2011-07-26",
+          "train_end": "2013-07-25",
+          "test_start": "2013-07-27",
+          "test_end": "2014-07-27",
+          "gap_days": 2,
+          "n_train_matches": 101350,
+          "n_test_bets": 23406,
+          "market_raw": {
+            "brier": 0.199911,
+            "logloss": 0.585418,
+            "ece": 0.007517,
+            "n": 23406
+          },
+          "market_fair": {
+            "brier": 0.200133,
+            "logloss": 0.586038,
+            "ece": 0.007825,
+            "n": 23406
+          },
+          "model_raw": {
+            "brier": 0.203838,
+            "logloss": 0.594814,
+            "ece": 0.00428,
+            "n": 23406
+          },
+          "model_calibrated": {
+            "brier": 0.203859,
+            "logloss": 0.59487,
+            "ece": 0.007207,
+            "n": 23406
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 9101,
+          "strategy_model_roi": -0.050522,
+          "strategy_market_n": 302,
+          "strategy_market_roi": 0.034182
+        },
+        {
+          "index": 12,
+          "train_start": "2012-07-25",
+          "train_end": "2014-07-25",
+          "test_start": "2014-07-27",
+          "test_end": "2015-07-27",
+          "gap_days": 2,
+          "n_train_matches": 113272,
+          "n_test_bets": 23586,
+          "market_raw": {
+            "brier": 0.200769,
+            "logloss": 0.587166,
+            "ece": 0.006577,
+            "n": 23586
+          },
+          "market_fair": {
+            "brier": 0.20091,
+            "logloss": 0.587687,
+            "ece": 0.00526,
+            "n": 23586
+          },
+          "model_raw": {
+            "brier": 0.205377,
+            "logloss": 0.598388,
+            "ece": 0.005296,
+            "n": 23586
+          },
+          "model_calibrated": {
+            "brier": 0.205428,
+            "logloss": 0.599051,
+            "ece": 0.007362,
+            "n": 23586
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 10079,
+          "strategy_model_roi": -0.049969,
+          "strategy_market_n": 276,
+          "strategy_market_roi": 0.056449
+        },
+        {
+          "index": 13,
+          "train_start": "2013-07-25",
+          "train_end": "2015-07-25",
+          "test_start": "2015-07-27",
+          "test_end": "2016-07-26",
+          "gap_days": 2,
+          "n_train_matches": 125620,
+          "n_test_bets": 23382,
+          "market_raw": {
+            "brier": 0.201509,
+            "logloss": 0.589166,
+            "ece": 0.005654,
+            "n": 23382
+          },
+          "market_fair": {
+            "brier": 0.201546,
+            "logloss": 0.589297,
+            "ece": 0.005354,
+            "n": 23382
+          },
+          "model_raw": {
+            "brier": 0.205676,
+            "logloss": 0.598831,
+            "ece": 0.007658,
+            "n": 23382
+          },
+          "model_calibrated": {
+            "brier": 0.205764,
+            "logloss": 0.599553,
+            "ece": 0.010502,
+            "n": 23382
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 9335,
+          "strategy_model_roi": -0.027064,
+          "strategy_market_n": 271,
+          "strategy_market_roi": 0.022472
+        },
+        {
+          "index": 14,
+          "train_start": "2014-07-25",
+          "train_end": "2016-07-24",
+          "test_start": "2016-07-26",
+          "test_end": "2017-07-26",
+          "gap_days": 2,
+          "n_train_matches": 137748,
+          "n_test_bets": 23430,
+          "market_raw": {
+            "brier": 0.198298,
+            "logloss": 0.581616,
+            "ece": 0.007546,
+            "n": 23430
+          },
+          "market_fair": {
+            "brier": 0.198369,
+            "logloss": 0.581809,
+            "ece": 0.006437,
+            "n": 23430
+          },
+          "model_raw": {
+            "brier": 0.20349,
+            "logloss": 0.59383,
+            "ece": 0.002068,
+            "n": 23430
+          },
+          "model_calibrated": {
+            "brier": 0.203504,
+            "logloss": 0.593877,
+            "ece": 0.005127,
+            "n": 23430
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 9679,
+          "strategy_model_roi": -0.048647,
+          "strategy_market_n": 318,
+          "strategy_market_roi": 0.003616
+        },
+        {
+          "index": 15,
+          "train_start": "2015-07-25",
+          "train_end": "2017-07-24",
+          "test_start": "2017-07-26",
+          "test_end": "2018-07-26",
+          "gap_days": 2,
+          "n_train_matches": 150000,
+          "n_test_bets": 23429,
+          "market_raw": {
+            "brier": 0.19786,
+            "logloss": 0.580457,
+            "ece": 0.006453,
+            "n": 23429
+          },
+          "market_fair": {
+            "brier": 0.198093,
+            "logloss": 0.581138,
+            "ece": 0.006435,
+            "n": 23429
+          },
+          "model_raw": {
+            "brier": 0.202816,
+            "logloss": 0.59214,
+            "ece": 0.004897,
+            "n": 23429
+          },
+          "model_calibrated": {
+            "brier": 0.202971,
+            "logloss": 0.592972,
+            "ece": 0.008991,
+            "n": 23429
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 8808,
+          "strategy_model_roi": -0.055447,
+          "strategy_market_n": 383,
+          "strategy_market_roi": 0.02564
+        },
+        {
+          "index": 16,
+          "train_start": "2016-07-24",
+          "train_end": "2018-07-24",
+          "test_start": "2018-07-26",
+          "test_end": "2019-07-26",
+          "gap_days": 2,
+          "n_train_matches": 162039,
+          "n_test_bets": 23004,
+          "market_raw": {
+            "brier": 0.19917,
+            "logloss": 0.583849,
+            "ece": 0.008727,
+            "n": 23004
+          },
+          "market_fair": {
+            "brier": 0.199149,
+            "logloss": 0.583828,
+            "ece": 0.005095,
+            "n": 23004
+          },
+          "model_raw": {
+            "brier": 0.203905,
+            "logloss": 0.594868,
+            "ece": 0.007085,
+            "n": 23004
+          },
+          "model_calibrated": {
+            "brier": 0.204039,
+            "logloss": 0.595251,
+            "ece": 0.013266,
+            "n": 23004
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8727,
+          "strategy_model_roi": -0.057705,
+          "strategy_market_n": 344,
+          "strategy_market_roi": -0.00439
+        },
+        {
+          "index": 17,
+          "train_start": "2017-07-24",
+          "train_end": "2019-07-24",
+          "test_start": "2019-07-26",
+          "test_end": "2020-07-25",
+          "gap_days": 2,
+          "n_train_matches": 174106,
+          "n_test_bets": 20460,
+          "market_raw": {
+            "brier": 0.202649,
+            "logloss": 0.591849,
+            "ece": 0.008474,
+            "n": 20460
+          },
+          "market_fair": {
+            "brier": 0.202525,
+            "logloss": 0.59165,
+            "ece": 0.002093,
+            "n": 20460
+          },
+          "model_raw": {
+            "brier": 0.206139,
+            "logloss": 0.600023,
+            "ece": 0.009028,
+            "n": 20460
+          },
+          "model_calibrated": {
+            "brier": 0.206413,
+            "logloss": 0.600908,
+            "ece": 0.016397,
+            "n": 20460
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 7808,
+          "strategy_model_roi": -0.011743,
+          "strategy_market_n": 287,
+          "strategy_market_roi": 0.011463
+        },
+        {
+          "index": 18,
+          "train_start": "2018-07-24",
+          "train_end": "2020-07-23",
+          "test_start": "2020-07-25",
+          "test_end": "2021-07-25",
+          "gap_days": 2,
+          "n_train_matches": 184104,
+          "n_test_bets": 23205,
+          "market_raw": {
+            "brier": 0.201358,
+            "logloss": 0.589294,
+            "ece": 0.009507,
+            "n": 23205
+          },
+          "market_fair": {
+            "brier": 0.201448,
+            "logloss": 0.589522,
+            "ece": 0.004841,
+            "n": 23205
+          },
+          "model_raw": {
+            "brier": 0.207698,
+            "logloss": 0.603964,
+            "ece": 0.011654,
+            "n": 23205
+          },
+          "model_calibrated": {
+            "brier": 0.20758,
+            "logloss": 0.60376,
+            "ece": 0.014315,
+            "n": 23205
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8646,
+          "strategy_model_roi": -0.080285,
+          "strategy_market_n": 248,
+          "strategy_market_roi": -0.025444
+        },
+        {
+          "index": 19,
+          "train_start": "2019-07-24",
+          "train_end": "2021-07-23",
+          "test_start": "2021-07-25",
+          "test_end": "2022-07-25",
+          "gap_days": 2,
+          "n_train_matches": 196455,
+          "n_test_bets": 23487,
+          "market_raw": {
+            "brier": 0.199058,
+            "logloss": 0.583668,
+            "ece": 0.012443,
+            "n": 23487
+          },
+          "market_fair": {
+            "brier": 0.19913,
+            "logloss": 0.583898,
+            "ece": 0.007969,
+            "n": 23487
+          },
+          "model_raw": {
+            "brier": 0.203647,
+            "logloss": 0.594495,
+            "ece": 0.001123,
+            "n": 23487
+          },
+          "model_calibrated": {
+            "brier": 0.203839,
+            "logloss": 0.594973,
+            "ece": 0.009252,
+            "n": 23487
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 8214,
+          "strategy_model_roi": -0.099308,
+          "strategy_market_n": 284,
+          "strategy_market_roi": 0.006268
+        },
+        {
+          "index": 20,
+          "train_start": "2020-07-23",
+          "train_end": "2022-07-23",
+          "test_start": "2022-07-25",
+          "test_end": "2023-07-25",
+          "gap_days": 2,
+          "n_train_matches": 209258,
+          "n_test_bets": 22179,
+          "market_raw": {
+            "brier": 0.197882,
+            "logloss": 0.580849,
+            "ece": 0.011797,
+            "n": 22179
+          },
+          "market_fair": {
+            "brier": 0.198002,
+            "logloss": 0.58117,
+            "ece": 0.009779,
+            "n": 22179
+          },
+          "model_raw": {
+            "brier": 0.201501,
+            "logloss": 0.589433,
+            "ece": 0.001724,
+            "n": 22179
+          },
+          "model_calibrated": {
+            "brier": 0.201559,
+            "logloss": 0.589604,
+            "ece": 0.008057,
+            "n": 22179
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 7677,
+          "strategy_model_roi": -0.034461,
+          "strategy_market_n": 313,
+          "strategy_market_roi": 0.02377
+        },
+        {
+          "index": 21,
+          "train_start": "2021-07-23",
+          "train_end": "2023-07-23",
+          "test_start": "2023-07-25",
+          "test_end": "2024-07-24",
+          "gap_days": 2,
+          "n_train_matches": 221480,
+          "n_test_bets": 23391,
+          "market_raw": {
+            "brier": 0.198237,
+            "logloss": 0.581548,
+            "ece": 0.010512,
+            "n": 23391
+          },
+          "market_fair": {
+            "brier": 0.198297,
+            "logloss": 0.581734,
+            "ece": 0.007355,
+            "n": 23391
+          },
+          "model_raw": {
+            "brier": 0.202679,
+            "logloss": 0.592042,
+            "ece": 0.003179,
+            "n": 23391
+          },
+          "model_calibrated": {
+            "brier": 0.202815,
+            "logloss": 0.59245,
+            "ece": 0.012376,
+            "n": 23391
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8205,
+          "strategy_model_roi": -0.049701,
+          "strategy_market_n": 372,
+          "strategy_market_roi": 0.015726
+        },
+        {
+          "index": 22,
+          "train_start": "2022-07-23",
+          "train_end": "2024-07-22",
+          "test_start": "2024-07-24",
+          "test_end": "2025-07-24",
+          "gap_days": 2,
+          "n_train_matches": 234031,
+          "n_test_bets": 23043,
+          "market_raw": {
+            "brier": 0.199364,
+            "logloss": 0.584313,
+            "ece": 0.006121,
+            "n": 23043
+          },
+          "market_fair": {
+            "brier": 0.199374,
+            "logloss": 0.584395,
+            "ece": 0.006419,
+            "n": 23043
+          },
+          "model_raw": {
+            "brier": 0.203602,
+            "logloss": 0.594285,
+            "ece": 0.003724,
+            "n": 23043
+          },
+          "model_calibrated": {
+            "brier": 0.204018,
+            "logloss": 0.59656,
+            "ece": 0.015981,
+            "n": 23043
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 8433,
+          "strategy_model_roi": -0.051544,
+          "strategy_market_n": 322,
+          "strategy_market_roi": 0.005342
+        },
+        {
+          "index": 23,
+          "train_start": "2023-07-23",
+          "train_end": "2025-07-22",
+          "test_start": "2025-07-24",
+          "test_end": "2026-07-24",
+          "gap_days": 2,
+          "n_train_matches": 246386,
+          "n_test_bets": 22902,
+          "market_raw": {
+            "brier": 0.199967,
+            "logloss": 0.58565,
+            "ece": 0.010192,
+            "n": 22902
+          },
+          "market_fair": {
+            "brier": 0.200002,
+            "logloss": 0.585847,
+            "ece": 0.00586,
+            "n": 22902
+          },
+          "model_raw": {
+            "brier": 0.204542,
+            "logloss": 0.596542,
+            "ece": 0.005263,
+            "n": 22902
+          },
+          "model_calibrated": {
+            "brier": 0.204631,
+            "logloss": 0.596842,
+            "ece": 0.011929,
+            "n": 22902
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8302,
+          "strategy_model_roi": -0.05481,
+          "strategy_market_n": 266,
+          "strategy_market_roi": 0.019962
+        }
+      ]
+    },
+    "xgboost": {
+      "n_windows": 24,
+      "n_windows_valid": 24,
+      "n_bets_oos": 546533,
+      "market_raw": {
+        "brier": 0.200774,
+        "logloss": 0.587537,
+        "ece": 0.011563,
+        "n": 546533
+      },
+      "market_fair": {
+        "brier": 0.20078,
+        "logloss": 0.587617,
+        "ece": 0.006335,
+        "n": 546533
+      },
+      "model_raw": {
+        "brier": 0.203869,
+        "logloss": 0.594883,
+        "ece": 0.002609,
+        "n": 546533
+      },
+      "model_calibrated": {
+        "brier": 0.204149,
+        "logloss": 0.595719,
+        "ece": 0.012945,
+        "n": 546533
+      },
+      "delta_logloss_vs_market_raw": 0.007346,
+      "delta_logloss_vs_market_fair": 0.007266,
+      "paired_model_vs_raw": {
+        "mean_diff": -0.007346292835150583,
+        "se": 0.00017000288269361765,
+        "ci_low": -0.007893537719080093,
+        "ci_high": -0.006809138289492642,
+        "p_value": 0.0,
+        "distinguishable": true,
+        "confidence": 0.95,
+        "resamples": 2000,
+        "n": 546533,
+        "n_blocks": 280,
+        "metric": "logloss",
+        "mean_a": 0.58753710780471,
+        "mean_b": 0.5948834006398607,
+        "relative_improvement": -0.01250353847878569,
+        "verdict": "piora_robusta",
+        "meets_min_effect": false
+      },
+      "paired_model_vs_fair": {
+        "mean_diff": -0.007266433769065048,
+        "se": 0.00015929935456862577,
+        "ci_low": -0.007803926981221423,
+        "ci_high": -0.006717184677750547,
+        "p_value": 0.0,
+        "distinguishable": true,
+        "confidence": 0.95,
+        "resamples": 2000,
+        "n": 546533,
+        "n_blocks": 280,
+        "metric": "logloss",
+        "mean_a": 0.5876169668707956,
+        "mean_b": 0.5948834006398607,
+        "relative_improvement": -0.012365935939121444,
+        "verdict": "piora_robusta",
+        "meets_min_effect": false
+      },
+      "strategy_model": {
+        "n_bets": 167644,
+        "roi": -0.043413,
+        "roi_se": 0.004129,
+        "roi_t": -10.5133,
+        "wilson_low": 0.308924,
+        "wilson_high": 0.313356,
+        "bootstrap_low": -0.051464,
+        "bootstrap_high": -0.03551,
+        "ev_threshold": 0.0,
+        "note": "STRATEGY performance (EV>0 com prob do modelo calibrado): inclui line-shopping (best odd) — NÃO é performance do modelo"
+      },
+      "drift": {
+        "market_raw": {
+          "n_windows": 24,
+          "logloss_first_third": 0.590745,
+          "logloss_last_third": 0.585127,
+          "delta": -0.005617,
+          "stdev_across_windows": 0.004193,
+          "drift": "STABLE"
+        },
+        "market_fair": {
+          "n_windows": 24,
+          "logloss_first_third": 0.590402,
+          "logloss_last_third": 0.585256,
+          "delta": -0.005146,
+          "stdev_across_windows": 0.003967,
+          "drift": "STABLE"
+        },
+        "model_raw": {
+          "n_windows": 24,
+          "logloss_first_third": 0.597256,
+          "logloss_last_third": 0.592885,
+          "delta": -0.004372,
+          "stdev_across_windows": 0.003878,
+          "drift": "STABLE"
+        },
+        "model_calibrated": {
+          "n_windows": 24,
+          "logloss_first_third": 0.599016,
+          "logloss_last_third": 0.593321,
+          "delta": -0.005695,
+          "stdev_across_windows": 0.004251,
+          "drift": "STABLE"
+        }
+      },
+      "windows": [
+        {
+          "index": 0,
+          "train_start": "2000-07-28",
+          "train_end": "2002-07-28",
+          "test_start": "2002-07-30",
+          "test_end": "2003-07-30",
+          "gap_days": 2,
+          "n_train_matches": 13708,
+          "n_test_bets": 20505,
+          "market_raw": {
+            "brier": 0.203197,
+            "logloss": 0.59324,
+            "ece": 0.027678,
+            "n": 20505
+          },
+          "market_fair": {
+            "brier": 0.202763,
+            "logloss": 0.592174,
+            "ece": 0.008427,
+            "n": 20505
+          },
+          "model_raw": {
+            "brier": 0.206779,
+            "logloss": 0.601456,
+            "ece": 0.008641,
+            "n": 20505
+          },
+          "model_calibrated": {
+            "brier": 0.207702,
+            "logloss": 0.60397,
+            "ece": 0.031827,
+            "n": 20505
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 3185,
+          "strategy_model_roi": -0.096927,
+          "strategy_market_n": 179,
+          "strategy_market_roi": 0.037039
+        },
+        {
+          "index": 1,
+          "train_start": "2001-07-28",
+          "train_end": "2003-07-28",
+          "test_start": "2003-07-30",
+          "test_end": "2004-07-29",
+          "gap_days": 2,
+          "n_train_matches": 20602,
+          "n_test_bets": 21132,
+          "market_raw": {
+            "brier": 0.202222,
+            "logloss": 0.590744,
+            "ece": 0.027467,
+            "n": 21132
+          },
+          "market_fair": {
+            "brier": 0.201882,
+            "logloss": 0.590043,
+            "ece": 0.00911,
+            "n": 21132
+          },
+          "model_raw": {
+            "brier": 0.204876,
+            "logloss": 0.597201,
+            "ece": 0.005442,
+            "n": 21132
+          },
+          "model_calibrated": {
+            "brier": 0.205843,
+            "logloss": 0.600044,
+            "ece": 0.026871,
+            "n": 21132
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 3567,
+          "strategy_model_roi": -0.102996,
+          "strategy_market_n": 227,
+          "strategy_market_roi": 0.075885
+        },
+        {
+          "index": 2,
+          "train_start": "2002-07-28",
+          "train_end": "2004-07-27",
+          "test_start": "2004-07-29",
+          "test_end": "2005-07-29",
+          "gap_days": 2,
+          "n_train_matches": 27702,
+          "n_test_bets": 21243,
+          "market_raw": {
+            "brier": 0.202811,
+            "logloss": 0.592382,
+            "ece": 0.022891,
+            "n": 21243
+          },
+          "market_fair": {
+            "brier": 0.202424,
+            "logloss": 0.591544,
+            "ece": 0.007349,
+            "n": 21243
+          },
+          "model_raw": {
+            "brier": 0.204221,
+            "logloss": 0.595866,
+            "ece": 0.002246,
+            "n": 21243
+          },
+          "model_calibrated": {
+            "brier": 0.205146,
+            "logloss": 0.598545,
+            "ece": 0.027365,
+            "n": 21243
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 3277,
+          "strategy_model_roi": -0.029768,
+          "strategy_market_n": 221,
+          "strategy_market_roi": 0.007968
+        },
+        {
+          "index": 3,
+          "train_start": "2003-07-28",
+          "train_end": "2005-07-27",
+          "test_start": "2005-07-29",
+          "test_end": "2006-07-29",
+          "gap_days": 2,
+          "n_train_matches": 34786,
+          "n_test_bets": 23388,
+          "market_raw": {
+            "brier": 0.202228,
+            "logloss": 0.590666,
+            "ece": 0.020454,
+            "n": 23388
+          },
+          "market_fair": {
+            "brier": 0.202155,
+            "logloss": 0.590637,
+            "ece": 0.007081,
+            "n": 23388
+          },
+          "model_raw": {
+            "brier": 0.205281,
+            "logloss": 0.598188,
+            "ece": 0.003261,
+            "n": 23388
+          },
+          "model_calibrated": {
+            "brier": 0.205927,
+            "logloss": 0.600055,
+            "ece": 0.026533,
+            "n": 23388
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 4266,
+          "strategy_model_roi": -0.090202,
+          "strategy_market_n": 238,
+          "strategy_market_roi": 0.071487
+        },
+        {
+          "index": 4,
+          "train_start": "2004-07-27",
+          "train_end": "2006-07-27",
+          "test_start": "2006-07-29",
+          "test_end": "2007-07-29",
+          "gap_days": 2,
+          "n_train_matches": 42572,
+          "n_test_bets": 23427,
+          "market_raw": {
+            "brier": 0.202092,
+            "logloss": 0.590912,
+            "ece": 0.019945,
+            "n": 23427
+          },
+          "market_fair": {
+            "brier": 0.201929,
+            "logloss": 0.590445,
+            "ece": 0.006686,
+            "n": 23427
+          },
+          "model_raw": {
+            "brier": 0.205016,
+            "logloss": 0.597965,
+            "ece": 0.00162,
+            "n": 23427
+          },
+          "model_calibrated": {
+            "brier": 0.205451,
+            "logloss": 0.599133,
+            "ece": 0.021545,
+            "n": 23427
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 4642,
+          "strategy_model_roi": -0.019119,
+          "strategy_market_n": 243,
+          "strategy_market_roi": -0.027984
+        },
+        {
+          "index": 5,
+          "train_start": "2005-07-27",
+          "train_end": "2007-07-27",
+          "test_start": "2007-07-29",
+          "test_end": "2008-07-28",
+          "gap_days": 2,
+          "n_train_matches": 50382,
+          "n_test_bets": 23403,
+          "market_raw": {
+            "brier": 0.202443,
+            "logloss": 0.591548,
+            "ece": 0.017611,
+            "n": 23403
+          },
+          "market_fair": {
+            "brier": 0.202347,
+            "logloss": 0.591334,
+            "ece": 0.005614,
+            "n": 23403
+          },
+          "model_raw": {
+            "brier": 0.204994,
+            "logloss": 0.597593,
+            "ece": 0.00195,
+            "n": 23403
+          },
+          "model_calibrated": {
+            "brier": 0.205356,
+            "logloss": 0.59851,
+            "ece": 0.01933,
+            "n": 23403
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 4856,
+          "strategy_model_roi": -0.063425,
+          "strategy_market_n": 205,
+          "strategy_market_roi": -0.019659
+        },
+        {
+          "index": 6,
+          "train_start": "2006-07-27",
+          "train_end": "2008-07-26",
+          "test_start": "2008-07-28",
+          "test_end": "2009-07-28",
+          "gap_days": 2,
+          "n_train_matches": 58192,
+          "n_test_bets": 23379,
+          "market_raw": {
+            "brier": 0.202122,
+            "logloss": 0.590901,
+            "ece": 0.015574,
+            "n": 23379
+          },
+          "market_fair": {
+            "brier": 0.20217,
+            "logloss": 0.591057,
+            "ece": 0.006999,
+            "n": 23379
+          },
+          "model_raw": {
+            "brier": 0.204564,
+            "logloss": 0.596672,
+            "ece": 0.002144,
+            "n": 23379
+          },
+          "model_calibrated": {
+            "brier": 0.204991,
+            "logloss": 0.598129,
+            "ece": 0.017104,
+            "n": 23379
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 5517,
+          "strategy_model_roi": -0.038471,
+          "strategy_market_n": 196,
+          "strategy_market_roi": 0.008469
+        },
+        {
+          "index": 7,
+          "train_start": "2007-07-27",
+          "train_end": "2009-07-26",
+          "test_start": "2009-07-28",
+          "test_end": "2010-07-28",
+          "gap_days": 2,
+          "n_train_matches": 66002,
+          "n_test_bets": 22875,
+          "market_raw": {
+            "brier": 0.199956,
+            "logloss": 0.585565,
+            "ece": 0.014519,
+            "n": 22875
+          },
+          "market_fair": {
+            "brier": 0.200069,
+            "logloss": 0.585979,
+            "ece": 0.008771,
+            "n": 22875
+          },
+          "model_raw": {
+            "brier": 0.203092,
+            "logloss": 0.593111,
+            "ece": 0.00075,
+            "n": 22875
+          },
+          "model_calibrated": {
+            "brier": 0.203349,
+            "logloss": 0.593745,
+            "ece": 0.016297,
+            "n": 22875
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 5836,
+          "strategy_model_roi": -0.069075,
+          "strategy_market_n": 236,
+          "strategy_market_roi": 0.031949
+        },
+        {
+          "index": 8,
+          "train_start": "2008-07-26",
+          "train_end": "2010-07-26",
+          "test_start": "2010-07-28",
+          "test_end": "2011-07-28",
+          "gap_days": 2,
+          "n_train_matches": 73636,
+          "n_test_bets": 23301,
+          "market_raw": {
+            "brier": 0.202378,
+            "logloss": 0.591443,
+            "ece": 0.01186,
+            "n": 23301
+          },
+          "market_fair": {
+            "brier": 0.202562,
+            "logloss": 0.591932,
+            "ece": 0.003972,
+            "n": 23301
+          },
+          "model_raw": {
+            "brier": 0.205354,
+            "logloss": 0.598155,
+            "ece": 0.005137,
+            "n": 23301
+          },
+          "model_calibrated": {
+            "brier": 0.205576,
+            "logloss": 0.598795,
+            "ece": 0.016759,
+            "n": 23301
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 6185,
+          "strategy_model_roi": -0.028753,
+          "strategy_market_n": 206,
+          "strategy_market_roi": 0.00699
+        },
+        {
+          "index": 9,
+          "train_start": "2009-07-26",
+          "train_end": "2011-07-26",
+          "test_start": "2011-07-28",
+          "test_end": "2012-07-27",
+          "gap_days": 2,
+          "n_train_matches": 81404,
+          "n_test_bets": 21705,
+          "market_raw": {
+            "brier": 0.200028,
+            "logloss": 0.585667,
+            "ece": 0.010259,
+            "n": 21705
+          },
+          "market_fair": {
+            "brier": 0.200145,
+            "logloss": 0.586066,
+            "ece": 0.009114,
+            "n": 21705
+          },
+          "model_raw": {
+            "brier": 0.202328,
+            "logloss": 0.591372,
+            "ece": 0.003195,
+            "n": 21705
+          },
+          "model_calibrated": {
+            "brier": 0.202678,
+            "logloss": 0.592373,
+            "ece": 0.012405,
+            "n": 21705
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 6475,
+          "strategy_model_roi": -0.039242,
+          "strategy_market_n": 255,
+          "strategy_market_roi": 0.002173
+        },
+        {
+          "index": 10,
+          "train_start": "2010-07-26",
+          "train_end": "2012-07-25",
+          "test_start": "2012-07-27",
+          "test_end": "2013-07-27",
+          "gap_days": 2,
+          "n_train_matches": 89654,
+          "n_test_bets": 23271,
+          "market_raw": {
+            "brier": 0.203678,
+            "logloss": 0.594406,
+            "ece": 0.006209,
+            "n": 23271
+          },
+          "market_fair": {
+            "brier": 0.203789,
+            "logloss": 0.594717,
+            "ece": 0.002378,
+            "n": 23271
+          },
+          "model_raw": {
+            "brier": 0.20638,
+            "logloss": 0.600777,
+            "ece": 0.008255,
+            "n": 23271
+          },
+          "model_calibrated": {
+            "brier": 0.206455,
+            "logloss": 0.60106,
+            "ece": 0.014784,
+            "n": 23271
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8036,
+          "strategy_model_roi": -0.005787,
+          "strategy_market_n": 235,
+          "strategy_market_roi": 0.010128
+        },
+        {
+          "index": 11,
+          "train_start": "2011-07-26",
+          "train_end": "2013-07-25",
+          "test_start": "2013-07-27",
+          "test_end": "2014-07-27",
+          "gap_days": 2,
+          "n_train_matches": 101350,
+          "n_test_bets": 23406,
+          "market_raw": {
+            "brier": 0.199911,
+            "logloss": 0.585418,
+            "ece": 0.007517,
+            "n": 23406
+          },
+          "market_fair": {
+            "brier": 0.200133,
+            "logloss": 0.586038,
+            "ece": 0.007825,
+            "n": 23406
+          },
+          "model_raw": {
+            "brier": 0.202795,
+            "logloss": 0.592361,
+            "ece": 0.003882,
+            "n": 23406
+          },
+          "model_calibrated": {
+            "brier": 0.202796,
+            "logloss": 0.59238,
+            "ece": 0.007544,
+            "n": 23406
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 9007,
+          "strategy_model_roi": -0.011612,
+          "strategy_market_n": 302,
+          "strategy_market_roi": 0.034182
+        },
+        {
+          "index": 12,
+          "train_start": "2012-07-25",
+          "train_end": "2014-07-25",
+          "test_start": "2014-07-27",
+          "test_end": "2015-07-27",
+          "gap_days": 2,
+          "n_train_matches": 113272,
+          "n_test_bets": 23586,
+          "market_raw": {
+            "brier": 0.200769,
+            "logloss": 0.587166,
+            "ece": 0.006577,
+            "n": 23586
+          },
+          "market_fair": {
+            "brier": 0.20091,
+            "logloss": 0.587687,
+            "ece": 0.00526,
+            "n": 23586
+          },
+          "model_raw": {
+            "brier": 0.204585,
+            "logloss": 0.596428,
+            "ece": 0.004578,
+            "n": 23586
+          },
+          "model_calibrated": {
+            "brier": 0.204545,
+            "logloss": 0.596424,
+            "ece": 0.007018,
+            "n": 23586
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 10110,
+          "strategy_model_roi": -0.024104,
+          "strategy_market_n": 276,
+          "strategy_market_roi": 0.056449
+        },
+        {
+          "index": 13,
+          "train_start": "2013-07-25",
+          "train_end": "2015-07-25",
+          "test_start": "2015-07-27",
+          "test_end": "2016-07-26",
+          "gap_days": 2,
+          "n_train_matches": 125620,
+          "n_test_bets": 23382,
+          "market_raw": {
+            "brier": 0.201509,
+            "logloss": 0.589166,
+            "ece": 0.005654,
+            "n": 23382
+          },
+          "market_fair": {
+            "brier": 0.201546,
+            "logloss": 0.589297,
+            "ece": 0.005354,
+            "n": 23382
+          },
+          "model_raw": {
+            "brier": 0.204756,
+            "logloss": 0.596673,
+            "ece": 0.003924,
+            "n": 23382
+          },
+          "model_calibrated": {
+            "brier": 0.204883,
+            "logloss": 0.597136,
+            "ece": 0.007445,
+            "n": 23382
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 9873,
+          "strategy_model_roi": -0.005898,
+          "strategy_market_n": 271,
+          "strategy_market_roi": 0.022472
+        },
+        {
+          "index": 14,
+          "train_start": "2014-07-25",
+          "train_end": "2016-07-24",
+          "test_start": "2016-07-26",
+          "test_end": "2017-07-26",
+          "gap_days": 2,
+          "n_train_matches": 137748,
+          "n_test_bets": 23430,
+          "market_raw": {
+            "brier": 0.198298,
+            "logloss": 0.581616,
+            "ece": 0.007546,
+            "n": 23430
+          },
+          "market_fair": {
+            "brier": 0.198369,
+            "logloss": 0.581809,
+            "ece": 0.006437,
+            "n": 23430
+          },
+          "model_raw": {
+            "brier": 0.202376,
+            "logloss": 0.591193,
+            "ece": 0.002343,
+            "n": 23430
+          },
+          "model_calibrated": {
+            "brier": 0.202401,
+            "logloss": 0.591256,
+            "ece": 0.004817,
+            "n": 23430
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 9779,
+          "strategy_model_roi": -0.061927,
+          "strategy_market_n": 318,
+          "strategy_market_roi": 0.003616
+        },
+        {
+          "index": 15,
+          "train_start": "2015-07-25",
+          "train_end": "2017-07-24",
+          "test_start": "2017-07-26",
+          "test_end": "2018-07-26",
+          "gap_days": 2,
+          "n_train_matches": 150000,
+          "n_test_bets": 23429,
+          "market_raw": {
+            "brier": 0.19786,
+            "logloss": 0.580457,
+            "ece": 0.006453,
+            "n": 23429
+          },
+          "market_fair": {
+            "brier": 0.198093,
+            "logloss": 0.581138,
+            "ece": 0.006435,
+            "n": 23429
+          },
+          "model_raw": {
+            "brier": 0.20171,
+            "logloss": 0.589731,
+            "ece": 0.002743,
+            "n": 23429
+          },
+          "model_calibrated": {
+            "brier": 0.201926,
+            "logloss": 0.590269,
+            "ece": 0.007853,
+            "n": 23429
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 9004,
+          "strategy_model_roi": -0.050301,
+          "strategy_market_n": 383,
+          "strategy_market_roi": 0.02564
+        },
+        {
+          "index": 16,
+          "train_start": "2016-07-24",
+          "train_end": "2018-07-24",
+          "test_start": "2018-07-26",
+          "test_end": "2019-07-26",
+          "gap_days": 2,
+          "n_train_matches": 162039,
+          "n_test_bets": 23004,
+          "market_raw": {
+            "brier": 0.19917,
+            "logloss": 0.583849,
+            "ece": 0.008727,
+            "n": 23004
+          },
+          "market_fair": {
+            "brier": 0.199149,
+            "logloss": 0.583828,
+            "ece": 0.005095,
+            "n": 23004
+          },
+          "model_raw": {
+            "brier": 0.202434,
+            "logloss": 0.591385,
+            "ece": 0.002268,
+            "n": 23004
+          },
+          "model_calibrated": {
+            "brier": 0.202521,
+            "logloss": 0.591613,
+            "ece": 0.008427,
+            "n": 23004
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8610,
+          "strategy_model_roi": -0.039981,
+          "strategy_market_n": 344,
+          "strategy_market_roi": -0.00439
+        },
+        {
+          "index": 17,
+          "train_start": "2017-07-24",
+          "train_end": "2019-07-24",
+          "test_start": "2019-07-26",
+          "test_end": "2020-07-25",
+          "gap_days": 2,
+          "n_train_matches": 174106,
+          "n_test_bets": 20460,
+          "market_raw": {
+            "brier": 0.202649,
+            "logloss": 0.591849,
+            "ece": 0.008474,
+            "n": 20460
+          },
+          "market_fair": {
+            "brier": 0.202525,
+            "logloss": 0.59165,
+            "ece": 0.002093,
+            "n": 20460
+          },
+          "model_raw": {
+            "brier": 0.204755,
+            "logloss": 0.596813,
+            "ece": 0.004533,
+            "n": 20460
+          },
+          "model_calibrated": {
+            "brier": 0.204901,
+            "logloss": 0.597483,
+            "ece": 0.010323,
+            "n": 20460
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 7915,
+          "strategy_model_roi": -0.004926,
+          "strategy_market_n": 287,
+          "strategy_market_roi": 0.011463
+        },
+        {
+          "index": 18,
+          "train_start": "2018-07-24",
+          "train_end": "2020-07-23",
+          "test_start": "2020-07-25",
+          "test_end": "2021-07-25",
+          "gap_days": 2,
+          "n_train_matches": 184104,
+          "n_test_bets": 23205,
+          "market_raw": {
+            "brier": 0.201358,
+            "logloss": 0.589294,
+            "ece": 0.009507,
+            "n": 23205
+          },
+          "market_fair": {
+            "brier": 0.201448,
+            "logloss": 0.589522,
+            "ece": 0.004841,
+            "n": 23205
+          },
+          "model_raw": {
+            "brier": 0.206252,
+            "logloss": 0.600759,
+            "ece": 0.0049,
+            "n": 23205
+          },
+          "model_calibrated": {
+            "brier": 0.206193,
+            "logloss": 0.600647,
+            "ece": 0.008725,
+            "n": 23205
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8527,
+          "strategy_model_roi": -0.077004,
+          "strategy_market_n": 248,
+          "strategy_market_roi": -0.025444
+        },
+        {
+          "index": 19,
+          "train_start": "2019-07-24",
+          "train_end": "2021-07-23",
+          "test_start": "2021-07-25",
+          "test_end": "2022-07-25",
+          "gap_days": 2,
+          "n_train_matches": 196455,
+          "n_test_bets": 23487,
+          "market_raw": {
+            "brier": 0.199058,
+            "logloss": 0.583668,
+            "ece": 0.012443,
+            "n": 23487
+          },
+          "market_fair": {
+            "brier": 0.19913,
+            "logloss": 0.583898,
+            "ece": 0.007969,
+            "n": 23487
+          },
+          "model_raw": {
+            "brier": 0.202603,
+            "logloss": 0.592273,
+            "ece": 0.001585,
+            "n": 23487
+          },
+          "model_calibrated": {
+            "brier": 0.202698,
+            "logloss": 0.592621,
+            "ece": 0.00915,
+            "n": 23487
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 8008,
+          "strategy_model_roi": -0.074909,
+          "strategy_market_n": 284,
+          "strategy_market_roi": 0.006268
+        },
+        {
+          "index": 20,
+          "train_start": "2020-07-23",
+          "train_end": "2022-07-23",
+          "test_start": "2022-07-25",
+          "test_end": "2023-07-25",
+          "gap_days": 2,
+          "n_train_matches": 209258,
+          "n_test_bets": 22179,
+          "market_raw": {
+            "brier": 0.197882,
+            "logloss": 0.580849,
+            "ece": 0.011797,
+            "n": 22179
+          },
+          "market_fair": {
+            "brier": 0.198002,
+            "logloss": 0.58117,
+            "ece": 0.009779,
+            "n": 22179
+          },
+          "model_raw": {
+            "brier": 0.200269,
+            "logloss": 0.58644,
+            "ece": 0.001665,
+            "n": 22179
+          },
+          "model_calibrated": {
+            "brier": 0.200335,
+            "logloss": 0.586617,
+            "ece": 0.008312,
+            "n": 22179
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 7216,
+          "strategy_model_roi": -0.053812,
+          "strategy_market_n": 313,
+          "strategy_market_roi": 0.02377
+        },
+        {
+          "index": 21,
+          "train_start": "2021-07-23",
+          "train_end": "2023-07-23",
+          "test_start": "2023-07-25",
+          "test_end": "2024-07-24",
+          "gap_days": 2,
+          "n_train_matches": 221480,
+          "n_test_bets": 23391,
+          "market_raw": {
+            "brier": 0.198237,
+            "logloss": 0.581548,
+            "ece": 0.010512,
+            "n": 23391
+          },
+          "market_fair": {
+            "brier": 0.198297,
+            "logloss": 0.581734,
+            "ece": 0.007355,
+            "n": 23391
+          },
+          "model_raw": {
+            "brier": 0.201523,
+            "logloss": 0.589276,
+            "ece": 0.003395,
+            "n": 23391
+          },
+          "model_calibrated": {
+            "brier": 0.201691,
+            "logloss": 0.589771,
+            "ece": 0.013025,
+            "n": 23391
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 7502,
+          "strategy_model_roi": -0.051999,
+          "strategy_market_n": 372,
+          "strategy_market_roi": 0.015726
+        },
+        {
+          "index": 22,
+          "train_start": "2022-07-23",
+          "train_end": "2024-07-22",
+          "test_start": "2024-07-24",
+          "test_end": "2025-07-24",
+          "gap_days": 2,
+          "n_train_matches": 234031,
+          "n_test_bets": 23043,
+          "market_raw": {
+            "brier": 0.199364,
+            "logloss": 0.584313,
+            "ece": 0.006121,
+            "n": 23043
+          },
+          "market_fair": {
+            "brier": 0.199374,
+            "logloss": 0.584395,
+            "ece": 0.006419,
+            "n": 23043
+          },
+          "model_raw": {
+            "brier": 0.202863,
+            "logloss": 0.592474,
+            "ece": 0.003482,
+            "n": 23043
+          },
+          "model_calibrated": {
+            "brier": 0.203246,
+            "logloss": 0.593896,
+            "ece": 0.013878,
+            "n": 23043
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 8308,
+          "strategy_model_roi": -0.040364,
+          "strategy_market_n": 322,
+          "strategy_market_roi": 0.005342
+        },
+        {
+          "index": 23,
+          "train_start": "2023-07-23",
+          "train_end": "2025-07-22",
+          "test_start": "2025-07-24",
+          "test_end": "2026-07-24",
+          "gap_days": 2,
+          "n_train_matches": 246386,
+          "n_test_bets": 22902,
+          "market_raw": {
+            "brier": 0.199967,
+            "logloss": 0.58565,
+            "ece": 0.010192,
+            "n": 22902
+          },
+          "market_fair": {
+            "brier": 0.200002,
+            "logloss": 0.585847,
+            "ece": 0.00586,
+            "n": 22902
+          },
+          "model_raw": {
+            "brier": 0.203334,
+            "logloss": 0.593659,
+            "ece": 0.003109,
+            "n": 22902
+          },
+          "model_calibrated": {
+            "brier": 0.203421,
+            "logloss": 0.593922,
+            "ece": 0.009962,
+            "n": 22902
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 7943,
+          "strategy_model_roi": -0.051674,
+          "strategy_market_n": 266,
+          "strategy_market_roi": 0.019962
+        }
+      ]
+    },
+    "lightgbm": {
+      "n_windows": 24,
+      "n_windows_valid": 24,
+      "n_bets_oos": 546533,
+      "market_raw": {
+        "brier": 0.200774,
+        "logloss": 0.587537,
+        "ece": 0.011563,
+        "n": 546533
+      },
+      "market_fair": {
+        "brier": 0.20078,
+        "logloss": 0.587617,
+        "ece": 0.006335,
+        "n": 546533
+      },
+      "model_raw": {
+        "brier": 0.203849,
+        "logloss": 0.594839,
+        "ece": 0.003014,
+        "n": 546533
+      },
+      "model_calibrated": {
+        "brier": 0.204149,
+        "logloss": 0.595776,
+        "ece": 0.013234,
+        "n": 546533
+      },
+      "delta_logloss_vs_market_raw": 0.007302,
+      "delta_logloss_vs_market_fair": 0.007222,
+      "paired_model_vs_raw": {
+        "mean_diff": -0.007301394983576356,
+        "se": 0.00017103827148008156,
+        "ci_low": -0.007856526927631377,
+        "ci_high": -0.006737181903084852,
+        "p_value": 0.0,
+        "distinguishable": true,
+        "confidence": 0.95,
+        "resamples": 2000,
+        "n": 546533,
+        "n_blocks": 280,
+        "metric": "logloss",
+        "mean_a": 0.58753710780471,
+        "mean_b": 0.5948385027882863,
+        "relative_improvement": -0.01242712143043599,
+        "verdict": "piora_robusta",
+        "meets_min_effect": false
+      },
+      "paired_model_vs_fair": {
+        "mean_diff": -0.007221535917490821,
+        "se": 0.00016098519305515326,
+        "ci_low": -0.007779248424977426,
+        "ci_high": -0.00665059223470492,
+        "p_value": 0.0,
+        "distinguishable": true,
+        "confidence": 0.95,
+        "resamples": 2000,
+        "n": 546533,
+        "n_blocks": 280,
+        "metric": "logloss",
+        "mean_a": 0.5876169668707956,
+        "mean_b": 0.5948385027882863,
+        "relative_improvement": -0.01228952927609834,
+        "verdict": "piora_robusta",
+        "meets_min_effect": false
+      },
+      "strategy_model": {
+        "n_bets": 168612,
+        "roi": -0.042305,
+        "roi_se": 0.004081,
+        "roi_t": -10.3666,
+        "wilson_low": 0.312705,
+        "wilson_high": 0.31714,
+        "bootstrap_low": -0.050528,
+        "bootstrap_high": -0.03437,
+        "ev_threshold": 0.0,
+        "note": "STRATEGY performance (EV>0 com prob do modelo calibrado): inclui line-shopping (best odd) — NÃO é performance do modelo"
+      },
+      "drift": {
+        "market_raw": {
+          "n_windows": 24,
+          "logloss_first_third": 0.590745,
+          "logloss_last_third": 0.585127,
+          "delta": -0.005617,
+          "stdev_across_windows": 0.004193,
+          "drift": "STABLE"
+        },
+        "market_fair": {
+          "n_windows": 24,
+          "logloss_first_third": 0.590402,
+          "logloss_last_third": 0.585256,
+          "delta": -0.005146,
+          "stdev_across_windows": 0.003967,
+          "drift": "STABLE"
+        },
+        "model_raw": {
+          "n_windows": 24,
+          "logloss_first_third": 0.597249,
+          "logloss_last_third": 0.592742,
+          "delta": -0.004508,
+          "stdev_across_windows": 0.00391,
+          "drift": "STABLE"
+        },
+        "model_calibrated": {
+          "n_windows": 24,
+          "logloss_first_third": 0.599267,
+          "logloss_last_third": 0.59327,
+          "delta": -0.005997,
+          "stdev_across_windows": 0.004332,
+          "drift": "STABLE"
+        }
+      },
+      "windows": [
+        {
+          "index": 0,
+          "train_start": "2000-07-28",
+          "train_end": "2002-07-28",
+          "test_start": "2002-07-30",
+          "test_end": "2003-07-30",
+          "gap_days": 2,
+          "n_train_matches": 13708,
+          "n_test_bets": 20505,
+          "market_raw": {
+            "brier": 0.203197,
+            "logloss": 0.59324,
+            "ece": 0.027678,
+            "n": 20505
+          },
+          "market_fair": {
+            "brier": 0.202763,
+            "logloss": 0.592174,
+            "ece": 0.008427,
+            "n": 20505
+          },
+          "model_raw": {
+            "brier": 0.206637,
+            "logloss": 0.601169,
+            "ece": 0.008547,
+            "n": 20505
+          },
+          "model_calibrated": {
+            "brier": 0.207665,
+            "logloss": 0.603995,
+            "ece": 0.031902,
+            "n": 20505
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 3136,
+          "strategy_model_roi": -0.095969,
+          "strategy_market_n": 179,
+          "strategy_market_roi": 0.037039
+        },
+        {
+          "index": 1,
+          "train_start": "2001-07-28",
+          "train_end": "2003-07-28",
+          "test_start": "2003-07-30",
+          "test_end": "2004-07-29",
+          "gap_days": 2,
+          "n_train_matches": 20602,
+          "n_test_bets": 21132,
+          "market_raw": {
+            "brier": 0.202222,
+            "logloss": 0.590744,
+            "ece": 0.027467,
+            "n": 21132
+          },
+          "market_fair": {
+            "brier": 0.201882,
+            "logloss": 0.590043,
+            "ece": 0.00911,
+            "n": 21132
+          },
+          "model_raw": {
+            "brier": 0.204865,
+            "logloss": 0.597154,
+            "ece": 0.00605,
+            "n": 21132
+          },
+          "model_calibrated": {
+            "brier": 0.205742,
+            "logloss": 0.599696,
+            "ece": 0.026894,
+            "n": 21132
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 3499,
+          "strategy_model_roi": -0.105532,
+          "strategy_market_n": 227,
+          "strategy_market_roi": 0.075885
+        },
+        {
+          "index": 2,
+          "train_start": "2002-07-28",
+          "train_end": "2004-07-27",
+          "test_start": "2004-07-29",
+          "test_end": "2005-07-29",
+          "gap_days": 2,
+          "n_train_matches": 27702,
+          "n_test_bets": 21243,
+          "market_raw": {
+            "brier": 0.202811,
+            "logloss": 0.592382,
+            "ece": 0.022891,
+            "n": 21243
+          },
+          "market_fair": {
+            "brier": 0.202424,
+            "logloss": 0.591544,
+            "ece": 0.007349,
+            "n": 21243
+          },
+          "model_raw": {
+            "brier": 0.204222,
+            "logloss": 0.59589,
+            "ece": 0.003643,
+            "n": 21243
+          },
+          "model_calibrated": {
+            "brier": 0.205166,
+            "logloss": 0.599772,
+            "ece": 0.02835,
+            "n": 21243
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 3381,
+          "strategy_model_roi": -0.015031,
+          "strategy_market_n": 221,
+          "strategy_market_roi": 0.007968
+        },
+        {
+          "index": 3,
+          "train_start": "2003-07-28",
+          "train_end": "2005-07-27",
+          "test_start": "2005-07-29",
+          "test_end": "2006-07-29",
+          "gap_days": 2,
+          "n_train_matches": 34786,
+          "n_test_bets": 23388,
+          "market_raw": {
+            "brier": 0.202228,
+            "logloss": 0.590666,
+            "ece": 0.020454,
+            "n": 23388
+          },
+          "market_fair": {
+            "brier": 0.202155,
+            "logloss": 0.590637,
+            "ece": 0.007081,
+            "n": 23388
+          },
+          "model_raw": {
+            "brier": 0.205507,
+            "logloss": 0.598675,
+            "ece": 0.00343,
+            "n": 23388
+          },
+          "model_calibrated": {
+            "brier": 0.206162,
+            "logloss": 0.600638,
+            "ece": 0.027315,
+            "n": 23388
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 4470,
+          "strategy_model_roi": -0.072385,
+          "strategy_market_n": 238,
+          "strategy_market_roi": 0.071487
+        },
+        {
+          "index": 4,
+          "train_start": "2004-07-27",
+          "train_end": "2006-07-27",
+          "test_start": "2006-07-29",
+          "test_end": "2007-07-29",
+          "gap_days": 2,
+          "n_train_matches": 42572,
+          "n_test_bets": 23427,
+          "market_raw": {
+            "brier": 0.202092,
+            "logloss": 0.590912,
+            "ece": 0.019945,
+            "n": 23427
+          },
+          "market_fair": {
+            "brier": 0.201929,
+            "logloss": 0.590445,
+            "ece": 0.006686,
+            "n": 23427
+          },
+          "model_raw": {
+            "brier": 0.204959,
+            "logloss": 0.597815,
+            "ece": 0.00173,
+            "n": 23427
+          },
+          "model_calibrated": {
+            "brier": 0.205395,
+            "logloss": 0.598988,
+            "ece": 0.021223,
+            "n": 23427
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 4657,
+          "strategy_model_roi": -0.027909,
+          "strategy_market_n": 243,
+          "strategy_market_roi": -0.027984
+        },
+        {
+          "index": 5,
+          "train_start": "2005-07-27",
+          "train_end": "2007-07-27",
+          "test_start": "2007-07-29",
+          "test_end": "2008-07-28",
+          "gap_days": 2,
+          "n_train_matches": 50382,
+          "n_test_bets": 23403,
+          "market_raw": {
+            "brier": 0.202443,
+            "logloss": 0.591548,
+            "ece": 0.017611,
+            "n": 23403
+          },
+          "market_fair": {
+            "brier": 0.202347,
+            "logloss": 0.591334,
+            "ece": 0.005614,
+            "n": 23403
+          },
+          "model_raw": {
+            "brier": 0.204982,
+            "logloss": 0.597549,
+            "ece": 0.003284,
+            "n": 23403
+          },
+          "model_calibrated": {
+            "brier": 0.20534,
+            "logloss": 0.59848,
+            "ece": 0.019424,
+            "n": 23403
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 4908,
+          "strategy_model_roi": -0.06383,
+          "strategy_market_n": 205,
+          "strategy_market_roi": -0.019659
+        },
+        {
+          "index": 6,
+          "train_start": "2006-07-27",
+          "train_end": "2008-07-26",
+          "test_start": "2008-07-28",
+          "test_end": "2009-07-28",
+          "gap_days": 2,
+          "n_train_matches": 58192,
+          "n_test_bets": 23379,
+          "market_raw": {
+            "brier": 0.202122,
+            "logloss": 0.590901,
+            "ece": 0.015574,
+            "n": 23379
+          },
+          "market_fair": {
+            "brier": 0.20217,
+            "logloss": 0.591057,
+            "ece": 0.006999,
+            "n": 23379
+          },
+          "model_raw": {
+            "brier": 0.204555,
+            "logloss": 0.596624,
+            "ece": 0.001889,
+            "n": 23379
+          },
+          "model_calibrated": {
+            "brier": 0.205126,
+            "logloss": 0.598481,
+            "ece": 0.017136,
+            "n": 23379
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 5560,
+          "strategy_model_roi": -0.037877,
+          "strategy_market_n": 196,
+          "strategy_market_roi": 0.008469
+        },
+        {
+          "index": 7,
+          "train_start": "2007-07-27",
+          "train_end": "2009-07-26",
+          "test_start": "2009-07-28",
+          "test_end": "2010-07-28",
+          "gap_days": 2,
+          "n_train_matches": 66002,
+          "n_test_bets": 22875,
+          "market_raw": {
+            "brier": 0.199956,
+            "logloss": 0.585565,
+            "ece": 0.014519,
+            "n": 22875
+          },
+          "market_fair": {
+            "brier": 0.200069,
+            "logloss": 0.585979,
+            "ece": 0.008771,
+            "n": 22875
+          },
+          "model_raw": {
+            "brier": 0.203084,
+            "logloss": 0.593119,
+            "ece": 0.000735,
+            "n": 22875
+          },
+          "model_calibrated": {
+            "brier": 0.203489,
+            "logloss": 0.594084,
+            "ece": 0.016645,
+            "n": 22875
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 5867,
+          "strategy_model_roi": -0.070537,
+          "strategy_market_n": 236,
+          "strategy_market_roi": 0.031949
+        },
+        {
+          "index": 8,
+          "train_start": "2008-07-26",
+          "train_end": "2010-07-26",
+          "test_start": "2010-07-28",
+          "test_end": "2011-07-28",
+          "gap_days": 2,
+          "n_train_matches": 73636,
+          "n_test_bets": 23301,
+          "market_raw": {
+            "brier": 0.202378,
+            "logloss": 0.591443,
+            "ece": 0.01186,
+            "n": 23301
+          },
+          "market_fair": {
+            "brier": 0.202562,
+            "logloss": 0.591932,
+            "ece": 0.003972,
+            "n": 23301
+          },
+          "model_raw": {
+            "brier": 0.205378,
+            "logloss": 0.598191,
+            "ece": 0.005557,
+            "n": 23301
+          },
+          "model_calibrated": {
+            "brier": 0.2056,
+            "logloss": 0.598839,
+            "ece": 0.016855,
+            "n": 23301
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 6173,
+          "strategy_model_roi": -0.02614,
+          "strategy_market_n": 206,
+          "strategy_market_roi": 0.00699
+        },
+        {
+          "index": 9,
+          "train_start": "2009-07-26",
+          "train_end": "2011-07-26",
+          "test_start": "2011-07-28",
+          "test_end": "2012-07-27",
+          "gap_days": 2,
+          "n_train_matches": 81404,
+          "n_test_bets": 21705,
+          "market_raw": {
+            "brier": 0.200028,
+            "logloss": 0.585667,
+            "ece": 0.010259,
+            "n": 21705
+          },
+          "market_fair": {
+            "brier": 0.200145,
+            "logloss": 0.586066,
+            "ece": 0.009114,
+            "n": 21705
+          },
+          "model_raw": {
+            "brier": 0.202319,
+            "logloss": 0.591366,
+            "ece": 0.003518,
+            "n": 21705
+          },
+          "model_calibrated": {
+            "brier": 0.202563,
+            "logloss": 0.592129,
+            "ece": 0.01253,
+            "n": 21705
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 6519,
+          "strategy_model_roi": -0.04105,
+          "strategy_market_n": 255,
+          "strategy_market_roi": 0.002173
+        },
+        {
+          "index": 10,
+          "train_start": "2010-07-26",
+          "train_end": "2012-07-25",
+          "test_start": "2012-07-27",
+          "test_end": "2013-07-27",
+          "gap_days": 2,
+          "n_train_matches": 89654,
+          "n_test_bets": 23271,
+          "market_raw": {
+            "brier": 0.203678,
+            "logloss": 0.594406,
+            "ece": 0.006209,
+            "n": 23271
+          },
+          "market_fair": {
+            "brier": 0.203789,
+            "logloss": 0.594717,
+            "ece": 0.002378,
+            "n": 23271
+          },
+          "model_raw": {
+            "brier": 0.206366,
+            "logloss": 0.600735,
+            "ece": 0.008595,
+            "n": 23271
+          },
+          "model_calibrated": {
+            "brier": 0.20644,
+            "logloss": 0.601019,
+            "ece": 0.015325,
+            "n": 23271
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8001,
+          "strategy_model_roi": -0.003179,
+          "strategy_market_n": 235,
+          "strategy_market_roi": 0.010128
+        },
+        {
+          "index": 11,
+          "train_start": "2011-07-26",
+          "train_end": "2013-07-25",
+          "test_start": "2013-07-27",
+          "test_end": "2014-07-27",
+          "gap_days": 2,
+          "n_train_matches": 101350,
+          "n_test_bets": 23406,
+          "market_raw": {
+            "brier": 0.199911,
+            "logloss": 0.585418,
+            "ece": 0.007517,
+            "n": 23406
+          },
+          "market_fair": {
+            "brier": 0.200133,
+            "logloss": 0.586038,
+            "ece": 0.007825,
+            "n": 23406
+          },
+          "model_raw": {
+            "brier": 0.20285,
+            "logloss": 0.59251,
+            "ece": 0.005157,
+            "n": 23406
+          },
+          "model_calibrated": {
+            "brier": 0.20283,
+            "logloss": 0.592471,
+            "ece": 0.007718,
+            "n": 23406
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 9077,
+          "strategy_model_roi": -0.01586,
+          "strategy_market_n": 302,
+          "strategy_market_roi": 0.034182
+        },
+        {
+          "index": 12,
+          "train_start": "2012-07-25",
+          "train_end": "2014-07-25",
+          "test_start": "2014-07-27",
+          "test_end": "2015-07-27",
+          "gap_days": 2,
+          "n_train_matches": 113272,
+          "n_test_bets": 23586,
+          "market_raw": {
+            "brier": 0.200769,
+            "logloss": 0.587166,
+            "ece": 0.006577,
+            "n": 23586
+          },
+          "market_fair": {
+            "brier": 0.20091,
+            "logloss": 0.587687,
+            "ece": 0.00526,
+            "n": 23586
+          },
+          "model_raw": {
+            "brier": 0.204595,
+            "logloss": 0.596472,
+            "ece": 0.005188,
+            "n": 23586
+          },
+          "model_calibrated": {
+            "brier": 0.204573,
+            "logloss": 0.596501,
+            "ece": 0.00759,
+            "n": 23586
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 10167,
+          "strategy_model_roi": -0.021385,
+          "strategy_market_n": 276,
+          "strategy_market_roi": 0.056449
+        },
+        {
+          "index": 13,
+          "train_start": "2013-07-25",
+          "train_end": "2015-07-25",
+          "test_start": "2015-07-27",
+          "test_end": "2016-07-26",
+          "gap_days": 2,
+          "n_train_matches": 125620,
+          "n_test_bets": 23382,
+          "market_raw": {
+            "brier": 0.201509,
+            "logloss": 0.589166,
+            "ece": 0.005654,
+            "n": 23382
+          },
+          "market_fair": {
+            "brier": 0.201546,
+            "logloss": 0.589297,
+            "ece": 0.005354,
+            "n": 23382
+          },
+          "model_raw": {
+            "brier": 0.204845,
+            "logloss": 0.596882,
+            "ece": 0.003818,
+            "n": 23382
+          },
+          "model_calibrated": {
+            "brier": 0.204935,
+            "logloss": 0.59724,
+            "ece": 0.008164,
+            "n": 23382
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 9953,
+          "strategy_model_roi": -0.008059,
+          "strategy_market_n": 271,
+          "strategy_market_roi": 0.022472
+        },
+        {
+          "index": 14,
+          "train_start": "2014-07-25",
+          "train_end": "2016-07-24",
+          "test_start": "2016-07-26",
+          "test_end": "2017-07-26",
+          "gap_days": 2,
+          "n_train_matches": 137748,
+          "n_test_bets": 23430,
+          "market_raw": {
+            "brier": 0.198298,
+            "logloss": 0.581616,
+            "ece": 0.007546,
+            "n": 23430
+          },
+          "market_fair": {
+            "brier": 0.198369,
+            "logloss": 0.581809,
+            "ece": 0.006437,
+            "n": 23430
+          },
+          "model_raw": {
+            "brier": 0.202349,
+            "logloss": 0.591148,
+            "ece": 0.003154,
+            "n": 23430
+          },
+          "model_calibrated": {
+            "brier": 0.202367,
+            "logloss": 0.591193,
+            "ece": 0.004763,
+            "n": 23430
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 9878,
+          "strategy_model_roi": -0.056754,
+          "strategy_market_n": 318,
+          "strategy_market_roi": 0.003616
+        },
+        {
+          "index": 15,
+          "train_start": "2015-07-25",
+          "train_end": "2017-07-24",
+          "test_start": "2017-07-26",
+          "test_end": "2018-07-26",
+          "gap_days": 2,
+          "n_train_matches": 150000,
+          "n_test_bets": 23429,
+          "market_raw": {
+            "brier": 0.19786,
+            "logloss": 0.580457,
+            "ece": 0.006453,
+            "n": 23429
+          },
+          "market_fair": {
+            "brier": 0.198093,
+            "logloss": 0.581138,
+            "ece": 0.006435,
+            "n": 23429
+          },
+          "model_raw": {
+            "brier": 0.2016,
+            "logloss": 0.589449,
+            "ece": 0.002214,
+            "n": 23429
+          },
+          "model_calibrated": {
+            "brier": 0.201872,
+            "logloss": 0.59009,
+            "ece": 0.006851,
+            "n": 23429
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 9045,
+          "strategy_model_roi": -0.039015,
+          "strategy_market_n": 383,
+          "strategy_market_roi": 0.02564
+        },
+        {
+          "index": 16,
+          "train_start": "2016-07-24",
+          "train_end": "2018-07-24",
+          "test_start": "2018-07-26",
+          "test_end": "2019-07-26",
+          "gap_days": 2,
+          "n_train_matches": 162039,
+          "n_test_bets": 23004,
+          "market_raw": {
+            "brier": 0.19917,
+            "logloss": 0.583849,
+            "ece": 0.008727,
+            "n": 23004
+          },
+          "market_fair": {
+            "brier": 0.199149,
+            "logloss": 0.583828,
+            "ece": 0.005095,
+            "n": 23004
+          },
+          "model_raw": {
+            "brier": 0.202359,
+            "logloss": 0.591216,
+            "ece": 0.001859,
+            "n": 23004
+          },
+          "model_calibrated": {
+            "brier": 0.202459,
+            "logloss": 0.591492,
+            "ece": 0.00836,
+            "n": 23004
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8603,
+          "strategy_model_roi": -0.033208,
+          "strategy_market_n": 344,
+          "strategy_market_roi": -0.00439
+        },
+        {
+          "index": 17,
+          "train_start": "2017-07-24",
+          "train_end": "2019-07-24",
+          "test_start": "2019-07-26",
+          "test_end": "2020-07-25",
+          "gap_days": 2,
+          "n_train_matches": 174106,
+          "n_test_bets": 20460,
+          "market_raw": {
+            "brier": 0.202649,
+            "logloss": 0.591849,
+            "ece": 0.008474,
+            "n": 20460
+          },
+          "market_fair": {
+            "brier": 0.202525,
+            "logloss": 0.59165,
+            "ece": 0.002093,
+            "n": 20460
+          },
+          "model_raw": {
+            "brier": 0.204649,
+            "logloss": 0.596542,
+            "ece": 0.004754,
+            "n": 20460
+          },
+          "model_calibrated": {
+            "brier": 0.204862,
+            "logloss": 0.597405,
+            "ece": 0.011168,
+            "n": 20460
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 7943,
+          "strategy_model_roi": -0.002339,
+          "strategy_market_n": 287,
+          "strategy_market_roi": 0.011463
+        },
+        {
+          "index": 18,
+          "train_start": "2018-07-24",
+          "train_end": "2020-07-23",
+          "test_start": "2020-07-25",
+          "test_end": "2021-07-25",
+          "gap_days": 2,
+          "n_train_matches": 184104,
+          "n_test_bets": 23205,
+          "market_raw": {
+            "brier": 0.201358,
+            "logloss": 0.589294,
+            "ece": 0.009507,
+            "n": 23205
+          },
+          "market_fair": {
+            "brier": 0.201448,
+            "logloss": 0.589522,
+            "ece": 0.004841,
+            "n": 23205
+          },
+          "model_raw": {
+            "brier": 0.206171,
+            "logloss": 0.600658,
+            "ece": 0.005266,
+            "n": 23205
+          },
+          "model_calibrated": {
+            "brier": 0.206103,
+            "logloss": 0.60052,
+            "ece": 0.008305,
+            "n": 23205
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8493,
+          "strategy_model_roi": -0.078239,
+          "strategy_market_n": 248,
+          "strategy_market_roi": -0.025444
+        },
+        {
+          "index": 19,
+          "train_start": "2019-07-24",
+          "train_end": "2021-07-23",
+          "test_start": "2021-07-25",
+          "test_end": "2022-07-25",
+          "gap_days": 2,
+          "n_train_matches": 196455,
+          "n_test_bets": 23487,
+          "market_raw": {
+            "brier": 0.199058,
+            "logloss": 0.583668,
+            "ece": 0.012443,
+            "n": 23487
+          },
+          "market_fair": {
+            "brier": 0.19913,
+            "logloss": 0.583898,
+            "ece": 0.007969,
+            "n": 23487
+          },
+          "model_raw": {
+            "brier": 0.202497,
+            "logloss": 0.592047,
+            "ece": 0.001865,
+            "n": 23487
+          },
+          "model_calibrated": {
+            "brier": 0.202597,
+            "logloss": 0.592413,
+            "ece": 0.009291,
+            "n": 23487
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 8020,
+          "strategy_model_roi": -0.075112,
+          "strategy_market_n": 284,
+          "strategy_market_roi": 0.006268
+        },
+        {
+          "index": 20,
+          "train_start": "2020-07-23",
+          "train_end": "2022-07-23",
+          "test_start": "2022-07-25",
+          "test_end": "2023-07-25",
+          "gap_days": 2,
+          "n_train_matches": 209258,
+          "n_test_bets": 22179,
+          "market_raw": {
+            "brier": 0.197882,
+            "logloss": 0.580849,
+            "ece": 0.011797,
+            "n": 22179
+          },
+          "market_fair": {
+            "brier": 0.198002,
+            "logloss": 0.58117,
+            "ece": 0.009779,
+            "n": 22179
+          },
+          "model_raw": {
+            "brier": 0.200182,
+            "logloss": 0.586218,
+            "ece": 0.001129,
+            "n": 22179
+          },
+          "model_calibrated": {
+            "brier": 0.200251,
+            "logloss": 0.586414,
+            "ece": 0.008309,
+            "n": 22179
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 7282,
+          "strategy_model_roi": -0.055647,
+          "strategy_market_n": 313,
+          "strategy_market_roi": 0.02377
+        },
+        {
+          "index": 21,
+          "train_start": "2021-07-23",
+          "train_end": "2023-07-23",
+          "test_start": "2023-07-25",
+          "test_end": "2024-07-24",
+          "gap_days": 2,
+          "n_train_matches": 221480,
+          "n_test_bets": 23391,
+          "market_raw": {
+            "brier": 0.198237,
+            "logloss": 0.581548,
+            "ece": 0.010512,
+            "n": 23391
+          },
+          "market_fair": {
+            "brier": 0.198297,
+            "logloss": 0.581734,
+            "ece": 0.007355,
+            "n": 23391
+          },
+          "model_raw": {
+            "brier": 0.20155,
+            "logloss": 0.589347,
+            "ece": 0.005148,
+            "n": 23391
+          },
+          "model_calibrated": {
+            "brier": 0.201738,
+            "logloss": 0.589921,
+            "ece": 0.014032,
+            "n": 23391
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 7532,
+          "strategy_model_roi": -0.055822,
+          "strategy_market_n": 372,
+          "strategy_market_roi": 0.015726
+        },
+        {
+          "index": 22,
+          "train_start": "2022-07-23",
+          "train_end": "2024-07-22",
+          "test_start": "2024-07-24",
+          "test_end": "2025-07-24",
+          "gap_days": 2,
+          "n_train_matches": 234031,
+          "n_test_bets": 23043,
+          "market_raw": {
+            "brier": 0.199364,
+            "logloss": 0.584313,
+            "ece": 0.006121,
+            "n": 23043
+          },
+          "market_fair": {
+            "brier": 0.199374,
+            "logloss": 0.584395,
+            "ece": 0.006419,
+            "n": 23043
+          },
+          "model_raw": {
+            "brier": 0.202774,
+            "logloss": 0.592244,
+            "ece": 0.003173,
+            "n": 23043
+          },
+          "model_calibrated": {
+            "brier": 0.203289,
+            "logloss": 0.594048,
+            "ece": 0.015448,
+            "n": 23043
+          },
+          "calibration_method": "isotonic",
+          "strategy_model_n": 8413,
+          "strategy_model_roi": -0.042047,
+          "strategy_market_n": 322,
+          "strategy_market_roi": 0.005342
+        },
+        {
+          "index": 23,
+          "train_start": "2023-07-23",
+          "train_end": "2025-07-22",
+          "test_start": "2025-07-24",
+          "test_end": "2026-07-24",
+          "gap_days": 2,
+          "n_train_matches": 246386,
+          "n_test_bets": 22902,
+          "market_raw": {
+            "brier": 0.199967,
+            "logloss": 0.58565,
+            "ece": 0.010192,
+            "n": 22902
+          },
+          "market_fair": {
+            "brier": 0.200002,
+            "logloss": 0.585847,
+            "ece": 0.00586,
+            "n": 22902
+          },
+          "model_raw": {
+            "brier": 0.203339,
+            "logloss": 0.59366,
+            "ece": 0.002901,
+            "n": 22902
+          },
+          "model_calibrated": {
+            "brier": 0.203429,
+            "logloss": 0.593943,
+            "ece": 0.010238,
+            "n": 22902
+          },
+          "calibration_method": "platt",
+          "strategy_model_n": 8035,
+          "strategy_model_roi": -0.057338,
+          "strategy_market_n": 266,
+          "strategy_market_roi": 0.019962
+        }
+      ]
+    }
+  },
+  "ensemble": {
+    "status": "PENDENTE",
+    "reason": "Ensemble exige stacking OOS dentro de cada janela (previsões out-of-sample dos base models no TRAIN da própria janela). Evidência existente vive em cross_season_gate.json sob protocolo próprio — sem mistura com estas 24 janelas."
+  },
+  "declarations": [
+    "sem ranking de modelos",
+    "sem vencedor declarado",
+    "nenhuma promoção automática (promotion gate intocado)",
+    "benchmark central: MODEL vs MARKET (raw e fair), nunca model vs zero"
+  ]
+}

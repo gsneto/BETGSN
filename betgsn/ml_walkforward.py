@@ -43,6 +43,41 @@ from typing import Any, Callable, Sequence
 #: Fracao final do TRAIN reservada ao early stopping (split temporal).
 EARLY_STOP_FRACTION = 0.2
 
+#: Amostra minima do bloco de early stopping (apos ajuste de fronteira).
+MIN_EARLY_STOP_ROWS = 1000
+
+
+def _temporal_split_index(
+    times: Sequence[str], fraction: float,
+    *, min_rows: int = MIN_EARLY_STOP_ROWS,
+) -> int | None:
+    """Índice do split train/validação numa fronteira de TIMESTAMP.
+
+    Partidas simultâneas (mesmo kickoff) são comuns no corpus: o corte
+    bruto pode cair ENTRE elas, e `separated` exige disjunção estrita.
+    O corte avança até a próxima fronteira de timestamp; sem espaço
+    suficiente devolve None (a janela fica sem modelo — declarado,
+    nunca contornado com dado sobreposto).
+    """
+    n = len(times)
+    raw = int(n * (1.0 - fraction))
+    if raw < 1 or raw >= n:
+        return None
+    idx = raw
+    # avanca ate a proxima fronteira de timestamp
+    while idx < n and times[idx] == times[idx - 1]:
+        idx += 1
+    if idx >= n:
+        # sem espaco a frente: recua ate a fronteira anterior
+        idx = raw
+        while idx > 0 and times[idx] == times[idx - 1]:
+            idx -= 1
+    if idx <= 0 or idx >= n or n - idx < min_rows:
+        return None
+    if times[idx] == times[idx - 1]:
+        return None
+    return idx
+
 #: Amostra minima de partidas do TRAIN para o fit (mesma ordem do
 #: MIN_RATINGS_SAMPLE do BASELINE_V1).
 MIN_TRAIN_MATCHES = 300
@@ -88,41 +123,58 @@ def build_feature_corpus(
 
     `matches`: partidas históricas (`to_historical()`); a ordem de
     entrada é imposta (o builder exige builds cronológicos).
+
+    MEMÓRIA: a matriz é PRÉ-ALOCADA (259k partidas × ~166 features em
+    float64 ≈ 344 MB) e os snapshots são descartados a cada iteração —
+    reter a lista de FeatureSnapshot custa vários GB e derruba o
+    processo. As chaves de features são CONSTANTES do builder (mesmo
+    conjunto para qualquer partida), então a primeira define as colunas.
     """
     import numpy as np
 
     from .features import FeatureBuilder
     from .model import Fixture
-    from .models.base import matrix
 
     ordered = sorted(matches, key=lambda m: str(m.kickoff))
     builder = FeatureBuilder(ordered)
 
     keys: dict[tuple[str, str, str], int] = {}
     rows: list[tuple[str, str, str]] = []
-    snapshots = []
-    labels = []
+    labels = np.empty(len(ordered), dtype=np.int64)
     times: list[str] = []
+    matrix: "np.ndarray | None" = None
+    columns: tuple[str, ...] = ()
+
     for i, m in enumerate(ordered):
         if progress is not None and i % 20000 == 0:
             progress(i, len(ordered), f"features {i}/{len(ordered)}")
         fx = Fixture(m.home, m.away, m.league, str(m.kickoff))
-        snapshots.append(builder.build(fx))
+        snap = builder.build(fx)
+        if matrix is None:
+            columns = tuple(sorted(snap.values))
+            matrix = np.full(
+                (len(ordered), len(columns)), np.nan, dtype=np.float64)
+        row = matrix[i]
+        for j, col in enumerate(columns):
+            value = snap.values.get(col)
+            if value is not None:
+                row[j] = float(value)
         goal_diff = m.home_goals - m.away_goals
-        labels.append(0 if goal_diff > 0 else 1 if goal_diff == 0 else 2)
+        labels[i] = 0 if goal_diff > 0 else 1 if goal_diff == 0 else 2
         times.append(str(m.kickoff))
         key = (m.home, m.away, str(m.kickoff)[:10])
         keys[key] = i
         rows.append(key)
+        # o snapshot nao sobrevive a iteracao: so a linha da matriz
 
-    x, columns = matrix(snapshots)
+    assert matrix is not None, "corpus vazio"
     return FeatureCorpus(
         keys=keys,
         rows=tuple(rows),
-        matrix=np.asarray(x, dtype=float),
-        labels=np.asarray(labels, dtype=int),
+        matrix=matrix,
+        labels=labels,
         times=tuple(times),
-        columns=tuple(columns),
+        columns=columns,
     )
 
 
@@ -149,11 +201,13 @@ class MLWindowAdapter:
     calibrador dentro do train — o TEST nunca participa).
     """
 
-    def __init__(self, kind: str, corpus: FeatureCorpus) -> None:
+    def __init__(self, kind: str, corpus: FeatureCorpus,
+                 *, min_early_stop_rows: int = MIN_EARLY_STOP_ROWS) -> None:
         if kind not in ML_MODEL_KINDS:
             raise ValueError(f"kind desconhecido: {kind!r}")
         self.kind = kind
         self.corpus = corpus
+        self.min_early_stop_rows = min_early_stop_rows
         #: (home, away) -> [dias]: o dia desambigua temporadas de um
         #: mesmo confronto.
         self._pair_days: dict[tuple[str, str], list[str]] = {}
@@ -190,12 +244,22 @@ class MLWindowAdapter:
                     model.model.classes_,
                 )
         else:
-            # early stopping com split temporal DENTRO do train
-            n_fit = int(len(train_idx) * (1.0 - EARLY_STOP_FRACTION))
+            # early stopping com split temporal DENTRO do train, cortado
+            # numa fronteira de timestamp (partidas simultaneas exigem
+            # disjuncao estrita — ver _temporal_split_index)
+            split = _temporal_split_index(
+                times_train, EARLY_STOP_FRACTION,
+                min_rows=self.min_early_stop_rows)
+            if split is None:
+                # sem fronteira utilizavel: janela sem modelo ML —
+                # declarado, nunca contornado com dado sobreposto
+                return None
             batch_fit = TemporalBatch(
-                x_train[:n_fit], y_train[:n_fit], tuple(times_train[:n_fit]))
+                x_train[:split], y_train[:split],
+                tuple(times_train[:split]))
             batch_val = TemporalBatch(
-                x_train[n_fit:], y_train[n_fit:], tuple(times_train[n_fit:]))
+                x_train[split:], y_train[split:],
+                tuple(times_train[split:]))
             separated(batch_fit, batch_val)
             if self.kind == "xgboost":
                 from .models.xgboost_model import XGBoostModel

@@ -243,12 +243,30 @@ def test_run_model_walkforward_xgboost_provider_small():
     matches = _matches(400)
     bets = _bets(matches)
     corpus = build_feature_corpus(matches)
-    adapter = MLWindowAdapter("xgboost", corpus)
+    adapter = MLWindowAdapter("xgboost", corpus, min_early_stop_rows=20)
 
     result = run_model_walkforward(
         bets, matches, _config(test_days=90), model_fn=adapter.fit)
     assert result.n_bets_oos > 0
     assert result.model_raw.brier is not None
+
+
+def test_temporal_split_respects_simultaneous_matches():
+    """Partidas simultâneas: o corte anda até a fronteira de timestamp —
+    `separated` nunca recebe blocos sobrepostos."""
+    from betgsn.ml_walkforward import _temporal_split_index
+
+    # 10 partidas no mesmo instante no meio do corte
+    times = ["2022-01-01"] * 10 + ["2022-06-01"] * 10
+    split = _temporal_split_index(times, 0.2, min_rows=2)
+    assert split is not None
+    assert times[split - 1] != times[split]
+    # sem fronteira utilizável (tudo no mesmo instante): None
+    assert _temporal_split_index(["2022-01-01"] * 20, 0.2, min_rows=2) is None
+    # bloco de validação menor que o mínimo: None
+    assert _temporal_split_index(
+        ["2022-01-01"] + [f"2022-06-{i:02d}" for i in range(1, 11)],
+        0.95, min_rows=5) is None
 
 
 def test_ml_model_kinds_declared():

@@ -51,6 +51,33 @@ def _progress(done: int, total: int, message: str = "") -> None:
         print(f"  ... {done}/{total}", flush=True)
 
 
+def _cached_feature_corpus(matches, corpus_signature: str):
+    """Corpus de features com cache pickle (build de ~15min por corpus).
+
+    O cache e chaveado pela assinatura do corpus: CSV novo = rebuild.
+    Fica em output/ (artefato reproduzivel, nunca versionado)."""
+    import pickle
+    import re
+
+    from betgsn import __version__
+    from betgsn.config import output_root
+
+    safe_sig = re.sub(r"[^A-Za-z0-9_.-]", "_", corpus_signature)
+    path = (output_root() / "engineering" / "quant"
+            / f"ml_feature_corpus_{safe_sig}_{__version__}.pkl")
+    if path.exists():
+        try:
+            with path.open("rb") as fh:
+                return pickle.load(fh)
+        except Exception:  # noqa: BLE001 - cache corrompido = rebuild
+            pass
+    corpus = build_feature_corpus(matches, _progress)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as fh:
+        pickle.dump(corpus, fh, protocol=pickle.HIGHEST_PROTOCOL)
+    return corpus
+
+
 def _fmt(value) -> str:
     return "n/d" if value is None else f"{value:.4f}"
 
@@ -87,11 +114,13 @@ def main() -> int:
     from betgsn.football_data_uk import FootballDataClient
 
     print("  carregando corpus histórico…")
-    matches = [m.to_historical() for m in FootballDataClient().load_matches()]
+    client = FootballDataClient()
+    corpus_signature = client.corpus_signature()
+    matches = [m.to_historical() for m in client.load_matches()]
     print(f"  {len(matches)} partidas")
 
     print("  construindo corpus de features point-in-time…")
-    corpus = build_feature_corpus(matches, progress=_progress)
+    corpus = _cached_feature_corpus(matches, corpus_signature)
     print(f"  features: {corpus.matrix.shape[1]} colunas")
 
     results = {}

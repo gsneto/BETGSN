@@ -27,6 +27,9 @@ output/engineering/**/*.zip
 # Benchmark temporario de teste (nao e resultado final).
 output/engineering/benchmark/corners_test/
 
+# Cache do corpus de features dos modelos ML (reproduzivel, grande).
+output/engineering/quant/ml_feature_corpus_*.pkl
+
 # ---------------------------------------------------------------------------
 # Python
 __pycache__/
