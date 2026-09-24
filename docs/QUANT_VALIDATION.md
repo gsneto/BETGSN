@@ -277,15 +277,16 @@ OOS). Ensemble: PENDENTE (exige stacking OOS por janela). Sem ranking,
 sem vencedor, sem promoção.
 
 Resultado real (546.533 linhas OOS, 24/24 janelas válidas, corpus
-2026-09-23):
+2026-09-23; cada confronto resolvido pelo DIA da partida — providers de
+features nunca respondem pelo jogo errado):
 
 | modelo | LogLoss (raw) | delta vs market_raw | veredito pareado |
 |---|---:|---:|---|
 | MARKET_RAW | 0,5875 | — | — |
 | MARKET_FAIR | 0,5876 | — | — |
-| Elo | 0,5973 | +0,0097 | piora_robusta |
-| XGBoost | 0,5949 | +0,0073 | piora_robusta |
-| LightGBM | 0,5948 | +0,0073 | piora_robusta |
+| Elo | 0,5968 | +0,0093 | piora_robusta |
+| XGBoost | 0,5944 | +0,0069 | piora_robusta |
+| LightGBM | 0,5944 | +0,0068 | piora_robusta |
 
 **Nenhum modelo experimental adiciona informação além do mercado** —
 todos pioram de forma robusta contra market_raw E market_fair

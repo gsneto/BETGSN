@@ -221,7 +221,9 @@ def main() -> int:
         payload["protocol"]["n_windows"] = first["n_windows"]
         payload["protocol"]["n_windows_valid"] = first["n_windows_valid"]
 
-    out = ROOT / "output" / "engineering" / "quant" / "ml_oos_validation.json"
+    from betgsn.config import output_root
+
+    out = output_root() / "engineering" / "quant" / "ml_oos_validation.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False),

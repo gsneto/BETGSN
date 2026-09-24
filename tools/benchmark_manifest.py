@@ -75,7 +75,9 @@ def main() -> int:
     print(f"\n  reprodutibilidade: {'SIM' if repro['all_valid'] else 'RUPTURADA'}")
     print(f"  {repro['note']}")
 
-    out = ROOT / "output" / "engineering" / "quant" / "benchmark_manifest.json"
+    from betgsn.config import output_root
+
+    out = output_root() / "engineering" / "quant" / "benchmark_manifest.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False, allow_nan=False),

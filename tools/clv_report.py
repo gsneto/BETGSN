@@ -155,7 +155,9 @@ def print_report(report: dict) -> None:
 def main() -> int:
     report = build_report()
     print_report(report)
-    out = ROOT / "output" / "engineering" / "quant" / "clv_monitor.json"
+    from betgsn.config import output_root
+
+    out = output_root() / "engineering" / "quant" / "clv_monitor.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(report, indent=2, ensure_ascii=False, allow_nan=False),

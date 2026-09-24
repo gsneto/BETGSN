@@ -163,6 +163,14 @@ def build_feature_corpus(
         labels[i] = 0 if goal_diff > 0 else 1 if goal_diff == 0 else 2
         times.append(str(m.kickoff))
         key = (m.home, m.away, str(m.kickoff)[:10])
+        if key in keys:
+            # duas partidas do mesmo confronto no MESMO dia: dado
+            # duplicado no corpus — falha alto, nunca absorve em
+            # silencio (a segunda sobrescreveria a primeira).
+            raise ValueError(
+                f"corpus com partida duplicada: {key!r} — a chave "
+                "(home, away, dia) precisa ser unica"
+            )
         keys[key] = i
         rows.append(key)
         # o snapshot nao sobrevive a iteracao: so a linha da matriz
@@ -334,13 +342,13 @@ def _map_classes(raw: "np.ndarray", classes) -> "np.ndarray":
 
 
 class _FrozenView:
-    """Modelo congelado com `prob_1x2(home, away)` e `n_matches`.
+    """Modelo congelado com `prob_1x2(home, away, day)` e `n_matches`.
 
-    O harness consulta por (home, away). Um par pode existir em
-    temporadas diferentes (dias diferentes no corpus): a consulta
-    resolve o dia da partida mais próxima DEPOIS do corte do treino —
-    que é a linha que o TEST daquela janela contém. Partidas de
-    temporadas diferentes nunca compartilham previsão.
+    O harness consulta por (home, away, dia): um par pode existir em
+    temporadas/dias diferentes e CADA partida recebe a previsão do SEU
+    dia — consultas sem `day` são ambíguas e ficam sem resposta (None)
+    quando o par tem mais de um dia previsto; nunca são resolvidas
+    "aproximadamente" com o dia errado.
     """
 
     def __init__(self, n_matches, train_end, probabilities, pair_days):
@@ -349,16 +357,17 @@ class _FrozenView:
         self._probabilities = probabilities
         self._pair_days = pair_days
 
-    def prob_1x2(self, home: str, away: str):
+    def prob_1x2(self, home: str, away: str, day: str | None = None):
+        if day is not None:
+            return self._probabilities.get((home, away, day))
         days = self._pair_days.get((home, away))
         if not days:
             return None
         if len(days) == 1:
             return self._probabilities.get((home, away, days[0]))
-        cutoff = self.train_end[:10]
-        after = sorted(d for d in days if d >= cutoff)
-        day = after[0] if after else sorted(days)[-1]
-        return self._probabilities.get((home, away, day))
+        # sem o dia e com multiplos confrontos previstos: a resposta
+        # correta nao existe — None, nunca o dia errado
+        return None
 
 
 #: Fábrica de adapters por kind (o tool consome).

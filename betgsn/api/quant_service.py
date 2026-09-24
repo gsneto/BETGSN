@@ -144,21 +144,27 @@ def ml_models() -> dict[str, Any]:
 def clv_status() -> dict[str, Any]:
     """Ciclo de vida do CLV prospectivo (store operacional, leitura)."""
     from .. import value_walkforward as vwf
+    from ..models.promotion import MIN_CLV_SAMPLE
     from ..odds_snapshots import OddsSnapshotStore
 
     store = OddsSnapshotStore()
     sweep = store.clv_lifecycle_sweep()
     evidence = vwf.prospective_clv_evidence(store)
     oos = vwf.cached_oos_evidence()
+    n_clv = int(evidence.get("n", 0))
+    blocked = n_clv < MIN_CLV_SAMPLE
     return {
         "status": "OK",
         "lifecycle": sweep.by_state,
         "n_entries": sweep.n_entries,
         "clv_prospective": evidence,
         "promotion_gate_note": (
-            "o gate consome CLV prospectivo com n >= 30 (MIN_CLV_SAMPLE); "
-            f"atualmente n={evidence.get('n', 0)} — promoção segue "
-            "bloqueada sem amostra suficiente."
+            f"o gate consome CLV prospectivo com n >= {MIN_CLV_SAMPLE} "
+            f"(MIN_CLV_SAMPLE); atualmente n={n_clv} — "
+            + ("promoção segue bloqueada por amostra insuficiente."
+               if blocked
+               else "amostra suficiente para o critério de CLV; a decisão "
+                    "continua sendo do promotion gate, nunca automática.")
         ),
         "oos_windows_valid": oos.n_windows_valid if oos else 0,
         "lifecycle_note": (

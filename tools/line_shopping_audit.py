@@ -149,7 +149,9 @@ def main() -> int:
         print("  NOTA: o número reportado (+6,4pp) também troca a população "
               "(EV recalculado à mediana); o delta acima é SÓ preço.")
 
-    out = ROOT / "output" / "engineering" / "quant" / "line_shopping_audit.json"
+    from betgsn.config import output_root
+
+    out = output_root() / "engineering" / "quant" / "line_shopping_audit.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False),

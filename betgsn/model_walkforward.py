@@ -134,12 +134,15 @@ class FrozenModel:
     train_end: str
     n_matches: int
 
-    def prob_1x2(self, home: str, away: str):
+    def prob_1x2(self, home: str, away: str, day: str | None = None):
         """(p1, pX, p2) do modelo CONGELADO; None sem rating de algum lado.
 
         Contrato de provider: qualquer fonte de probabilidade 1X2 que
         queira ser avaliada nas MESMAS janelas implementa este método —
         o harness não conhece a família do modelo, só o contrato.
+        `day` (dia do kickoff da linha consultada) desambigua
+        temporadas de um mesmo confronto; o BASELINE_V1 é
+        independente da data e o ignora.
         """
         hr = self.ratings.get(home)
         ar = self.ratings.get(away)
@@ -183,14 +186,16 @@ def fit_model_on_train(
     )
 
 
-def _prob_1x2(model: FrozenModel, home: str, away: str):
+def _prob_1x2(model: FrozenModel, home: str, away: str, day: str | None = None):
     """(p1, pX, p2) do modelo CONGELADO; None sem rating de algum lado.
 
     Mantido como wrapper do contrato `model.prob_1x2` — providers
     externos (Elo/XGBoost/LightGBM, ver `ml_walkforward`) implementam o
-    mesmo método e entram no MESMO harness sem caminho paralelo.
+    mesmo método e entram no MESMO harness sem caminho paralelo. `day`
+    desambigua confrontos repetidos (o provider baseado em features
+    precisa do dia; o BASELINE_V1 ignora).
     """
-    return model.prob_1x2(home, away)
+    return model.prob_1x2(home, away, day=day)
 
 
 def _outcome_index(oc: str) -> int:
@@ -263,7 +268,18 @@ class ModelComparisonResult:
     embargo_days: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        out = asdict(self)
+        # strategy_rows NAO e serializado: ~181k linhas (~31MB) que
+        # nenhum leitor de cache consome — a auditoria do line-shopping
+        # usa o objeto em memoria (tools/line_shopping_audit.py). O
+        # cache de modelo continua leve e o endpoint de API nao
+        # reler megabytes por request. (O campo sai ANTES do asdict:
+        # deep-copy de 181k dicts custa segundos por nada.)
+        saved = self.strategy_rows
+        self.strategy_rows = []
+        try:
+            out = asdict(self)
+        finally:
+            self.strategy_rows = saved
         out["windows"] = [w.to_dict() for w in self.windows]
         return out
 
@@ -382,7 +398,12 @@ def run_model_walkforward(
             continue
 
         # ---- probabilidade do modelo por aposta (modelo CONGELADO) ----
-        prob_cache: dict[tuple[str, str], tuple] = {}
+        # chave (home, away, dia): confrontos repetidos na MESMA janela
+        # de teste são partidas diferentes — cada uma recebe a
+        # probabilidade do SEU dia (providers de features dependem do
+        # dia; o BASELINE_V1 ignora e o cache por tripla evita chamadas
+        # extras).
+        prob_cache: dict[tuple[str, str, str], tuple] = {}
         rows: list[dict] = []
         for b in test_bets:
             if b.get("res") == "push":
@@ -390,9 +411,13 @@ def run_model_walkforward(
             idx = _outcome_index(b.get("oc", ""))
             if idx < 0:
                 continue
-            key = (str(b.get("home", "")), str(b.get("away", "")))
+            key = (
+                str(b.get("home", "")), str(b.get("away", "")),
+                str(b.get("d", "")),
+            )
             if key not in prob_cache:
-                prob_cache[key] = _prob_1x2(model, key[0], key[1])
+                prob_cache[key] = _prob_1x2(
+                    model, key[0], key[1], day=key[2])
             probs = prob_cache[key]
             if probs is None:
                 continue
@@ -597,7 +622,9 @@ def _rows_with_model_probs(
         idx = _outcome_index(b.get("oc", ""))
         if idx < 0:
             continue
-        probs = _prob_1x2(model, str(b.get("home", "")), str(b.get("away", "")))
+        probs = _prob_1x2(
+            model, str(b.get("home", "")), str(b.get("away", "")),
+            day=str(b.get("d", "")))
         if probs is None:
             continue
         row = dict(b)

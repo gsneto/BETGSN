@@ -163,14 +163,17 @@ def test_adapter_fit_returns_frozen_view_with_contract():
     frozen = adapter.fit(matches, "2022-09-01")
     assert frozen is not None
     assert frozen.n_matches > 0
-    # contrato do harness
-    probs = frozen.prob_1x2("Strong", "Opp0")
+    # contrato do harness (com o dia da partida — desambigua
+    # confrontos repetidos)
+    day = corpus.keys[("Strong", "Opp0", matches[0].kickoff[:10])]
+    assert day == 0
+    probs = frozen.prob_1x2("Strong", "Opp0", day=matches[0].kickoff[:10])
     assert probs is not None
     p1, px, p2 = probs
     assert 0.0 < p1 < 1.0 and 0.0 < px < 1.0 and 0.0 < p2 < 1.0
     assert p1 + px + p2 == pytest.approx(1.0, abs=1e-6)
     # par desconhecido: None — nunca probabilidade inventada
-    assert frozen.prob_1x2("Ninguem", "Nada") is None
+    assert frozen.prob_1x2("Ninguem", "Nada", day="2022-01-01") is None
 
 
 def test_adapter_fit_only_uses_matches_before_train_end():
@@ -193,25 +196,54 @@ def test_adapter_insufficient_train_returns_none():
     assert adapter.fit(matches, "2022-02-01") is None
 
 
-def test_frozen_view_resolves_multi_season_pair():
-    """Confronto do mesmo par em dois dias: o dia >= corte do treino é o
-    do TEST — temporadas nunca compartilham previsão."""
+def test_frozen_view_resolves_by_day_multi_season_pair():
+    """Confronto do mesmo par em dois dias DEPOIS do corte: cada partida
+    recebe a previsão do SEU dia — o lookup sem dia é ambíguo e fica
+    SEM resposta (None), nunca resolvido com o dia errado."""
     matches = _matches(200)
-    extra = _Match("2023-01-01T15:00:00Z", "Strong", "Opp0", 2, 1)
-    corpus = build_feature_corpus(matches + [extra])
+    extra = [
+        _Match("2023-01-01T15:00:00Z", "Strong", "Opp0", 2, 1),
+        _Match("2023-02-01T15:00:00Z", "Strong", "Opp0", 3, 0),
+    ]
+    corpus = build_feature_corpus(matches + extra)
     adapter = MLWindowAdapter("elo", corpus)
-    frozen = adapter.fit(matches + [extra], "2022-09-01")
-    # Opp0 x Strong existem em 2022 e 2023; corte 2022-09-01
+    frozen = adapter.fit(matches + extra, "2022-09-01")
     days = sorted(
         d for (h, a, d) in corpus.keys if {h, a} == {"Strong", "Opp0"}
     )
     assert len(days) >= 2
-    probs = frozen.prob_1x2("Strong", "Opp0")
+    after = [d for d in days if d >= "2022-09-01"]
+    assert len(after) >= 2
+    p_first = frozen.prob_1x2("Strong", "Opp0", day=after[0])
+    p_second = frozen.prob_1x2("Strong", "Opp0", day=after[1])
+    # as duas partidas existem e têm previsões DIFERENTES (dias
+    # diferentes => features diferentes) — nunca a mesma previsão
+    assert p_first is not None and p_second is not None
+    assert p_first != p_second
+    # consulta ambígua (sem o dia): None, nunca "aproximadamente"
+    assert frozen.prob_1x2("Strong", "Opp0") is None
+
+
+def test_frozen_view_single_meeting_resolves_without_day():
+    """Par com UM único dia previsto: a consulta sem dia é inequívoca."""
+    matches = _matches(200)
+    extra = [_Match("2023-01-01T15:00:00Z", "OneHome", "OneAway", 1, 1)]
+    corpus = build_feature_corpus(matches + extra)
+    adapter = MLWindowAdapter("elo", corpus)
+    frozen = adapter.fit(matches + extra, "2022-09-01")
+    probs = frozen.prob_1x2("OneHome", "OneAway")
     assert probs is not None
-    # o dia resolvido é o primeiro >= corte (a linha do TEST)
-    after = sorted(d for d in days if d >= "2022-09-01")
-    expected_key = ("Strong", "Opp0", after[0])
-    assert frozen._probabilities.get(expected_key) == probs
+    assert sum(probs) == pytest.approx(1.0, abs=1e-6)
+
+
+def test_duplicate_corpus_key_raises():
+    """Partida duplicada no corpus (mesmo confronto, mesmo dia) falha
+    alto — a segunda nunca sobrescreve a primeira em silêncio."""
+    matches = _matches(30)
+    dup = _Match(matches[0].kickoff, matches[0].home, matches[0].away,
+                 1, 1)
+    with pytest.raises(ValueError, match="duplicada"):
+        build_feature_corpus(matches + [dup])
 
 
 # ==========================================================================

@@ -142,7 +142,12 @@ def _bucket_of(bet: dict) -> str:
 
 
 def _uplift_stats(bets: Sequence[dict]) -> dict[str, Any]:
-    """Uplift de preço na população dada: best vs median/second/worst."""
+    """Uplift de preço na população dada: best vs median/second/worst.
+
+    Convenção de percentis: nearest-rank (o elemento de índice
+    int(q*n), truncado aos limites) — declarada aqui porque quantil
+    "exato" não existe para amostras discretas.
+    """
     def _pct(values: list[float]) -> dict[str, float | None]:
         if not values:
             return {"mean": None, "median": None, "p10": None, "p90": None}

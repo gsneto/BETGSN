@@ -225,7 +225,11 @@ class ClvReport(BaseModel):
     `lifecycle` conta as entradas registradas por estado do ciclo de
     vida (PENDING/NO_CLOSE/CLOSED/INVALID/MISMATCH): "sem fechamento
     AINDA" e diferente de "sem fechamento NUNCA" — ausencia de
-    fechamento nunca vira CLV=0.
+    fechamento nunca vira CLV=0. NOTA: esta contagem cobre as entradas
+    CASADAS com os fixtures atuais (populacao deste relatorio); a
+    visao operacional do store INTEIRO vive em /api/quant/clv/status
+    (clv_lifecycle_sweep) — duas populacoes diferentes, ambos
+    declaradas.
     """
     generated_at: str
     total_bets: int
