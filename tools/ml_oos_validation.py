@@ -102,6 +102,72 @@ def _delta(a, b):
     return round(a - b, 6)
 
 
+#: Bandas de odd para o breakdown do ensemble (mesmas faixas da
+#: robustez de modelo em model_walkforward.model_robustness).
+_ODDS_BANDS: list[tuple[str, float, float]] = [
+    ("< 1.40", 0.0, 1.40), ("1.40-2.00", 1.40, 2.00),
+    ("2.00-3.00", 2.00, 3.00), (">= 3.00", 3.00, 99.0),
+]
+
+#: Amostra mínima por banda para reportar métricas (abaixo disso a
+#: banda é INSUFFICIENT_DATA — declarado, nunca número frágil).
+_MIN_BAND_ROWS = 200
+
+
+def odds_band_breakdown(rows: list[tuple]) -> list[dict]:
+    """Breakdown por odd band sobre `prediction_rows` do harness.
+
+    `rows`: (window, odd, p_raw, p_fair, p_model, p_cal, y) — a
+    população EXATA da avaliação OOS. Métricas idênticas às do harness
+    (mesma `_metrics_from_pairs`), banda por banda, sem re-rodar
+    janelas. Sem amostra suficiente: INSUFFICIENT_DATA com o n
+    declarado — nada fabricado.
+    """
+    from betgsn.value_walkforward import _metrics_from_pairs
+
+    out: list[dict] = []
+    for label, lo, hi in _ODDS_BANDS:
+        sel = [row for row in rows if lo <= row[1] < hi]
+        if len(sel) < _MIN_BAND_ROWS:
+            out.append({
+                "band": label, "n": len(sel),
+                "status": "INSUFFICIENT_DATA",
+            })
+            continue
+
+        def _source(idx: int) -> dict:
+            pairs = [
+                (row[idx], row[6]) for row in sel
+                if row[idx] is not None
+            ]
+            ps = [p for p, _y in pairs]
+            ys = [y for _p, y in pairs]
+            m = _metrics_from_pairs(ps, ys)
+            return {
+                "brier": m["brier"], "logloss": m["logloss"],
+                "ece": m["ece"], "n": m["n_prob"],
+            }
+
+        entry: dict = {
+            "band": label, "n": len(sel), "status": "OK",
+            "model_raw": _source(4),
+            "model_calibrated": _source(5),
+            "market_raw": _source(2),
+            "market_fair": _source(3),
+        }
+        model_ll = entry["model_raw"]["logloss"]
+        market_ll = entry["market_raw"]["logloss"]
+        fair_ll = entry["market_fair"]["logloss"]
+        entry["delta_logloss_model_vs_market_raw"] = (
+            None if model_ll is None or market_ll is None
+            else round(model_ll - market_ll, 6))
+        entry["delta_logloss_model_vs_market_fair"] = (
+            None if model_ll is None or fair_ll is None
+            else round(model_ll - fair_ll, 6))
+        out.append(entry)
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -154,7 +220,22 @@ def main() -> int:
         print(f"  bases: {', '.join(ENSEMBLE_BASE_KINDS)} | "
               f"folds rolling-origin: {ENSEMBLE_FOLDS} dentro do TRAIN")
         adapter = EnsembleWindowAdapter(corpus, progress=_progress)
-        ensemble_result = _evaluate_adapter(adapter, bets, matches, config)
+        ensemble_result = _evaluate_adapter(
+            adapter, bets, matches, config, collect_rows=True)
+        # breakdown por odd band sobre a população EXATA da avaliação
+        bands = odds_band_breakdown(ensemble_result.pop("prediction_rows"))
+        ensemble_result["odds_bands"] = bands
+        print("  odd bands:")
+        for band in bands:
+            if band.get("status") != "OK":
+                print(f"    {band['band']:<10} n={band['n']} "
+                      f"{band['status']}")
+                continue
+            d = band["delta_logloss_model_vs_market_raw"]
+            print(f"    {band['band']:<10} n={band['n']} | "
+                  f"logloss modelo {band['model_raw']['logloss']:.4f} vs "
+                  f"mercado {band['market_raw']['logloss']:.4f} "
+                  f"(delta {'n/d' if d is None else f'{d:+.4f}'})")
 
     payload = {
         "kind": "ml_oos_validation",
@@ -209,10 +290,12 @@ def main() -> int:
     return 0
 
 
-def _evaluate_adapter(adapter, bets, matches, config) -> dict:
+def _evaluate_adapter(adapter, bets, matches, config,
+                      collect_rows: bool = False) -> dict:
     """Roda o adapter no MESMO harness e devolve o resultado serializado."""
     comparison = run_model_walkforward(
-        bets, matches, config, _progress, model_fn=adapter.fit)
+        bets, matches, config, _progress, model_fn=adapter.fit,
+        collect_rows=collect_rows)
 
     m_raw = comparison.model_raw
     m_cal = comparison.model_calibrated

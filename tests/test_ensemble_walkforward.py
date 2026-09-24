@@ -280,3 +280,69 @@ def test_strategy_market_does_not_consume_ensemble(monkeypatch):
     # teste não é vazio
     assert result_b.model_raw.brier != pytest.approx(
         result_a.model_raw.brier, abs=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# linhas de predição por aposta (insumo da análise por odd band)
+# ---------------------------------------------------------------------------
+
+
+def test_collect_rows_exposes_per_bet_predictions():
+    """collect_rows expõe (window, odd, p_raw, p_fair, p_model, p_cal, y)
+    por aposta do TEST — população EXATA da avaliação, insumo do
+    breakdown por odd band sem re-rodar nada."""
+    matches = _matches(500)
+    bets = _bets(matches)
+    corpus = build_feature_corpus(matches)
+    adapter = EnsembleWindowAdapter(
+        corpus, kinds=("elo",), n_folds=2, min_stack_rows=50)
+
+    result = run_model_walkforward(
+        bets, matches, _config(), model_fn=adapter.fit, collect_rows=True)
+
+    rows = result.prediction_rows
+    assert len(rows) == result.n_bets_oos
+    assert len(rows) > 0
+    for row in rows:
+        window, odd, p_raw, p_fair, p_model, p_cal, y = row
+        assert isinstance(window, int)
+        assert odd == 1.25  # odd das bets sintéticas
+        assert p_raw == pytest.approx(1.0 / odd)
+        assert 0.0 <= p_model <= 1.0
+        assert y in (0, 1)
+    # windows declarados correspondem às janelas válidas
+    valid_windows = {w.index for w in result.windows if w.n_test_bets > 0}
+    assert {row[0] for row in rows} == valid_windows
+    # rows NÃO serializam (o cache continua leve)
+    assert "prediction_rows" not in result.to_dict()
+
+
+def test_odds_band_breakdown_from_prediction_rows():
+    """Breakdown por odd band sobre as prediction_rows: mesmas métricas
+    do harness, população declarada por banda, bandas pequenas
+    INSUFFICIENT_DATA."""
+    from tools.ml_oos_validation import odds_band_breakdown
+
+    rows = []
+    for i in range(400):
+        # odd alterna entre bandas < 1.40 e 1.40-2.00
+        odd = 1.20 if i % 2 == 0 else 1.60
+        p_model = 0.75 if i % 2 == 0 else 0.5
+        y = 1 if i % 3 == 0 else 0
+        rows.append((0, odd, 1.0 / odd, 1.0 / odd, p_model, p_model, y))
+
+    bands = odds_band_breakdown(rows)
+    by_band = {b["band"]: b for b in bands}
+    assert set(by_band) == {"< 1.40", "1.40-2.00", "2.00-3.00", ">= 3.00"}
+
+    lo = by_band["< 1.40"]
+    assert lo["n"] == 200
+    assert lo["model_raw"]["n"] == 200
+    assert lo["market_raw"]["n"] == 200
+    assert lo["delta_logloss_model_vs_market_raw"] is not None
+
+    # banda vazia: INSUFFICIENT_DATA com n=0, sem métricas fabricadas
+    empty = by_band[">= 3.00"]
+    assert empty["n"] == 0
+    assert empty["status"] == "INSUFFICIENT_DATA"
+    assert "model_raw" not in empty
