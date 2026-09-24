@@ -214,12 +214,17 @@ def main() -> int:
         results[kind] = _evaluate_adapter(adapter, bets, matches, config)
 
     ensemble_result = None
+    ensemble_protocol = None
     if run_ensemble:
         print(f"\n=== ENSEMBLE (stacking OOS por janela) — "
               f"modelo vs mercado (24 janelas) ===")
         print(f"  bases: {', '.join(ENSEMBLE_BASE_KINDS)} | "
               f"folds rolling-origin: {ENSEMBLE_FOLDS} dentro do TRAIN")
         adapter = EnsembleWindowAdapter(corpus, progress=_progress)
+        ensemble_protocol = {
+            "base_models": list(adapter.kinds),
+            "n_folds": adapter.n_folds,
+        }
         ensemble_result = _evaluate_adapter(
             adapter, bets, matches, config, collect_rows=True)
         # breakdown por odd band sobre a população EXATA da avaliação
@@ -232,9 +237,13 @@ def main() -> int:
                       f"{band['status']}")
                 continue
             d = band["delta_logloss_model_vs_market_raw"]
+            model_ll = band["model_raw"]["logloss"]
+            market_ll = band["market_raw"]["logloss"]
             print(f"    {band['band']:<10} n={band['n']} | "
-                  f"logloss modelo {band['model_raw']['logloss']:.4f} vs "
-                  f"mercado {band['market_raw']['logloss']:.4f} "
+                  f"logloss modelo "
+                  f"{'n/d' if model_ll is None else f'{model_ll:.4f}'} vs "
+                  f"mercado "
+                  f"{'n/d' if market_ll is None else f'{market_ll:.4f}'} "
                   f"(delta {'n/d' if d is None else f'{d:+.4f}'})")
 
     payload = {
@@ -252,7 +261,7 @@ def main() -> int:
         },
         "models": results,
         "ensemble": (
-            _ensemble_payload(ensemble_result, config)
+            _ensemble_payload(ensemble_result, config, ensemble_protocol)
             if ensemble_result is not None else
             {
                 "status": "PENDENTE",
@@ -357,14 +366,22 @@ def _evaluate_adapter(adapter, bets, matches, config,
     return out
 
 
-def _ensemble_payload(ensemble_result: dict, config) -> dict:
-    """Seção do ensemble: resultado + protocolo de stacking declarado."""
+def _ensemble_payload(ensemble_result: dict, config,
+                      protocol: dict | None = None) -> dict:
+    """Seção do ensemble: resultado + protocolo de stacking declarado.
+
+    `protocol` reflete o que RODOU (kinds/n_folds do adapter), não o
+    default do módulo — o artefato declara a medição feita."""
+    protocol = protocol or {
+        "base_models": list(ENSEMBLE_BASE_KINDS),
+        "n_folds": ENSEMBLE_FOLDS,
+    }
     out = dict(ensemble_result)
     out["status"] = "OK"
     out["model"] = "ENSEMBLE_STACK_V1 (stacking OOS por janela)"
     out["stacking_protocol"] = {
-        "base_models": list(ENSEMBLE_BASE_KINDS),
-        "n_folds": ENSEMBLE_FOLDS,
+        "base_models": list(protocol["base_models"]),
+        "n_folds": int(protocol["n_folds"]),
         "meta_model": "LogisticRegression multinomial (default, sem tuning)",
         "note": (
             "Por janela: TRAIN dividido em chunks temporais; cada fold "

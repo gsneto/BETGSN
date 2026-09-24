@@ -346,3 +346,40 @@ def test_odds_band_breakdown_from_prediction_rows():
     assert empty["n"] == 0
     assert empty["status"] == "INSUFFICIENT_DATA"
     assert "model_raw" not in empty
+
+
+def test_ensemble_tool_payload_is_json_serializable():
+    """O caminho completo do tool — _evaluate_adapter(collect_rows) ->
+    odds_band_breakdown -> _ensemble_payload -> json.dumps(allow_nan=False)
+    — não explode: é o contrato do artefato final."""
+    import json
+
+    from betgsn.value_walkforward import WalkForwardConfig
+    from tools.ml_oos_validation import (
+        _ensemble_payload,
+        _evaluate_adapter,
+        odds_band_breakdown,
+    )
+
+    matches = _matches(500)
+    bets = _bets(matches)
+    corpus = build_feature_corpus(matches)
+    adapter = EnsembleWindowAdapter(
+        corpus, kinds=("elo", "xgboost"), n_folds=2,
+        min_early_stop_rows=20, min_stack_rows=50)
+
+    result = _evaluate_adapter(
+        adapter, bets, matches, _config(), collect_rows=True)
+    rows = result.pop("prediction_rows")
+    assert len(rows) == result["n_bets_oos"]
+
+    result["odds_bands"] = odds_band_breakdown(rows)
+    # protocolo do que RODOU (kinds/n_folds do adapter), como no main()
+    payload = _ensemble_payload(result, _config(), {
+        "base_models": ["elo", "xgboost"], "n_folds": 2,
+    })
+    text = json.dumps(payload, allow_nan=False)
+    assert json.loads(text)["status"] == "OK"
+    assert "prediction_rows" not in payload
+    assert payload["stacking_protocol"]["n_folds"] == 2
+    assert payload["stacking_protocol"]["base_models"] == ["elo", "xgboost"]
