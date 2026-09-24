@@ -227,6 +227,82 @@ describe("QuantPage", () => {
     expect(screen.queryByText(/vencedor/i)).toBeNull();
   });
 
+  it("exibe o Ensemble OK com métricas e protocolo de stacking OOS", async () => {
+    routeQuant({
+      "/api/quant/benchmarks": benchmarks,
+      "/api/quant/model-vs-market": modelMarket,
+      "/api/quant/line-shopping": lineShopping,
+      "/api/quant/ml": {
+        ...ml,
+        ensemble: {
+          status: "OK",
+          model: "ENSEMBLE_STACK_V1",
+          n_bets_oos: 490736,
+          model_raw: { brier: 0.2, logloss: 0.59, ece: 0.01, n: 490736 },
+          market_raw: { brier: 0.2005, logloss: 0.5869, ece: 0.0114, n: 490736 },
+          delta_logloss_vs_market_raw: 0.0031,
+          stacking_protocol: {
+            base_models: ["elo", "xgboost", "lightgbm"],
+            n_folds: 3,
+            meta_model: "LogisticRegression",
+            note: "stacking OOS por janela",
+          },
+        },
+      },
+      "/api/quant/clv/status": clvStatus,
+      "/api/clv": clvReport,
+    });
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/stacking OOS por janela/)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/elo \+ xgboost \+ lightgbm/)).toBeInTheDocument();
+    expect(screen.getByText(/3 folds rolling-origin no TRAIN/)).toBeInTheDocument();
+  });
+
+  it("CLV: estatísticas nulas-seguras — n=0 mostra em falta, nunca 0%", async () => {
+    routeQuant({
+      "/api/quant/benchmarks": benchmarks,
+      "/api/quant/model-vs-market": modelMarket,
+      "/api/quant/line-shopping": lineShopping,
+      "/api/quant/ml": ml,
+      "/api/quant/clv/status": {
+        ...clvStatus,
+        clv_statistics: {
+          n: 0, mean: null, median: null, p10: null, p25: null,
+          p75: null, p90: null, positive_rate: null,
+          last_closing_timestamp: null,
+        },
+        close_rate: null,
+        resolve_rate: null,
+        capture: {
+          last_observation_timestamp: null,
+          n_observations: 120,
+          n_matches: 40,
+          providers: { "The Odds API": 120 },
+        },
+        provider_issues: ["ParlayAPI"],
+        provider_health: {
+          ParlayAPI: {
+            state: "DEGRADED", consecutive_failures: 2,
+            last_success_at: "", last_error: "timeout",
+          },
+        },
+      },
+      "/api/clv": clvReport,
+    });
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/CLV prospectivo — ciclo de vida/)).toBeInTheDocument(),
+    );
+    // n=0: média em falta — nunca "0,0%" (ausência não é CLV zero)
+    await waitFor(() => expect(screen.getAllByText("—").length).toBeGreaterThan(0));
+    expect(screen.getByText(/sem amostra/)).toBeInTheDocument();
+    expect(screen.getAllByText(/não medido/).length).toBeGreaterThan(0);
+    // provider com problema aparece nominalmente (texto único no badge)
+    expect(screen.getByText("ParlayAPI: DEGRADED")).toBeInTheDocument();
+  });
+
   it("mostra estado explícito quando o cache de modelo é stale/ausente", async () => {
     routeQuant({
       "/api/quant/benchmarks": benchmarks,
