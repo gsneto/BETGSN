@@ -174,11 +174,25 @@ class ClvEntryRecord:
     (`line_at` no instante da decisao): nunca odd sintetica, nunca
     `prediction_timestamp` no lugar do timestamp da odd.
 
+    QUATRO preços DISTINTOS no ciclo CLV — nunca presumidos iguais:
+
+      observed_price   `entry_odd` — a MEDIANA das casas observadas no
+                       instante da decisão (o que o mercado estava
+                       cotando), gravada aqui;
+      selected_price   a melhor odd escolhida pela estratégia
+                       (`fx.best_odds`, line-shopping) — vive no sinal,
+                       NÃO aqui: a entrada de CLV é a linha observada,
+                       não o preço selecionado;
+      execution_price  DESCONHECIDO — `execution_status = UNKNOWN`
+                       enquanto não houver registro real de execução
+                       (nunca presumido igual ao observado/selecionado);
+      closing_price    `closing_odd` do resultado, SEMPRE posterior à
+                       entrada e anterior ao kickoff.
+
     Proveniencia (schema v4): `home`/`away`/`league` identificam o
     evento, `entry_bookmaker` e a casa representativa da mediana de
     entrada, e `execution_status` separa o preco OBSERVADO na decisao
-    do preco de EXECUCAO (UNKNOWN enquanto nao houver execucao real —
-    nunca presumido igual).
+    do preco de EXECUCAO.
     """
 
     id: int
