@@ -3,15 +3,19 @@
   "status": "BLOCKED",
   "clv": {
     "mean": null,
+    "median": null,
+    "positive_rate": null,
+    "n_positive": 0,
     "n": 0,
-    "prospective": true
+    "prospective": true,
+    "closed_only": true
   },
-  "n_entries": 480,
+  "n_entries": 894,
   "n_valid": 0,
-  "n_no_closing": 480,
+  "n_no_closing": 894,
   "n_closing_before_entry": 0,
   "lifecycle": {
-    "PENDING": 477,
+    "PENDING": 891,
     "NO_CLOSE": 3,
     "CLOSED": 0,
     "INVALID": 0,
@@ -26,7 +30,7 @@
   "p90": null,
   "positive_rate": null,
   "coverage": 0.0,
-  "n_matches": 161,
+  "n_matches": 298,
   "period": {
     "first_kickoff": "2026-09-24T01:30:00Z",
     "last_kickoff": "2026-10-19T19:00:00Z"
