@@ -7,7 +7,7 @@ from betgsn.odds_normalize import NormalizedQuote
 from betgsn.realtime.state import MarketState
 from betgsn.realtime.freshness import FreshnessThresholds
 from betgsn.realtime.views import build_event_view
-from betgsn.realtime.priced_engine import PricedRealtimeEngine
+from betgsn.realtime.priced_engine import FairOverride, PricedRealtimeEngine
 from betgsn.production_policy import GateBlock, ProductionGate, REQUIRED_BLOCKS
 from betgsn.config import production_policy_fingerprint
 
@@ -44,6 +44,11 @@ def _view(quotes):
 def _gate_green():
     return ProductionGate({n: GateBlock("GREEN") for n in REQUIRED_BLOCKS},
                           production_policy_fingerprint())
+
+
+def _override(prob=0.5):
+    return FairOverride(prob=prob, window_id="w23", method="isotonic",
+                        n=487, calibration_fingerprint="cal-fp-1")
 
 
 def test_price_engine_marks_no_model_as_research():
@@ -90,15 +95,17 @@ def test_price_engine_red_block_never_produces_forte():
 def test_price_engine_forte_only_with_full_evidence_and_matching_market():
     engine = PricedRealtimeEngine(gate=_gate_green())
     view = _view([_quote("A", 2.30), _quote("B", 2.29), _quote("C", 2.28)])
+    key = "ev|home|away|Total de Gols|Over 2.5"
     signals = engine.priced(
         view, decision_ts="2026-01-01T12:00:45Z",
-        models={"ev|home|away|Total de Gols|Over 2.5": ("fp", 0.70)},
-        fair_probs={"ev|home|away|Total de Gols|Over 2.5": 0.5},
+        models={key: ("fp", 0.70)},
+        fair_override={key: _override(prob=0.5)},
+        executions={key: (2.30, "2026-01-01T12:01:15Z")},
     )
     signal = signals[0].to_dict()
     assert signal["evidence_status"] == "FORTE"
     assert signal["production"] == "REVIEW"
-    assert signal["execution_status"] == "UNKNOWN"
+    assert signal["execution_status"] == "EXECUTED"
     assert signal["model_prob"] == 0.7
     assert signal["edge"] > 0.08
     assert signal["ev"] > 0.08
@@ -167,6 +174,54 @@ def test_execution_erosion_flags_over_fifty_percent():
     result = execution_erosion([eroded])
     assert result["status"] == "EXECUTION_EROSION"
     assert result["ratio"] > 0.5
+
+
+def test_fair_override_alone_leaves_execution_pending():
+    # Base gate PENDING nos blocos live (o default do live). Override MARKET
+    # sozinho não pode virar FORTE: EXECUTION continua PENDING.
+    from betgsn.realtime.engine import _default_priced_gate
+    engine = PricedRealtimeEngine(gate=_default_priced_gate())
+    view = _view([_quote("A", 2.30), _quote("B", 2.29), _quote("C", 2.28)])
+    key = "ev|home|away|Total de Gols|Over 2.5"
+    signal = engine.priced(
+        view, decision_ts="2026-01-01T12:00:45Z",
+        models={key: ("fp", 0.70)},
+        fair_override={key: _override(prob=0.5)},
+    )[0].to_dict()
+    assert signal["evidence_status"] == "RESEARCH"
+    assert signal["production"] == "NO_BET"
+    assert "NO_BET" in signal["research_reasons"]
+
+
+def test_invalid_fair_override_is_ignored():
+    engine = PricedRealtimeEngine(gate=_gate_green())
+    view = _view([_quote("A", 2.30), _quote("B", 2.29), _quote("C", 2.28)])
+    key = "ev|home|away|Total de Gols|Over 2.5"
+    bad = FairOverride(prob=0.5, window_id="w0", method="", n=0,
+                       calibration_fingerprint="")
+    signal = engine.priced(
+        view, decision_ts="2026-01-01T12:00:45Z",
+        models={key: ("fp", 0.70)},
+        fair_override={key: bad},
+        executions={key: (2.30, "2026-01-01T12:01:15Z")},
+    )[0].to_dict()
+    # Sem fair_override válido, MARKET/PROVENANCE ficam PENDING → NO_BET.
+    assert signal["production"] == "NO_BET"
+
+
+def test_execution_expired_does_not_promote_execution_block():
+    engine = PricedRealtimeEngine(gate=_gate_green())
+    view = _view([_quote("A", 2.30), _quote("B", 2.29), _quote("C", 2.28)])
+    key = "ev|home|away|Total de Gols|Over 2.5"
+    # Fill fora da janela (255s > 60s): EXPIRED → EXECUTION PENDING.
+    signal = engine.priced(
+        view, decision_ts="2026-01-01T12:00:45Z",
+        models={key: ("fp", 0.70)},
+        fair_override={key: _override(prob=0.5)},
+        executions={key: (2.27, "2026-01-01T12:05:00Z")},
+    )[0].to_dict()
+    assert signal["execution_status"] == "EXPIRED"
+    assert signal["production"] == "NO_BET"
 
 
 def test_stale_quote_drops_by_freshness():

@@ -28,7 +28,7 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from ..config import production_policy_fingerprint
-from ..realtime.engine import RealtimeOddsEngine, build_engine_from_env
+from ..realtime.engine import FairOverride, RealtimeOddsEngine, build_engine_from_env
 from ..realtime.events import EventBus
 
 
@@ -320,6 +320,94 @@ def register_realtime_routes(app: FastAPI) -> None:
             "priced_signals": eng.priced_signals(event_key),
             "execution_erosion": eng.execution_erosion(event_key),
         }
+
+    @app.post("/api/realtime/executions", tags=["realtime"])
+    async def realtime_record_execution(request: Request) -> dict:
+        """Registra uma fill medida.
+
+        Sem esta chamada, `execution_status` permanece UNKNOWN e nenhum
+        gap é exposto. Requer `executed_at` ISO-8601: fills sem selo
+        temporal viram EXPIRED no próximo tick.
+        """
+        eng = engine_or_503()
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(400, "invalid JSON body")
+        required = ("event_key", "market", "selection", "executed_price", "executed_at")
+        missing = [k for k in required if k not in body]
+        if missing:
+            raise HTTPException(400, f"missing: {sorted(missing)}")
+        try:
+            key = eng.record_execution(
+                event_key=str(body["event_key"]),
+                market=str(body["market"]),
+                selection=str(body["selection"]),
+                executed_price=float(body["executed_price"]),
+                executed_at=str(body["executed_at"]),
+            )
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(400, str(exc))
+        return {"key": key, "policy_fingerprint": _policy_fingerprint()}
+
+    @app.delete("/api/realtime/executions", tags=["realtime"])
+    def realtime_clear_execution(
+        event_key: str = Query(...),
+        market: str = Query(...),
+        selection: str = Query(...),
+    ) -> dict:
+        """Remove uma fill previamente registrada — usar quando a
+        execução expirou ou foi cancelada. Sem execução ativa o próximo
+        tick recompõe o gate com EXECUTION PENDING."""
+        eng = engine_or_503()
+        eng.clear_execution(event_key=event_key, market=market, selection=selection)
+        return {"cleared": True}
+
+    @app.post("/api/realtime/fair-override", tags=["realtime"])
+    async def realtime_register_fair_override(request: Request) -> dict:
+        """Injeta o fair calibrado por janela para uma seleção.
+
+        Requer `calibration_fingerprint`, `window_id`, `method`, `n` e
+        `prob`. Sem esse selo o bloco MARKET/PROVENANCE permanece
+        PENDING — evidência offline nunca é inferida no live.
+        """
+        eng = engine_or_503()
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(400, "invalid JSON body")
+        required = ("event_key", "market", "selection", "prob",
+                    "window_id", "method", "n", "calibration_fingerprint")
+        missing = [k for k in required if k not in body]
+        if missing:
+            raise HTTPException(400, f"missing: {sorted(missing)}")
+        try:
+            override = FairOverride(
+                prob=float(body["prob"]),
+                window_id=str(body["window_id"]),
+                method=str(body["method"]),
+                n=int(body["n"]),
+                calibration_fingerprint=str(body["calibration_fingerprint"]),
+            )
+            key = eng.register_fair_override(
+                event_key=str(body["event_key"]),
+                market=str(body["market"]),
+                selection=str(body["selection"]),
+                override=override,
+            )
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(400, str(exc))
+        return {"key": key, "policy_fingerprint": _policy_fingerprint()}
+
+    @app.delete("/api/realtime/fair-override", tags=["realtime"])
+    def realtime_clear_fair_override(
+        event_key: str = Query(...),
+        market: str = Query(...),
+        selection: str = Query(...),
+    ) -> dict:
+        eng = engine_or_503()
+        eng.clear_fair_override(event_key=event_key, market=market, selection=selection)
+        return {"cleared": True}
 
     @app.get("/api/realtime/signals", tags=["realtime"])
     def realtime_signals(

@@ -50,7 +50,7 @@ from .events import (
 )
 from .freshness import FreshnessThresholds
 from .movement import MovementEngine
-from .priced_engine import PricedRealtimeEngine
+from .priced_engine import FairOverride, PricedRealtimeEngine
 from .signals import SignalEngine, SignalRules
 from .state import LineKey, MarketState, QuoteProblem
 from .views import build_event_view, event_views
@@ -203,6 +203,10 @@ class RealtimeOddsEngine:
         # Não presume execução: enquanto vazio, execution_status permanece UNKNOWN
         # e nenhum sinal recebe gap absoluto/relativo — política nunca fabrica fill.
         self._executions: dict[str, tuple[float, str]] = {}
+        # Fair calibrado por chave — só chega via register_fair_override
+        # (job offline de calibração por janela). Sem override o bloco
+        # MARKET/PROVENANCE do sinal permanece PENDING.
+        self._fair_overrides: dict[str, FairOverride] = {}
         self.loops = [
             ProviderLoop(name=name, capture=capture, interval_seconds=interval)
             for name, capture, interval in captures
@@ -480,6 +484,7 @@ class RealtimeOddsEngine:
         for view in views:
             self._priced_by_event[view.event_key] = self.priced_engine.priced(
                 view, decision_ts=now.isoformat(), models={},
+                fair_override=self._fair_overrides,
                 executions=self._executions,
             )
         if views or movements:
@@ -607,6 +612,23 @@ class RealtimeOddsEngine:
                 signal.to_dict()
                 for signal in self.signals.active_signals(event_key)
             ]
+
+    def register_fair_override(self, *, event_key: str, market: str, selection: str,
+                                override: FairOverride) -> str:
+        """Registra o fair calibrado (offline) que o live vai consumir na
+        próxima regeneração de PricedSignal. Sem chamada explicita, o
+        bloco MARKET/PROVENANCE do sinal permanece PENDING."""
+        if not isinstance(override, FairOverride) or not override.valid():
+            raise ValueError("invalid FairOverride")
+        key = f"{event_key}|{market}|{selection}"
+        with self._lock:
+            self._fair_overrides[key] = override
+        return key
+
+    def clear_fair_override(self, *, event_key: str, market: str, selection: str) -> None:
+        key = f"{event_key}|{market}|{selection}"
+        with self._lock:
+            self._fair_overrides.pop(key, None)
 
     def record_execution(self, *, event_key: str, market: str, selection: str,
                          executed_price: float, executed_at: str) -> str:
