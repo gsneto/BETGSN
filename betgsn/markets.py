@@ -15,6 +15,9 @@ Convencao de rotulos:
 
 from __future__ import annotations
 
+import math
+import re
+
 from .model import (
     ScoreMatrix,
     TeamRating,
@@ -179,6 +182,27 @@ MARKET_GROUPS: tuple[tuple[str, str], ...] = (
 ALL_MARKET_KEYS: tuple[str, ...] = tuple(key for key, _ in MARKET_GROUPS)
 MARKET_LABELS: dict[str, str] = dict(MARKET_GROUPS)
 LABEL_TO_KEY: dict[str, str] = {label: key for key, label in MARKET_GROUPS}
+
+
+def validate_selection_line(market: str, selection: str, line: float | None) -> str | None:
+    """Handicap tem sinal; totais não. Valor e seleção devem identificar a mesma linha."""
+    if line is not None and (isinstance(line, bool) or not isinstance(line, (int,float))
+                             or not math.isfinite(line)):
+        return 'INVALID_LINE'
+    if market not in ('Handicap Asiatico', 'Total de Gols'):
+        return 'NEGATIVE_LINE' if line is not None and line < 0 else None
+    pattern = r'AH (?:Casa|Fora) ([+-]?\d+(?:\.\d+)?)' if market == 'Handicap Asiatico' else r'(?:Over|Under) ([+-]?\d+(?:\.\d+)?)'
+    match = re.fullmatch(pattern, selection)
+    if match is None:
+        return 'INVALID_SELECTION'
+    parsed = float(match.group(1))
+    if not math.isfinite(parsed) or not (parsed*4).is_integer():
+        return 'INVALID_LINE'
+    if line is not None and parsed != line:
+        return 'LINE_SELECTION_MISMATCH'
+    if market == 'Total de Gols' and parsed < 0:
+        return 'NEGATIVE_LINE'
+    return None
 
 
 def validate_market_keys(keys: tuple[str, ...]) -> tuple[str, ...]:

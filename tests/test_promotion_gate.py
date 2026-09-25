@@ -47,6 +47,11 @@ def _good_segments() -> list[SegmentResult]:
     ]
 
 
+def _closed_clv():
+    return dict(mean=.03,median=.03,ci_low=.01,n=200,n_positive=110,
+                positive_rate=.55,prospective=True,closed_only=True)
+
+
 # --------------------------------------------------------------- melhora
 
 def test_improvement_positive_when_lower_is_better():
@@ -73,7 +78,7 @@ def test_improvement_none_when_baseline_is_zero():
 # ------------------------------------------------------------- aprovacao
 
 def test_full_evidence_promotes_to_validated():
-    d = evaluate_promotion("Ensemble", _good_segments())
+    d = evaluate_promotion("Ensemble", _good_segments(), clv=_closed_clv())
     assert d.recommended_status is ModelStatus.VALIDATED
     assert d.promoted
     assert d.blocking_failures == []
@@ -162,7 +167,7 @@ def test_decision_serializes_every_criterion():
     d = evaluate_promotion("Ensemble", _good_segments())
     payload = d.to_dict()
     assert payload["model"] == "Ensemble"
-    assert payload["recommended_status"] == "VALIDATED"
+    assert payload["recommended_status"] == "EXPERIMENTAL"
     names = {c["name"] for c in payload["criteria"]}
     assert "melhora_logloss" in names
     assert "consistencia" in names
@@ -174,7 +179,7 @@ def test_summary_is_human_readable():
     d = evaluate_promotion("Ensemble", _good_segments())
     text = d.summary()
     assert "Ensemble" in text
-    assert "VALIDATED" in text
+    assert "EXPERIMENTAL" in text
 
 
 def test_empty_segments_never_promote():
@@ -251,7 +256,7 @@ def test_tuning_on_test_blocks_promotion():
 def test_declared_walk_forward_windows_are_required():
     blocked = evaluate_promotion("X", _good_segments(), n_windows=1)
     assert "evidencia_oos_janelas" in blocked.blocking_failures
-    approved = evaluate_promotion("X", _good_segments(), n_windows=2)
+    approved = evaluate_promotion("X", _good_segments(), n_windows=3)
     assert "evidencia_oos_janelas" not in approved.blocking_failures
 
 
@@ -270,7 +275,7 @@ def test_small_effect_is_validated_but_not_production_eligible():
         _segment(league=lg, season=se, logloss=0.95, base_logloss=0.99)
         for se in ("2024", "2025") for lg in ("E0", "SP1")
     ]
-    d = evaluate_promotion("Ensemble", segs)
+    d = evaluate_promotion("Ensemble", segs, clv=_closed_clv())
     assert d.recommended_status is ModelStatus.VALIDATED
     assert d.below_meaningful_margin is True
     assert d.production_eligible is False
@@ -283,7 +288,7 @@ def test_meaningful_effect_is_production_eligible():
         for se in ("2024", "2025") for lg in ("E0", "SP1")
     ]
     d = evaluate_promotion("X", segs)
-    assert d.production_eligible is True
+    assert d.production_eligible is False  # efeito sozinho não supre CLV
     assert d.mean_improvement >= MIN_MEANINGFUL_IMPROVEMENT
 
 
@@ -319,8 +324,7 @@ def test_clv_with_insufficient_sample_does_not_pass_silently():
 def test_clv_with_declared_sample_passes_when_adequate():
     d = evaluate_promotion(
         "X", _good_segments(),
-        clv={"mean": 0.03, "ci_low": 0.01, "n": MIN_CLV_SAMPLE,
-             "prospective": True},
+        clv=_closed_clv(),
     )
     assert "clv_nao_negativo" not in d.blocking_failures
 
@@ -350,7 +354,7 @@ def test_clv_without_sample_info_keeps_backward_compatible_evaluation():
     d = evaluate_promotion(
         "X", _good_segments(), clv={"mean": 0.02, "ci_low": 0.005},
     )
-    assert "clv_nao_negativo" not in d.blocking_failures
+    assert "clv_nao_negativo" in d.blocking_failures
     criterion = next(
         c for c in d.criteria if c.name == "clv_nao_negativo")
     assert "amostra nao informada" in criterion.detail
@@ -367,7 +371,7 @@ def test_clv_without_provenance_is_marked_in_detail():
     d = evaluate_promotion(
         "X", _good_segments(), clv={"mean": 0.02, "ci_low": 0.005, "n": 100},
     )
-    assert "clv_nao_negativo" not in d.blocking_failures
+    assert "clv_nao_negativo" in d.blocking_failures
     criterion = next(
         c for c in d.criteria if c.name == "clv_nao_negativo")
     assert "PROVENANCIA NAO DECLARADA" in criterion.detail

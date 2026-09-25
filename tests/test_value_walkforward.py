@@ -488,7 +488,8 @@ def test_prospective_clv_evidence_empty_store(tmp_path):
 
     store = OddsSnapshotStore(tmp_path / "odds.db")
     ev = prospective_clv_evidence(store)
-    assert ev == {"mean": 0.0, "n": 0, "prospective": True}
+    assert ev == {"mean": None, "median": None, "positive_rate": None,
+                  "n_positive": 0, "n": 0, "prospective": True, "closed_only": True}
 
 
 def test_prospective_clv_evidence_counts_only_ok_results(tmp_path, monkeypatch):

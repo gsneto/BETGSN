@@ -103,7 +103,9 @@ _MARKET_TOTAL_RE = re.compile(rf"^(?:Cantos|Cartoes) (Over|Under) {_NUM}$")
 
 
 def _resolve_over_under(over: bool, value: float, line: float) -> Outcome:
-    """Linhas do BETGSN sao quebradas (.5) — nao existe push."""
+    """Igualdade em linha inteira devolve stake para ambos os lados."""
+    if value == line:
+        return 'push'
     return "win" if (value > line) == over else "loss"
 
 

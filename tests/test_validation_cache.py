@@ -305,4 +305,4 @@ def test_decision_ignores_stale_cache(monkeypatch):
     # mas o ROI reportado e o da CONSTANTE, nao o do cache stale
     assert decision.conservative_roi is not None
     assert decision.conservative_roi == pytest.approx(
-        EDGE_ROI - 1.6448536269514722 * 0.0054)
+        EDGE_ROI - 1.96 * 0.0054)

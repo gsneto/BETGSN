@@ -377,13 +377,13 @@ def test_no_bet_when_sample_is_too_small():
     assert "amostra_suficiente" in decision.reason
 
 
-def test_bet_when_evidence_supports_it():
+def test_trusted_prices_still_require_complete_production_gate():
     decision = decide_bet(
         EDGE_ROI, EDGE_SE, EDGE_ODD, evidence_status="timestamped", n_bets=6748,
     )
-    assert decision.action == "BET"
+    assert decision.action == "NO_BET"
     assert decision.conservative_roi > 0
-    assert 0 < decision.fraction <= 0.05
+    assert decision.fraction == 0
 
 
 def test_bet_decision_serializes_checks():
@@ -394,7 +394,7 @@ def test_bet_decision_serializes_checks():
     names = {c["name"] for c in payload["checks"]}
     assert names == {
         "evidencia_confiavel", "limite_inferior_positivo",
-        "amostra_suficiente", "ruina_toleravel",
+        "amostra_suficiente", "ruina_toleravel", "production_gate",
     }
     assert all(c["detail"] for c in payload["checks"])
 

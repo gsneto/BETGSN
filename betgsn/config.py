@@ -13,6 +13,25 @@ from typing import Any, Optional
 _ROOT = Path(__file__).resolve().parent.parent
 
 
+def production_thresholds() -> dict[str, object]:
+    """Protocolo operacional congelado; não aceita overrides de arquivo/env."""
+    return {
+        "version": 1, "min_edge": 0.08, "min_ev": 0.08, "max_spread": 0.12,
+        "min_books": 3, "max_ev_gap": 0.03, "min_clv_sample": 200,
+        "min_beat_close": 0.55, "min_windows": 3, "max_execution_erosion": 0.5,
+        "markets": ["Handicap Asiatico", "Total de Gols"],
+    }
+
+
+def production_policy_fingerprint() -> str:
+    import hashlib
+
+    return hashlib.sha256(json.dumps(
+        production_thresholds(), sort_keys=True, separators=(",", ":"),
+        allow_nan=False,
+    ).encode()).hexdigest()
+
+
 def output_root() -> Path:
     """Raiz de saida de dados do BETGSN (<repo>/output por padrao).
 

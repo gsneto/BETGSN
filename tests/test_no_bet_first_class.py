@@ -36,8 +36,11 @@ def _bets(n=5, stake=10.0):
 
 
 def _bet_decision():
+    from betgsn.config import production_policy_fingerprint
+    from betgsn.production_policy import ProductionGate, GateBlock, REQUIRED_BLOCKS
+    gate = ProductionGate({n:GateBlock('GREEN') for n in REQUIRED_BLOCKS}, production_policy_fingerprint())
     return decide_bet(0.016, 0.0054, 1.21,
-                      evidence_status="timestamped", n_bets=6748)
+                      evidence_status="timestamped", n_bets=6748, production_gate=gate)
 
 
 def _no_bet_decision(reason="teste"):

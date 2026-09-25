@@ -71,7 +71,7 @@ from .value_walkforward import (
 )
 
 #: Versao do esquema do cache de validacao de modelo.
-MODEL_CACHE_SCHEMA_VERSION = 1
+MODEL_CACHE_SCHEMA_VERSION = 2
 
 #: Janela de ratings do modelo (rolling), igual ao benchmark de produção.
 RATING_WINDOW_DAYS = 1095
@@ -167,8 +167,9 @@ def fit_model_on_train(
     """
     cutoff = date.fromisoformat(train_end)
     lower = cutoff - timedelta(days=rating_window_days)
+    from .backtest_data import HistoricalCorpus
     prior = [
-        m for m in matches
+        m for m in (HistoricalCorpus(matches).available_before(train_end) if matches else [])
         if lower <= date.fromisoformat(str(m.kickoff)[:10]) < cutoff
     ]
     if len(prior) < MIN_RATINGS_SAMPLE:
@@ -232,6 +233,7 @@ class ModelWindowResult:
     model_raw: SourceMetrics = field(default_factory=SourceMetrics)
     model_calibrated: SourceMetrics = field(default_factory=SourceMetrics)
     calibration_method: str = "raw"
+    calibration_audit: dict = field(default_factory=dict)
     #: strategy_model nesta janela
     strategy_model_n: int = 0
     strategy_model_roi: float | None = None
@@ -380,7 +382,7 @@ def run_model_walkforward(
     pooled: dict[str, list] = {
         "market_raw_ps": [], "market_fair_ps": [],
         "model_raw_ps": [], "model_cal_ps": [],
-        "ys": [], "months": [],
+        "ys": [], "months": [], "fair_ys": [], "fair_model_ps": [], "fair_months": [],
     }
     strat_model_rets: list[float] = []
     strat_market_rets: list[float] = []
@@ -450,11 +452,14 @@ def run_model_walkforward(
             continue
 
         # ---- calibração do modelo: escolha no TRAIN, frozen no TEST ----
-        method, calibrator, _n = _select_calibration_method(
-            _rows_with_model_probs(train_bets, matches, window, model),
-            _MODEL_VIEW, window,
-        )
+        from .model_calibration import fit_model_calibrator
+        calibrator = fit_model_calibrator(
+            _internal_calibration_rows(train_bets, matches, window, model_fn),
+            train_end=window.train_end, market='1x2')
+        method = calibrator.method
         win.calibration_method = method
+        win.calibration_audit = dict(calibrator.audit, fingerprint=calibrator.fingerprint,
+                                    parameters=calibrator.parameters)
 
         ps_raw = [r["p_raw"] for r in rows]
         ps_fair = [r["p_fair"] for r in rows if r["p_fair"] is not None]
@@ -469,8 +474,7 @@ def run_model_walkforward(
         win.market_fair = _source_metrics(ps_fair, ys_fair)
         win.model_raw = _source_metrics(ps_model, ys)
         if calibrator is not None:
-            ps_cal = _apply_calibrator(
-                calibrator, ps_model, window.test_start)
+            ps_cal = calibrator.predict(ps_model, window.test_start)
             win.model_calibrated = _source_metrics(ps_cal, ys)
         else:
             ps_cal = ps_model
@@ -481,6 +485,9 @@ def run_model_walkforward(
         pooled["market_raw_ps"].extend(ps_raw)
         pooled["market_fair_ps"].extend(
             [r["p_fair"] for r in fair_rows])
+        pooled['fair_ys'].extend(1 if r['b']['res']=='win' else 0 for r in fair_rows)
+        pooled['fair_model_ps'].extend(r['p_model'] for r in fair_rows)
+        pooled['fair_months'].extend(str(r['b']['d'])[:7] for r in fair_rows)
         pooled["model_raw_ps"].extend(ps_model)
         pooled["model_cal_ps"].extend(ps_cal)
         pooled["ys"].extend(ys)
@@ -560,14 +567,8 @@ def run_model_walkforward(
     if pooled["ys"]:
         result.market_raw = _source_metrics(
             pooled["market_raw_ps"], pooled["ys"])
-        fair_mask = [i for i, p in enumerate(pooled["model_raw_ps"])]
-        # fair tem subpopulação (linhas com fair valido): recalcular ys
-        # via zip das listas pooled separadas
         result.market_fair = _source_metrics(
-            pooled["market_fair_ps"],
-            [y for y, keep in zip(pooled["ys"], _fair_flags(pooled))
-             if keep] if len(pooled["market_fair_ps"]) != len(pooled["ys"])
-            else pooled["ys"],
+            pooled["market_fair_ps"], pooled['fair_ys'],
         )
         result.model_raw = _source_metrics(
             pooled["model_raw_ps"], pooled["ys"])
@@ -579,10 +580,10 @@ def run_model_walkforward(
             pooled["ys"], pooled["months"],
             "logloss", config.bootstrap_resamples, config.bootstrap_seed,
         )
-        if len(pooled["market_fair_ps"]) == len(pooled["ys"]):
+        if pooled["market_fair_ps"]:
             result.paired_model_vs_fair = _paired_comparison(
-                pooled["market_fair_ps"], pooled["model_raw_ps"],
-                pooled["ys"], pooled["months"],
+                pooled["market_fair_ps"], pooled["fair_model_ps"],
+                pooled["fair_ys"], pooled["fair_months"],
                 "logloss", config.bootstrap_resamples, config.bootstrap_seed,
             )
 
@@ -632,6 +633,41 @@ class _ModelView:
 
 
 _MODEL_VIEW = _ModelView()
+
+
+def _internal_calibration_rows(train_bets, matches, window, model_fn):
+    """Três blocos internos rolling-origin; labels precisam existir no TRAIN."""
+    from .model_calibration import CalibrationRow
+    from .temporal import result_time
+
+    days = sorted({str(b['d']) for b in train_bets})
+    if len(days) < 4 or not matches:
+        return []
+    availability = {(m.home, m.away, str(m.kickoff)[:10]): result_time(m)
+                    for m in matches}
+    rows = []
+    for part in range(1,4):
+        lo, hi = len(days)*part//4, len(days)*(part+1)//4
+        block = set(days[lo:hi])
+        if not block:
+            continue
+        cutoff = (date.fromisoformat(min(block))-timedelta(days=window.gap_days)).isoformat()
+        inner = model_fn(matches, cutoff)
+        if inner is None:
+            continue
+        for b in train_bets:
+            if str(b['d']) not in block or b.get('res') not in ('win','loss'):
+                continue
+            key = (str(b.get('home','')), str(b.get('away','')), str(b['d']))
+            published = availability.get(key)
+            if not published or utc_key(published) >= utc_key(window.train_end):
+                continue
+            idx = _outcome_index(b.get('oc',''))
+            probs = _prob_1x2(inner, key[0], key[1], day=key[2])
+            if idx >= 0 and probs is not None:
+                rows.append(CalibrationRow(probs[idx], int(b['res']=='win'),
+                            key[2], published, cutoff, '1x2'))
+    return rows
 
 
 def _rows_with_model_probs(

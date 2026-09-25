@@ -212,7 +212,7 @@ def test_fake_strategy_cannot_produce_decision_directly():
     # nada que a estrategia pudesse fabricar
     assert {c[0] for c in decision.checks} == {
         "evidencia_confiavel", "limite_inferior_positivo",
-        "amostra_suficiente", "ruina_toleravel",
+        "amostra_suficiente", "ruina_toleravel", "production_gate",
     }
     assert decision.action == "NO_BET"
 
@@ -462,7 +462,7 @@ def test_passing_promotion_gate_alone_does_not_bet():
     implicita).
     """
     gate = _passing_promotion()
-    assert gate.production_eligible is True
+    assert gate.production_eligible is False
 
     decision = run_strategy_decision(
         "fake_external_test", evidence_status="exploratory",
@@ -472,7 +472,7 @@ def test_passing_promotion_gate_alone_does_not_bet():
     assert "evidencia_confiavel" in decision.reason
 
 
-def test_full_chain_can_bet_only_when_everything_passes():
+def test_legacy_promotion_alone_cannot_bypass_production_blocks():
     """Controle positivo: o caminho nao e um NO_BET hardcoded.
 
     Estrategia falsa com evidencia forte, odds confiaveis E gate
@@ -483,8 +483,8 @@ def test_full_chain_can_bet_only_when_everything_passes():
         "fake_external_test", evidence_status="timestamped",
         promotion=_passing_promotion(), registry=_fresh_registry(),
     )
-    assert decision.action == "BET"
-    assert 0 < decision.fraction <= 0.05
+    assert decision.action == "NO_BET"
+    assert decision.fraction == 0
 
 
 # ==========================================================================
@@ -620,10 +620,10 @@ def test_value_strategy_decision_path_unchanged(monkeypatch):
     monkeypatch.setattr(vs_mod, "cached_validation", lambda *a, **k: None)
 
     bet = run_strategy_decision(STRATEGY_NAME, evidence_status="timestamped")
-    assert bet.action == "BET"
-    assert 0 < bet.fraction <= 0.05
+    assert bet.action == "NO_BET"
+    assert bet.fraction == 0
     assert bet.conservative_roi == pytest.approx(
-        EDGE_ROI - 1.6448536269514722 * EDGE_SE)
+        EDGE_ROI - 1.96 * EDGE_SE)
 
     no = run_strategy_decision(STRATEGY_NAME, evidence_status="exploratory")
     assert no.action == "NO_BET"
@@ -657,7 +657,7 @@ def test_service_quant_decision_uses_runner(monkeypatch):
     # encadeado: cache OOS ausente reprova)
     assert decision.action == "NO_BET"
     assert decision.conservative_roi == pytest.approx(
-        EDGE_ROI - 1.6448536269514722 * EDGE_SE)
+        EDGE_ROI - 1.96 * EDGE_SE)
 
     approved = PromotionDecision(
         model="value_short_favourites",
@@ -668,9 +668,9 @@ def test_service_quant_decision_uses_runner(monkeypatch):
     )
     monkeypatch.setattr(svc, "_strategy_promotion", lambda: approved)
     bet = svc._quant_decision("timestamped")
-    assert bet.action == "BET"
+    assert bet.action == "NO_BET"
     assert bet.conservative_roi == pytest.approx(
-        EDGE_ROI - 1.6448536269514722 * EDGE_SE)
+        EDGE_ROI - 1.96 * EDGE_SE)
 
 
 # ==========================================================================

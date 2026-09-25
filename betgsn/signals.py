@@ -20,6 +20,8 @@ from typing import Sequence
 from .engine import ConsensusLine, evaluate_market, stake_plan
 from .model import Fixture, ScoreMatrix, TeamRating
 from .timeutil import now_utc
+from .config import production_thresholds
+from .production_policy import ProductionGate, finite_number, selection_reasons
 
 
 class Confidence(str, Enum):
@@ -34,7 +36,7 @@ EV_FORTE = 0.08
 EV_MEDIA = 0.045
 EV_FRACA = 0.02
 MIN_BOOKS = 3          # exige consenso de pelo menos N casas
-MAX_SPREAD = 0.25      # dispersao maxima de odds tolerada
+MAX_SPREAD = production_thresholds()['max_spread']
 
 
 @dataclass
@@ -125,13 +127,16 @@ class SignalReport:
         return sum(s.gross_profit_if_win for s in self.signals)
 
 
-def classify(ev: float, n_books: int, spread: float) -> Confidence:
-    """Classifica a forca do sinal combinando EV, consenso e dispersao."""
-    if n_books < MIN_BOOKS:
+def classify(ev: float, n_books: int, spread: float, *, edge: float | None = None,
+             market: str = '', production_gate: ProductionGate | None = None,
+             quote_valid: bool = False) -> Confidence:
+    """FORTE requer política operacional completa; legado permanece pesquisa."""
+    if type(n_books) is not int or n_books < MIN_BOOKS:
         return Confidence.DESCARTE
-    if spread > MAX_SPREAD:
+    if not finite_number(ev) or not finite_number(spread) or not 0 <= spread <= MAX_SPREAD:
         return Confidence.DESCARTE
-    if ev >= EV_FORTE:
+    if not selection_reasons(edge=edge, ev=ev, spread=spread, books_count=n_books,
+                             market=market, gate=production_gate, quote_valid=quote_valid):
         return Confidence.FORTE
     if ev >= EV_MEDIA:
         return Confidence.MEDIA

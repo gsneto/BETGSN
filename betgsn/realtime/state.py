@@ -32,6 +32,7 @@ from typing import Iterable, Sequence
 
 from ..odds_normalize import NormalizedQuote
 from ..timeutil import parse_kickoff
+from ..markets import validate_selection_line
 
 #: Profundidade maxima do historico por linha (casa x linha).
 HISTORY_DEPTH = 64
@@ -193,9 +194,10 @@ class MarketState:
                 timestamp=quote.timestamp,
                 price=quote.price,
             )
-        if quote.line is not None and quote.line < 0:
+        line_problem = validate_selection_line(quote.market, quote.selection, quote.line)
+        if line_problem:
             return QuoteProblem(
-                reason="NEGATIVE_LINE",
+                reason=line_problem,
                 provider=quote.provider,
                 event_id=quote.event_id,
                 bookmaker=quote.bookmaker,

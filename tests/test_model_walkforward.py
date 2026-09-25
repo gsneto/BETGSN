@@ -50,6 +50,10 @@ class _Match:
         self.home_goals = home_goals
         self.away_goals = away_goals
         self.timezone = "UTC"
+        self.result_available_at = None
+        self.xg_available_at = None
+        self.xg_status = 'UNAVAILABLE'
+        self.xg_source = None
         self.weight = 1.0
         self.home_xg = None
         self.away_xg = None

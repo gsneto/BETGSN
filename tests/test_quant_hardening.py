@@ -79,7 +79,7 @@ def test_no_bet_decision_has_zero_exposure():
     """NO BET -> stake 0, fracao 0: sem parlay, sem workaround."""
     decision = decide_bet(0.02, 0.001, 2.0, evidence_status="timestamped",
                           n_bets=5000)
-    assert decision.action == "BET"  # controlo: com tudo ok, é BET
+    assert decision.action == "NO_BET"  # gate dos sete blocos ausente
     no = decide_bet(-0.01, 0.001, 2.0, evidence_status="timestamped",
                     n_bets=5000)
     assert no.action == "NO_BET" and no.fraction == 0.0
@@ -139,8 +139,8 @@ def test_quant_decision_bet_requires_promotion_and_trusted_evidence(monkeypatch)
     # promotion ok + evidência confiável -> BET (todas as demais checks ok
     # com as constantes validadas)
     bet = svc._quant_decision("timestamped")
-    assert bet.action == "BET"
-    assert all(c.passed for c in bet.checks)
+    assert bet.action == "NO_BET"
+    assert any(c.name == 'production_gate' and not c.passed for c in bet.checks)
 
     # promotion ok + evidência EXPLORATORY -> NO BET (evidence bloqueia)
     no = svc._quant_decision("exploratory")
@@ -390,10 +390,8 @@ def test_future_observation_cannot_register_clv_entry(tmp_path):
 
 def test_no_evidence_at_all_is_no_bet():
     """Provider sem odds, sem cache, sem CLV: decisão honesta é NO BET."""
-    decision = decide_bet(0.0, 0.0, 1.0, evidence_status="exploratory")
-    assert decision.action == "NO_BET"
-    assert decision.fraction == 0.0
-    assert "evidencia_confiavel" in decision.reason
+    with pytest.raises(ValueError, match='invalid financial'):
+        decide_bet(0.0, 0.0, 1.0, evidence_status="exploratory")
 
 
 def test_promotion_with_empty_segments_never_eligible():
@@ -439,8 +437,9 @@ def _gate_segment(league: str, season: str):
 _GOOD_CALIBRATION = {"mean_ece": 0.02, "n_segments": 20,
                      "insufficient_segments": 0,
                      "min_sample_per_segment": 200, "method": "platt"}
-_GOOD_CLV = {"mean": 0.02, "ci_low": 0.005, "ci_high": 0.04, "n": 50,
-             "prospective": True}
+_GOOD_CLV = {"mean": 0.02, "ci_low": 0.005, "ci_high": 0.04, "n": 200,
+             "median": .02, "n_positive": 110, "positive_rate": .55,
+             "prospective": True, "closed_only": True}
 
 
 def _gate_kwargs(**overrides):
@@ -465,7 +464,7 @@ def test_gate_case_10_all_criteria_passing_is_eligible():
 
     decision = evaluate_strategy_promotion(
         STRATEGY_NAME, **_gate_kwargs())
-    assert decision.production_eligible is True
+    assert decision.production_eligible is False  # sete blocos operacionais ausentes
     assert decision.recommended_status.value == "VALIDATED"
     assert decision.blocking_failures == []
 

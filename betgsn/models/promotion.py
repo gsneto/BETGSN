@@ -17,6 +17,8 @@ import statistics
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Sequence
+from ..config import production_thresholds
+from ..production_policy import ProductionGate, finite_number
 
 
 class ModelStatus(str, Enum):
@@ -68,7 +70,7 @@ MIN_MEANINGFUL_IMPROVEMENT = 0.05
 #: Amostra total minima (partidas) para a evidencia contar.
 MIN_TOTAL_MATCHES = 400
 #: Janelas walk-forward minimas quando a evidencia OOS e declarada.
-MIN_WINDOWS = 2
+MIN_WINDOWS = production_thresholds()['min_windows']
 #: Drawdown maximo tolerado quando a evidencia financeira e declarada.
 MAX_ACCEPTABLE_DRAWDOWN = 0.50
 #: Segmentos minimos para estimar a dispersao entre segmentos.
@@ -80,7 +82,7 @@ MIN_SEGMENTS_FOR_NOISE = 3
 #: e a media nao se distingue de zero. CLV declarado com amostra menor
 #: reprova o criterio — evidencia insuficiente declarada e declaracao
 #: que falhou, nao ausencia que passa.
-MIN_CLV_SAMPLE = 30
+MIN_CLV_SAMPLE = production_thresholds()['min_clv_sample']
 
 
 @dataclass(frozen=True)
@@ -219,6 +221,7 @@ def evaluate_promotion(
     tuned_on_test: bool = False,
     min_meaningful_improvement: float = MIN_MEANINGFUL_IMPROVEMENT,
     calibration: dict | None = None,
+    production_gate: ProductionGate | None = None,
 ) -> PromotionDecision:
     """Avalia se um modelo pode sair de EXPERIMENTAL.
 
@@ -460,16 +463,17 @@ def evaluate_promotion(
 
     if clv is None:
         criteria.append(PromotionCriterion(
-            name="clv_nao_negativo", passed=True, blocking=False,
+            name="clv_nao_negativo", passed=False, blocking=True,
             detail="CLV nao informado (odds sem timestamp de publicacao)",
         ))
     else:
-        clv_mean = float(clv.get("mean", 0.0))
+        clv_mean = clv.get("mean")
         clv_low = clv.get("ci_low")
-        clv_passed = clv_mean > 0 and (clv_low is None or clv_low > 0)
+        clv_passed = (finite_number(clv_mean) and clv_mean > 0
+                      and finite_number(clv_low) and clv_low > 0)
         detail = (
-            f"CLV medio {clv_mean:+.4%}"
-            + (f", IC low {clv_low:+.4%}" if clv_low is not None else "")
+            (f"CLV medio {clv_mean:+.4%}" if finite_number(clv_mean) else 'CLV indisponivel')
+            + (f", IC low {clv_low:+.4%}" if finite_number(clv_low) else "")
         )
         # M7: CLV declarado precisa ser prospectivo e amostrado. Sem
         # isso, uma media positiva sobre meia duzia de linhas entraria
@@ -488,6 +492,21 @@ def evaluate_promotion(
             detail += "; PROVENANCIA NAO DECLARADA: informe " \
                       "'prospective' para classificar o CLV"
         n_clv = clv.get("n")
+        median = clv.get('median')
+        positive = clv.get('n_positive')
+        rate = clv.get('positive_rate')
+        strict_passed = (
+            type(n_clv) is int and n_clv >= MIN_CLV_SAMPLE
+            and finite_number(median) and median > 0
+            and type(positive) is int and 0 <= positive <= n_clv
+            and positive*100 >= 55*n_clv
+            and finite_number(rate) and .55 <= rate <= 1
+            and abs(rate-positive/n_clv) <= 1e-6
+            and prospective is True and clv.get('closed_only') is True
+        )
+        clv_passed = bool(clv_passed and strict_passed)
+        if not strict_passed:
+            detail += '; evidencia insuficiente: exige CLOSED prospectivo n>=200, mediana>0, beat-close>=55%'
         if clv_passed and n_clv is not None:
             if int(n_clv) < MIN_CLV_SAMPLE:
                 clv_passed = False
@@ -537,7 +556,9 @@ def evaluate_promotion(
         mean_improvement=mean_improvement,
         improvement_t_stat=t_stat,
         min_meaningful_improvement=min_meaningful_improvement,
-        production_eligible=bool(all_passed and margin_passed),
+        production_eligible=bool(all_passed and margin_passed
+                                 and isinstance(production_gate, ProductionGate)
+                                 and production_gate.production_eligible),
     )
 
 

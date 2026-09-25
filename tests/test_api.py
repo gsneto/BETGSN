@@ -870,13 +870,13 @@ def test_quant_decision_is_not_hardcoded(svc_snapshot, monkeypatch):
     svc, _ = svc_snapshot
     monkeypatch.setattr(svc, "_strategy_promotion", lambda: approved)
     decision = svc._quant_decision("timestamped")
-    assert decision.action == "BET"
-    assert decision.should_bet is True
-    assert 0 < decision.fraction <= 0.05
-    assert all(c.passed for c in decision.checks)
+    assert decision.action == "NO_BET"
+    assert decision.should_bet is False
+    assert decision.fraction == 0
+    assert any(c.name == 'production_gate' and not c.passed for c in decision.checks)
     assert {c.name for c in decision.checks} == {
         "evidencia_confiavel", "promocao_da_estrategia",
-        "limite_inferior_positivo", "amostra_suficiente", "ruina_toleravel",
+        "limite_inferior_positivo", "amostra_suficiente", "ruina_toleravel", "production_gate",
     }
 
 

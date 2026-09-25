@@ -47,6 +47,7 @@ from .models.promotion import (
 )
 from .staking import EVIDENCE_STATUSES, BetDecision, decide_bet
 from .strategy import StrategyEvidence, StrategyRegistry, default_registry
+from .production_policy import ProductionGate
 
 __all__ = [
     "evaluate_strategy_promotion",
@@ -94,6 +95,7 @@ def run_strategy_decision(
     evidence_status: str,
     promotion: PromotionDecision | None = None,
     registry: StrategyRegistry | None = None,
+    production_gate: ProductionGate | None = None,
 ) -> BetDecision:
     """Leva a estrategia registrada ao decision gate e devolve a decisao.
 
@@ -129,4 +131,5 @@ def run_strategy_decision(
         evidence_status=evidence_status,
         n_bets=evidence.n_bets,
         promotion_eligible=promotion_eligible,
+        production_gate=production_gate,
     )

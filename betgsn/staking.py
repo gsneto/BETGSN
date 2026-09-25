@@ -48,6 +48,7 @@ import math
 import random
 from dataclasses import asdict, dataclass, field, replace
 from typing import Sequence
+from .production_policy import ProductionGate, finite_number
 
 # --------------------------------------------------------------------------
 # Parametros de entrada
@@ -454,6 +455,7 @@ def decide_bet(
     ruin_tolerance: float = 0.10,
     min_bets: int = MIN_EVIDENCE_BETS,
     promotion_eligible: bool | None = None,
+    production_gate: ProductionGate | None = None,
 ) -> BetDecision:
     """Decide se vale apostar, dado o intervalo de confianca da vantagem.
 
@@ -471,9 +473,15 @@ def decide_bet(
       verificacoes (evidencia, limite inferior, amostra, ruina) continu
       valendo. Ninguem vira production-ready por declaracao.
     """
-    lower = conservative_roi(roi, roi_se)
-    kelly = full_kelly(roi, odd) if roi > 0 else 0.0
+    if (not all(finite_number(x) for x in (roi, roi_se, odd, kelly_fraction))
+            or roi_se < 0 or odd <= 1 or not 0 < kelly_fraction <= 1):
+        raise ValueError('invalid financial inputs')
+    lower = conservative_roi(roi, roi_se, z=1.96)
+    kelly = full_kelly(lower, odd) if lower > 0 else 0.0
     checks: list[tuple[str, bool, str]] = []
+    checks.append(('production_gate',
+                   isinstance(production_gate, ProductionGate) and production_gate.production_eligible,
+                   'Todos os sete blocos devem estar GREEN com fingerprint atual'))
 
     trusted = evidence_status in TRUSTED_EVIDENCE
     checks.append((
@@ -493,11 +501,11 @@ def decide_bet(
     checks.append((
         "limite_inferior_positivo", lower > min_lower_bound,
         f"ROI conservador {lower:+.2%} (exige > {min_lower_bound:+.2%}); "
-        f"ponto {roi:+.2%} +/- {Z_CONSERVATIVE:.2f}*{roi_se:.2%}",
+        f"ponto {roi:+.2%} +/- 1.96*{roi_se:.2%} (IC95% bilateral)",
     ))
 
     if n_bets is None:
-        checks.append(("amostra_suficiente", True, "numero de apostas nao informado"))
+        checks.append(("amostra_suficiente", False, "numero de apostas nao informado"))
     else:
         checks.append((
             "amostra_suficiente", n_bets >= min_bets,

@@ -1187,11 +1187,13 @@ def prospective_clv_evidence(store=None) -> dict[str, Any]:
     pcts: list[float] = []
     for lifecycle in store.clv_lifecycle_sweep().lifecycles:
         result = lifecycle.result
-        if lifecycle.state == "CLOSED" and result is not None and result.clv_percentage is not None:
+        if (lifecycle.state == "CLOSED" and result is not None and result.valid
+                and result.clv_percentage is not None and math.isfinite(result.clv_percentage)):
             pcts.append(float(result.clv_percentage))
     n = len(pcts)
     if n == 0:
-        return {"mean": 0.0, "n": 0, "prospective": True}
+        return {"mean": None, "median": None, "positive_rate": None,
+                "n_positive": 0, "n": 0, "prospective": True, "closed_only": True}
     mean = statistics.fmean(pcts)
     if n >= 2:
         se = statistics.stdev(pcts) / math.sqrt(n)
@@ -1204,5 +1206,9 @@ def prospective_clv_evidence(store=None) -> dict[str, Any]:
         "ci_low": round(ci_low, 6),
         "ci_high": round(ci_high, 6),
         "n": n,
+        "median": statistics.median(pcts),
+        "n_positive": sum(p > 0 for p in pcts),
+        "positive_rate": sum(p > 0 for p in pcts)/n,
+        "closed_only": True,
         "prospective": True,
     }
