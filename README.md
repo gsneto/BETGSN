@@ -270,6 +270,46 @@ fora do Git).
 - promotion gate e NO BET permanecem intactos: sinal informativo NAO e
   acao elegivel de producao.
 
+## Alpha Lab (laboratorio quantitativo)
+
+O **Alpha Lab** descobre honestamente se um sinal antecipa movimento de
+preco — sem fabricar ROI. Ver `docs/ALPHA_LAB.md`.
+
+- Replay **point-in-time** do store: o estado do sinal em T usa so quotes
+  `<= T`; o futuro e lido apenas para MEDIR (+5/15/30/60min e closing).
+- Mesmos thresholds da producao (`SignalRules`); nenhuma logica paralela.
+- Veredito por evidencia: n, IC bootstrap, consistencia por dimensao.
+- Registry central: `RESEARCH` / `INSUFFICIENT_DATA` / `VALIDATED` /
+  `FRAGILE` / `NO_EVIDENCE` / `BLOCKED` / `PRODUCTION_CANDIDATE`.
+
+Comando:
+
+```
+python tools/alpha_lab_run.py --stride=1800
+python tools/provider_diagnostics.py
+```
+
+Resultado atual (fingerprint `1b6e922b85ad2c08`, 51.865 observacoes):
+
+| Sinal | n | Metrica | Status |
+|---|---:|---|---|
+| BOOKMAKER_OUTLIER | 40.919 | move assinado +5m ~0,05% (IC inclui 0) | **NO_EVIDENCE** |
+| BEST_PRICE_GAP | 7.155 | convergencia 30,9% (gap persiste) | VALIDATED (observacao) |
+| DISPERSION_SPIKE | 3.791 | convergencia 30,7% | VALIDATED (observacao) |
+
+Leitura honesta: o OUTLIER (62% dos sinais criados) **nao** antecipa o
+mercado — majoritariamente reverte. BEST_PRICE_GAP e DISPERSION_SPIKE
+persistem, mas sem CLV/closing nao ha veredito de edge. **CLV BLOCKED
+(n=0), EXECUTION UNKNOWN → NO_BET.**
+
+Endpoints de observabilidade e laboratorio:
+
+```
+GET /api/realtime/metrics      contadores (dado/provider/matching/freshness)
+GET /api/realtime/market       vista de mercado ao vivo (INFORMACIONAL, NO_BET)
+GET /api/quant/alpha-lab       artefatos do Alpha Lab (somente leitura)
+```
+
 ## Backtest (validacao historica)
 
 A aba **BACKTEST** responde: *"se o algoritmo tivesse rodado naquele

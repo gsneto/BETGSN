@@ -127,3 +127,40 @@ def test_executions_endpoint_registra_e_remove(client):
         "selection": body["selection"],
     })
     assert d.status_code == 200 and d.json()["cleared"] is True
+
+
+# --------------------------------------------------------------------------
+# observabilidade + mercado ao vivo (Alpha Lab / FASE 30-31, 43)
+# --------------------------------------------------------------------------
+
+
+def test_metrics_endpoint_expoe_contadores(client):
+    body = client.get("/api/realtime/metrics").json()
+    m = body["metrics"]
+    for key in ("quote_count", "event_count", "event_matched",
+                "event_unmatched", "bookmaker_count", "freshness",
+                "provider_errors", "latency_ms", "future_count",
+                "invalid_timestamp_count"):
+        assert key in m, f"/metrics sem '{key}'"
+    assert "p50" in m["latency_ms"] and "p95" in m["latency_ms"]
+
+
+def test_status_carrega_metrics(client):
+    body = client.get("/api/realtime/status").json()
+    assert "metrics" in body["engine"]
+
+
+def test_market_endpoint_e_informacional(client):
+    body = client.get("/api/realtime/market").json()
+    assert "rows" in body and isinstance(body["rows"], list)
+    for row in body["rows"]:
+        assert row["production"] == "NO_BET", (
+            "vista de mercado e INFORMACIONAL, nunca producao"
+        )
+        assert row["book_count"] >= 1
+        assert row["best_price"] >= row["median_price"] >= row["worst_price"]
+
+
+def test_alpha_lab_endpoint_nao_recalcula(client):
+    body = client.get("/api/quant/alpha-lab").json()
+    assert body["status"] in ("OK", "NOT_RUN")

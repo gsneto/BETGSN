@@ -1,5 +1,11 @@
 # CLV operacional e Ensemble — agent/clv-ensemble
 
+> **Estado atual (2026-09-25):** CLV segue **BLOCKED** — 894 entradas no
+> store, **0 CLOSED** (kickoffs futuros). `MIN_CLV_SAMPLE` unificado em
+> 200 (`tools/clv_report.py` importa de `models.promotion`). Sem
+> fechamento real não há veredito de CLV; `n=0` aparece como `mean=null`,
+> nunca zero. Ver `docs/ALPHA_LAB.md`.
+
 Base publicada: `1538c27` (main e origin/main iguais no início).
 
 ## Auditoria do caminho existente

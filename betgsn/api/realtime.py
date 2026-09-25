@@ -439,6 +439,103 @@ def register_realtime_routes(app: FastAPI) -> None:
             "boot": boot_state(),
         }
 
+    @app.get("/api/realtime/metrics", tags=["realtime"])
+    def realtime_metrics() -> dict:
+        """Observabilidade agregada: dado/provider/matching/freshness/sinais."""
+        eng = engine_or_503()
+        return {
+            "generated_at": eng.clock().isoformat(),
+            "metrics": eng.market_metrics(),
+            "policy_fingerprint": _policy_fingerprint(),
+        }
+
+    @app.get("/api/realtime/market", tags=["realtime"])
+    def realtime_market(
+        event_key: Optional[str] = Query(None),
+        limit: int = Query(50, ge=1, le=500),
+    ) -> dict:
+        """Vista de MERCADO ao vivo por linha (best/2nd/median/worst/disp).
+
+        INFORMACIONAL: nunca é recomendação de aposta. `production` é sempre
+        NO_BET enquanto o gate não estiver completo.
+        """
+        import statistics
+
+        eng = engine_or_503()
+        rows: list[dict] = []
+        for view in eng.board():
+            if event_key and view.get("event_key") != event_key:
+                continue
+            for market in view.get("markets", []):
+                for selection in market.get("selections", []):
+                    books = selection.get("books", [])
+                    prices = [b["price"] for b in books if b.get("price")]
+                    if not prices:
+                        continue
+                    ordered = sorted(prices, reverse=True)
+                    rows.append({
+                        "event_key": view["event_key"],
+                        "home": view.get("home"),
+                        "away": view.get("away"),
+                        "kickoff": view.get("kickoff"),
+                        "league": view.get("league"),
+                        "matched": view.get("matched"),
+                        "market": market.get("market"),
+                        "selection": selection.get("selection"),
+                        "best_price": ordered[0],
+                        "second_best": ordered[1] if len(ordered) > 1 else None,
+                        "median_price": statistics.median(ordered),
+                        "worst_price": ordered[-1],
+                        "dispersion": (
+                            statistics.pstdev(ordered) if len(ordered) > 1 else 0.0
+                        ),
+                        "book_count": len(prices),
+                        "best_book": next(
+                            (b["bookmaker"] for b in books
+                             if b.get("price") == ordered[0]), None
+                        ),
+                        "production": "NO_BET",
+                        "evidence_status": "OBSERVED",
+                    })
+        rows.sort(key=lambda r: (r["kickoff"] or "", r["market"] or ""))
+        return {
+            "generated_at": eng.clock().isoformat(),
+            "policy_fingerprint": _policy_fingerprint(),
+            "n_rows": len(rows),
+            "rows": rows[:limit],
+        }
+
+    @app.get("/api/quant/alpha-lab", tags=["quant"])
+    def quant_alpha_lab() -> dict:
+        """Lê os artefatos do Alpha Lab (somente leitura, sem recalcular)."""
+        import json
+        from pathlib import Path
+
+        from ..config import output_root
+
+        root = output_root() / "engineering" / "quant" / "alpha_lab"
+        if not root.exists():
+            return {"status": "NOT_RUN", "root": str(root)}
+
+        def _load(name: str) -> dict | None:
+            path = root / name
+            if not path.exists():
+                return None
+            try:
+                return json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                return None
+
+        return {
+            "status": "OK",
+            "evaluations": _load("alpha_evaluations.json"),
+            "registry": _load("signal_registry.json"),
+            "market_audit": _load("market_audit.json"),
+            "clv": _load("clv_evidence.json"),
+            "execution": _load("execution_gap.json"),
+            "promotion": _load("promotion_report.json"),
+        }
+
     @app.get("/api/realtime/stream", tags=["realtime"])
     async def realtime_stream(
         request: Request,

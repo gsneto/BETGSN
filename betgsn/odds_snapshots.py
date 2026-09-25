@@ -780,6 +780,45 @@ class OddsSnapshotStore:
                 conn.close()
         return [self._to_obs(r) for r in rows]
 
+    def match_keys(self) -> list[str]:
+        """Todas as chaves de partida observadas (ordenadas)."""
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    "SELECT DISTINCT match_key FROM odds_observations ORDER BY match_key"
+                ).fetchall()
+            finally:
+                conn.close()
+        return [r["match_key"] for r in rows]
+
+    def observations_for_markets(
+        self, markets: Sequence[str] | None = None,
+    ) -> list[OddsObservation]:
+        """Todas as observações (opcionalmente filtradas por mercado).
+
+        Leitura em streaming para o Alpha Lab: 500k+ linhas em lista única.
+        Ordena por (match_key, timestamp) para o replay reconstruir séries.
+        """
+        with self._lock:
+            conn = self._conn()
+            try:
+                if markets:
+                    marks = ",".join("?" for _ in markets)
+                    rows = conn.execute(
+                        f"""SELECT * FROM odds_observations
+                            WHERE market IN ({marks})
+                            ORDER BY match_key, timestamp""",
+                        tuple(markets),
+                    ).fetchall()
+                else:
+                    rows = conn.execute(
+                        "SELECT * FROM odds_observations ORDER BY match_key, timestamp"
+                    ).fetchall()
+            finally:
+                conn.close()
+        return [self._to_obs(r) for r in rows]
+
     def latest_observation_stamp(
         self,
         match_keys: Sequence[str] = (),

@@ -1,5 +1,13 @@
 # BETGSN — Validação Quantitativa Honesta (Agente 3 — QUANT)
 
+> **Estado atual (2026-09-25):** o laboratório quantitativo vive em
+> `docs/ALPHA_LAB.md`. Veredito corrente: **NO_BET** — CLV BLOCKED (n=0
+> CLOSED), EXECUTION UNKNOWN. O sinal BOOKMAKER_OUTLIER (62% dos criados)
+> foi testado e é **NO_EVIDENCE** (não antecipa movimento de mercado).
+> BEST_PRICE_GAP e DISPERSION_SPIKE persistem (VALIDATED como observação,
+> sem veredito de edge). Os números abaixo são registro do que foi medido,
+> não evidência de edge.
+
 Este documento descreve o que foi fortalecido em modelos, calibração,
 ensemble, benchmarks, avaliação, backtest, métricas, EV, portfólio,
 staking, robustez, ablação e gates de promoção — e, principalmente, o que

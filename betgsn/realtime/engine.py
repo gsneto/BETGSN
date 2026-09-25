@@ -125,6 +125,15 @@ class _JsonlLogger:
             self._failures += 1
 
 
+def _percentile(values: Sequence[float], q: float) -> float | None:
+    """Percentil simples (nearest-rank) de uma amostra de latências."""
+    clean = sorted(float(v) for v in values if v is not None)
+    if not clean:
+        return None
+    idx = min(len(clean) - 1, int(q * len(clean)))
+    return round(clean[idx], 2)
+
+
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -580,7 +589,66 @@ class RealtimeOddsEngine:
                 "last_quote_at": self._last_quote_at(),
                 "last_movement_at": self._last_movement_at(),
                 "last_signal_at": self._last_signal_at(),
+                "metrics": self.market_metrics(),
                 "now": now.isoformat(),
+            }
+
+    def market_metrics(self) -> dict:
+        """Observabilidade agregada: permite achar RÁPIDO onde está o problema.
+
+        Responde: é dado? provider? matching? freshness? sinais? Sem
+        inventar: contadores derivados do estado real e do health observado.
+        """
+        with self._lock:
+            stats = self.state.stats()
+            books = {q.bookmaker for q in self.state.latest.values()}
+            # distribuição de frescor a partir das views (fonte canônica)
+            try:
+                views = event_views(
+                    self.state, self.signals.thresholds, self.clock()
+                )
+            except Exception:  # noqa: BLE001
+                views = []
+            freshness: dict[str, int] = {}
+            for view in views:
+                for market_view in view.markets:
+                    for selection in market_view.selections:
+                        for book in selection.books:
+                            freshness[book.freshness] = (
+                                freshness.get(book.freshness, 0) + 1
+                            )
+            latencies = [
+                loop.health_snapshot().get("latency_ms")
+                for loop in self.loops
+                if loop.health_snapshot().get("latency_ms") is not None
+            ]
+            provider_errors = sum(
+                1 for loop in self.loops
+                if loop.health_snapshot().get("last_error")
+            )
+            problems = [p.reason for p in list(self.state.problems)]
+            problem_counts: dict[str, int] = {}
+            for reason in problems:
+                problem_counts[reason] = problem_counts.get(reason, 0) + 1
+            return {
+                "quote_count": len(self.state.latest),
+                "event_count": stats["events"],
+                "event_matched": stats["events_matched"],
+                "event_unmatched": stats["events_unmatched"],
+                "line_count": stats["lines"],
+                "bookmaker_count": len(books),
+                "freshness": freshness,
+                "problems": problem_counts,
+                "future_count": problem_counts.get("FUTURE_TIMESTAMP", 0),
+                "invalid_timestamp_count": problem_counts.get(
+                    "MISSING_OR_INVALID_TIMESTAMP", 0),
+                "provider_errors": provider_errors,
+                "latency_ms": {
+                    "p50": _percentile(latencies, 0.50),
+                    "p95": _percentile(latencies, 0.95),
+                },
+                "signals_active": self.signals.stats().get("active", 0),
+                "write_errors": len(self._write_errors),
             }
 
     def board(self) -> list[dict]:
