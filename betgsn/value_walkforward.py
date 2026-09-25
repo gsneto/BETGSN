@@ -1036,6 +1036,9 @@ class OosEvidence:
     aggregate: dict[str, Any]
     calibration_windows: tuple[dict, ...] = ()
     calibration_insufficient: int = 0
+    #: cenarios de robustez do relatorio OOS (degradacao vs baseline por
+    #: cenario). Vazio quando o cache nao os carrega — nunca inventados.
+    robustness: tuple[dict, ...] = ()
 
     def promotion_segments(self) -> list:
         """Segmentos (liga x temporada) do promotion gate — SO apostas OOS.
@@ -1164,6 +1167,7 @@ def cached_oos_evidence(
         aggregate=dict(agg),
         calibration_windows=tuple(payload.get("calibration_windows") or ()),
         calibration_insufficient=int(payload.get("calibration_insufficient", 0)),
+        robustness=tuple(payload.get("robustness") or ()),
     )
 
 

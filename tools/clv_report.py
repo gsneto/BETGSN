@@ -9,8 +9,13 @@ Lê EXCLUSIVAMENTE o caminho prospectivo do store operacional:
 Reporta: n, média, mediana, distribuição, cobertura, período, partidas e
 bookmakers observados. Sem interpretação automática de "vantagem":
 
-    n < 30  → BLOCKED (o Promotion Gate não pode consumir)
-    n >= 30 → READY (pode alimentar o gate — nunca promove sozinho)
+    n < MIN_CLV_SAMPLE (200)  → BLOCKED (o Promotion Gate não pode consumir)
+    n >= MIN_CLV_SAMPLE       → READY (pode alimentar o gate — nunca promove
+                                sozinho)
+
+CLV válido exige CLOSED + closing_price real + closing_timestamp válido.
+PENDING / NO_CLOSE / INVALID / MISMATCH NÃO contam. n=0 aparece como
+n=0, mean=null — nunca como zero.
 
 Uso:
     python tools/clv_report.py
@@ -30,8 +35,11 @@ sys.path.insert(0, str(ROOT))
 from betgsn.odds_snapshots import OddsSnapshotStore  # noqa: E402
 from betgsn.value_walkforward import prospective_clv_evidence  # noqa: E402
 
-#: Mesmo limite do Promotion Gate (models.promotion.MIN_CLV_SAMPLE).
-MIN_CLV_SAMPLE = 30
+#: MESMO limite do Promotion Gate — importado de `models.promotion`, que
+#: por sua vez le `production_thresholds()['min_clv_sample']` (=200). Nao
+#: redefinir aqui: dois numeros que divergem deixariam o monitor dizer
+#: READY enquanto o gate ainda exige amostra maior (divergencia corrigida).
+from betgsn.models.promotion import MIN_CLV_SAMPLE  # noqa: E402
 
 
 def _pct(x: float) -> str:

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import threading
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from queue import Full, Queue
@@ -37,6 +38,11 @@ EVENT_DATA_QUALITY = "DATA_QUALITY"
 
 #: Capacidade da fila por assinante.
 SUBSCRIBER_QUEUE_SIZE = 512
+
+#: Quantos eventos recentes ficam retidos para REPLAY por Last-Event-ID.
+#: Um cliente que reconecta depois de uma queda recebe os eventos perdidos
+#: (dentro da janela) em vez de perder o intervalo silenciosamente.
+REPLAY_BUFFER_SIZE = 512
 
 
 @dataclass(frozen=True)
@@ -85,6 +91,8 @@ class EventBus:
         self._next_id = 1
         self._seen: set[str] = set()
         self._seen_order: list[str] = []
+        #: ring buffer dos ultimos eventos, para replay por Last-Event-ID
+        self._recent: deque[RealtimeEvent] = deque(maxlen=REPLAY_BUFFER_SIZE)
         self._queue_size = queue_size
         self.published_count = 0
         self.dropped_count = 0
@@ -124,6 +132,7 @@ class EventBus:
             subscribers = list(self._subscribers.values())
             self.published_count += 1
             self.last_event = event
+            self._recent.append(event)
         for queue in subscribers:
             try:
                 queue.put_nowait(event)
@@ -137,6 +146,24 @@ class EventBus:
                 except Full:
                     self.dropped_count += 1
         return True
+
+    def replay_after(self, event_id: str) -> list[RealtimeEvent]:
+        """Eventos retidos APOS `event_id` (replay de reconexao SSE).
+
+        - `event_id` vazio: nada a reenviar (conexao nova).
+        - `event_id` conhecido: tudo depois dele, na ordem original.
+        - `event_id` fora da janela retida: devolve TODO o buffer — o
+          cliente recebe o que ainda temos, em vez de perder o intervalo
+          sem aviso (a janela e limitada, nao infinita).
+        """
+        if not event_id:
+            return []
+        with self._lock:
+            recent = list(self._recent)
+        ids = [e.event_id for e in recent]
+        if event_id in ids:
+            return recent[ids.index(event_id) + 1:]
+        return recent
 
     def drain(self, queue: Queue, limit: int = 256) -> list[RealtimeEvent]:
         """Remove ate `limit` eventos da fila (usado em testes/SSE)."""

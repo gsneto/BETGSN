@@ -885,8 +885,21 @@ async def unhandled(_request, exc: Exception) -> JSONResponse:
     )
 
 
+#: Hosts considerados loopback (uso local). Bind fora disso expoe ~50
+#: rotas SEM autenticacao — so permitido com opt-in explicito.
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "[::1]"})
+
+
 def serve(host: str = "127.0.0.1", port: int = 8787, reload: bool = False) -> None:
+    import os
+
     import uvicorn
 
+    if host not in _LOOPBACK_HOSTS and os.environ.get("BETGSN_ALLOW_REMOTE") != "1":
+        raise SystemExit(
+            f"RECUSADO: bind em {host!r} expoe a API sem autenticacao. "
+            "Use 127.0.0.1 (loopback) ou defina BETGSN_ALLOW_REMOTE=1 se "
+            "voce entende o risco e protege a rede por fora."
+        )
     uvicorn.run("betgsn.api.server:app" if reload else app,
                 host=host, port=port, reload=reload)

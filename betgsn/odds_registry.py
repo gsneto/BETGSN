@@ -56,6 +56,10 @@ class ProviderSpec:
     factory: Callable[[], object]
     priority: int = 100
     features: tuple[str, ...] = ()
+    #: `False` = LEGACY: permanece registrado para health/historico, mas NAO
+    #: participa do capture operacional. Evita gastar requests e creditos em
+    #: provider fora da operacao (ex.: chave invalida retentando a cada run).
+    operational: bool = True
 
 
 class OddsProviderRegistry:
@@ -133,6 +137,24 @@ class OddsProviderRegistry:
             if (provider := self.lookup(spec.name)) is not None
         ]
 
+    def operational_providers(self) -> list[tuple[str, object]]:
+        """[(name, provider)] dos providers OPERACIONAIS configurados.
+
+        Exclui os marcados `operational=False` (LEGACY). E esta a lista que
+        o capture e o engine devem consumir: um provider legacy continua
+        visivel em health/historico, mas nunca gasta requests no runtime.
+        """
+        return [
+            (spec.name, provider)
+            for spec in self.specs()
+            if spec.operational
+            and (provider := self.lookup(spec.name)) is not None
+        ]
+
+    def legacy_names(self) -> list[str]:
+        """Nomes dos providers LEGACY registrados (nao operacionais)."""
+        return [spec.name for spec in self.specs() if not spec.operational]
+
 
 def default_odds_registry() -> OddsProviderRegistry:
     """Registry padrao: os CINCO providers de odds, por prioridade.
@@ -190,12 +212,15 @@ def default_odds_registry() -> OddsProviderRegistry:
             features=("odds", "live"),
         )
     )
+    # LEGACY: registrados para health/historico, fora do capture operacional.
+    # A operacao usa apenas The Odds API, ParlayAPI e OddsPapi (priority 1-3).
     registry.register(
         ProviderSpec(
             name="Odds-API.io",
             factory=OddsApiIoProvider.from_env,
             priority=4,
             features=("odds", "live"),
+            operational=False,
         )
     )
     registry.register(
@@ -204,6 +229,7 @@ def default_odds_registry() -> OddsProviderRegistry:
             factory=OpticOddsProvider.from_env,
             priority=5,
             features=("odds", "live"),
+            operational=False,
         )
     )
     return registry

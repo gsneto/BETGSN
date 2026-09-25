@@ -18,14 +18,22 @@ interface Props {
   /** sinais filtrados na tela, para a sparkline acompanhar o filtro */
   rows: Signal[];
   sampleLabel: string;
+  /** `false` sob NO_BET: os cards de lucro/exposição não apresentam valor */
+  betAllowed?: boolean;
 }
 
-export default function SignalsKpiStrip({ kpis, rows, sampleLabel }: Props) {
+export default function SignalsKpiStrip({
+  kpis,
+  rows,
+  sampleLabel,
+  betAllowed = true,
+}: Props) {
   const cumulative = useMemo(() => {
+    if (!betAllowed) return [0, 0];
     let acc = 0;
     const out = rows.map((s) => (acc += s.expected_profit));
     return out.length > 1 ? out : [0, 0];
-  }, [rows]);
+  }, [rows, betAllowed]);
 
   return (
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -47,21 +55,38 @@ export default function SignalsKpiStrip({ kpis, rows, sampleLabel }: Props) {
       />
       <KpiCard
         label="Lucro esperado"
-        value={fmtMoneySigned(kpis.expected_profit)}
-        context={`${fmtPctSigned(kpis.expected_profit_pct, 2)} da banca`}
-        tone={kpis.expected_profit > 0 ? "positive" : kpis.expected_profit < 0 ? "negative" : "default"}
+        value={betAllowed ? fmtMoneySigned(kpis.expected_profit) : "—"}
+        context={
+          betAllowed
+            ? `${fmtPctSigned(kpis.expected_profit_pct, 2)} da banca`
+            : "NO BET — decisão não autoriza aposta"
+        }
+        tone={
+          !betAllowed
+            ? "default"
+            : kpis.expected_profit > 0
+              ? "positive"
+              : kpis.expected_profit < 0
+                ? "negative"
+                : "default"
+        }
         spark={cumulative}
         icon={<TrendingUpIcon className="size-4" />}
-        tooltip="Soma de stake × EV de todos os sinais. Retorno médio teórico, não lucro garantido."
+        tooltip={
+          betAllowed
+            ? "Soma de stake × EV de todos os sinais. Retorno médio teórico, não lucro garantido."
+            : "NO BET: nenhuma aposta é criada, então não há lucro esperado operacional."
+        }
       />
       <KpiCard
         label="Exposição"
-        value={fmtPct(kpis.total_exposure_pct)}
-        context={sampleLabel}
-        delta={{
-          text: fmtMoneySigned(-kpis.worst_case_loss),
-          tone: "negative",
-        }}
+        value={betAllowed ? fmtPct(kpis.total_exposure_pct) : "—"}
+        context={betAllowed ? sampleLabel : "NO BET — sem exposição"}
+        delta={
+          betAllowed
+            ? { text: fmtMoneySigned(-kpis.worst_case_loss), tone: "negative" }
+            : undefined
+        }
         icon={<DatabaseIcon className="size-4" />}
         tooltip={`Soma das stakes: ${fmtInt(kpis.total)} sinais. O delta é a perda máxima se todas perderem.${
           kpis.exposure_scaled_by < 0.999

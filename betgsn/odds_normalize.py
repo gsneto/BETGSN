@@ -67,6 +67,14 @@ def event_key(home_team: str, away_team: str, kickoff: str) -> str:
     )
 
 
+#: Origem do timestamp de uma cotacao. Nunca apresentar um `fetched_at`
+#: (instante da captura) como se fosse o horario individual do bookmaker.
+TS_QUOTE = "QUOTE_TIMESTAMP"      # por outcome (ex.: changedAt/updatedAt)
+TS_EVENT = "EVENT_TIMESTAMP"      # nivel do evento (ex.: commence_time/snapshot)
+TS_CAPTURE = "CAPTURE_TIMESTAMP"  # fallback: instante da coleta (fetched_at)
+TS_UNKNOWN = "UNKNOWN"            # sem nenhuma referencia temporal
+
+
 @dataclass(frozen=True)
 class NormalizedQuote:
     """Uma cotacao canonica de um bookmaker num instante."""
@@ -84,6 +92,10 @@ class NormalizedQuote:
     price: float
     timestamp: str
     line: Optional[float] = None
+    #: de onde veio `timestamp` (QUOTE/EVENT/CAPTURE/UNKNOWN). Default
+    #: QUOTE preserva call-sites existentes; `normalize_event` marca a
+    #: origem real e o fallback `fetched_at` vira CAPTURE_TIMESTAMP.
+    timestamp_source: str = TS_QUOTE
 
     def __post_init__(self) -> None:
         if not isfinite(self.price) or self.price <= 1.0:
@@ -365,17 +377,25 @@ def normalize_event(
     except KickoffError:
         return []
 
-    timestamp = str(event.get("timestamp") or fetched_at or "").strip()
-    if not timestamp:
+    event_timestamp = str(event.get("timestamp") or "").strip()
+    fallback_timestamp = str(fetched_at or "").strip()
+    if not event_timestamp and not fallback_timestamp:
         return []
 
     event_id = event_key(home, away, kickoff_key)
     league = league or str(event.get("league") or event.get("sport_title") or "")
     quotes: list[NormalizedQuote] = []
     for bookmaker, market_label, selection, price, line, observed_at in iter_event_quotes(event):
-        # Timestamp DA OBSERVACAO: o do outcome (fonte real, ex.
-        # changedAt/updatedAt) tem prioridade; sem ele vale o do evento;
-        # sem nenhum, o fetched_at injetado pelo chamador — nunca inventado.
+        # Timestamp DA OBSERVACAO com ORIGEM explicita: o do outcome
+        # (changedAt/updatedAt) tem prioridade; sem ele vale o do evento;
+        # sem nenhum, o fetched_at injetado pelo chamador — marcado como
+        # CAPTURE_TIMESTAMP para nunca ser lido como horario do bookmaker.
+        if observed_at:
+            ts, ts_source = observed_at, TS_QUOTE
+        elif event_timestamp:
+            ts, ts_source = event_timestamp, TS_EVENT
+        else:
+            ts, ts_source = fallback_timestamp, TS_CAPTURE
         quotes.append(
             NormalizedQuote(
                 event_id=event_id,
@@ -389,8 +409,9 @@ def normalize_event(
                 market=market_label,
                 selection=selection,
                 price=price,
-                timestamp=observed_at or timestamp,
+                timestamp=ts,
                 line=line,
+                timestamp_source=ts_source,
             )
         )
     return quotes

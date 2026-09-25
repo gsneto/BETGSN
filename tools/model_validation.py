@@ -66,10 +66,14 @@ def main() -> int:
     print(f"\ncache gravado: {path}")
 
     comparison = payload["comparison"]
-    print("\n=== AGREGADO OOS (mesma população de linhas) ===")
+    # Populações podem DIFERIR por fonte: `market_fair` só existe onde há
+    # de-vig válido, então seu n pode ser menor. Não chamar de "mesma
+    # população" quando o n diverge — a comparação pareada (abaixo) usa
+    # pares compatíveis; esta tabela agregada é apenas descritiva.
+    print("\n=== AGREGADO OOS (por fonte; n pode diferir — ver 'n' de cada) ===")
     print(f"  janelas válidas: {comparison['n_windows_valid']}/"
           f"{comparison['n_windows']}")
-    print(f"  linhas avaliadas: {comparison['n_bets_oos']}")
+    print(f"  linhas avaliadas (referência): {comparison['n_bets_oos']}")
     for source in ("market_raw", "market_fair", "model_raw",
                    "model_calibrated"):
         m = comparison[source]

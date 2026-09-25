@@ -90,6 +90,13 @@ interface Props {
   onClearFilters?: () => void;
   hasFilters: boolean;
   emptyHint?: string;
+  /**
+   * `false` quando a decisão global é NO_BET. A tabela continua mostrando a
+   * triagem analítica (probabilidades, edge, EV), mas nenhuma coluna
+   * operacional (stake/% banca/lucro) apresenta valor — "—" em vez de um
+   * número que a decisão já rejeitou. Default `true` para uso em BET.
+   */
+  betAllowed?: boolean;
 }
 
 export default function SignalsTable({
@@ -98,6 +105,7 @@ export default function SignalsTable({
   onClearFilters,
   hasFilters,
   emptyHint,
+  betAllowed = true,
 }: Props) {
   const [sort, setSort] = useState<SortState<SortKey>>({
     key: "ev",
@@ -169,7 +177,15 @@ export default function SignalsTable({
             {head("match", "Jogo", 210, "start", "Partida analisada pelo modelo")}
             {head("kickoff", "Data", 96, "start")}
             {head("market", "Mercado", 160, "start", "Mercado onde o valor foi encontrado")}
-            {head("outcome", "Aposta", 150, "start", "Resultado sugerido pelo modelo")}
+            {head(
+              "outcome",
+              betAllowed ? "Aposta" : "Resultado",
+              150,
+              "start",
+              betAllowed
+                ? "Resultado sugerido pelo modelo"
+                : "Resultado observado pelo modelo — triagem analítica (NO BET)",
+            )}
             {head("best_odd", "Odd", 72, "end", "Melhor odd disponível entre as casas")}
             {head("best_book", "Fonte", 104, "start", "Casa que oferece a melhor odd")}
             {head("model_prob", "P modelo", 96, "end", "Probabilidade do modelo (Poisson/Dixon-Coles)")}
@@ -179,7 +195,15 @@ export default function SignalsTable({
             </Th>
             {head("edge", "Edge", 84, "end", "P modelo − P mercado, em pontos percentuais")}
             {head("ev", "EV", 104, "end", "Valor esperado por unidade: P modelo × odd − 1")}
-            {head("stake", "Stake", 84, "end", "Valor sugerido pela banca atual (Kelly fracionado)")}
+            {head(
+              "stake",
+              betAllowed ? "Stake" : "Stake ·",
+              84,
+              "end",
+              betAllowed
+                ? "Valor sugerido pela banca atual (Kelly fracionado)"
+                : "NO BET: sem stake operacional — a decisão global bloqueia aposta",
+            )}
             {head("stake_pct", "% banca", 84, "end")}
             {head("expected_profit", "Lucro esp.", 96, "end", "stake × EV")}
             {head("gross_profit_if_win", "Se vencer", 92, "end", "Retorno bruto se a aposta vencer")}
@@ -195,6 +219,7 @@ export default function SignalsTable({
               signal={s}
               maxEv={maxEv}
               expanded={expanded === s.id}
+              betAllowed={betAllowed}
               onToggle={() => setExpanded((cur) => (cur === s.id ? null : s.id))}
             />
           ))}
@@ -210,6 +235,7 @@ interface RowProps {
   signal: Signal;
   maxEv: number;
   expanded: boolean;
+  betAllowed: boolean;
   onToggle: () => void;
 }
 
@@ -217,8 +243,10 @@ const SignalRow = memo(function SignalRow({
   signal: s,
   maxEv,
   expanded,
+  betAllowed,
   onToggle,
 }: RowProps) {
+  const blocked = "NO BET — sem stake operacional";
   return (
     <>
       <Tr selected={expanded} onClick={onToggle}>
@@ -297,20 +325,29 @@ const SignalRow = memo(function SignalRow({
           ) : null}
         </Td>
 
-        <Td mono className="text-ink">
-          {fmtMoney(s.stake)}
+        <Td mono className={cn("text-ink", !betAllowed && "text-ink-4")}>
+          {betAllowed ? (
+            fmtMoney(s.stake)
+          ) : (
+            <Tooltip content={blocked}>
+              <span className="text-ink-4">—</span>
+            </Tooltip>
+          )}
         </Td>
 
         <Td mono className="text-ink-3">
-          {fmtPct(s.stake_pct, 2)}
+          {betAllowed ? fmtPct(s.stake_pct, 2) : "—"}
         </Td>
 
-        <Td mono className={cn("font-medium", signedColorClass(s.expected_profit))}>
-          {fmtMoneySigned(s.expected_profit)}
+        <Td
+          mono
+          className={cn("font-medium", betAllowed && signedColorClass(s.expected_profit))}
+        >
+          {betAllowed ? fmtMoneySigned(s.expected_profit) : "—"}
         </Td>
 
         <Td mono className="text-ink-3">
-          {fmtMoneySigned(s.gross_profit_if_win)}
+          {betAllowed ? fmtMoneySigned(s.gross_profit_if_win) : "—"}
         </Td>
 
         <Td align="start" className="max-w-[240px]">
@@ -322,14 +359,21 @@ const SignalRow = memo(function SignalRow({
         </Td>
       </Tr>
 
-      {expanded ? <SignalDetail signal={s} /> : null}
+      {expanded ? <SignalDetail signal={s} betAllowed={betAllowed} /> : null}
     </>
   );
 });
 
 /* --------------------------------------------------------------- detalhe */
 
-function SignalDetail({ signal: s }: { signal: Signal }) {
+function SignalDetail({
+  signal: s,
+  betAllowed,
+}: {
+  signal: Signal;
+  betAllowed: boolean;
+}) {
+  const blocked = "NO BET — sem stake operacional";
   const pairs: [string, string][] = [
     ["Confiança", confidenceLabel(s.confidence)],
     ["P modelo", fmtPct(s.model_prob)],
@@ -341,10 +385,15 @@ function SignalDetail({ signal: s }: { signal: Signal }) {
     ["Melhor odd", `${fmtOdd(s.best_odd)} · ${s.best_book}`],
     ["Casas no consenso", fmtInt(s.n_books)],
     ["Kelly completo", fmtPct(s.kelly)],
-    ["Stake", `${fmtMoney(s.stake)} (${fmtPct(s.stake_pct, 2)} da banca)`],
-    ["Lucro esperado", fmtMoneySigned(s.expected_profit)],
-    ["Lucro se vencer", fmtMoneySigned(s.gross_profit_if_win)],
-    ["Perda se perder", fmtMoneySigned(-s.loss_if_lose)],
+    [
+      "Stake",
+      betAllowed
+        ? `${fmtMoney(s.stake)} (${fmtPct(s.stake_pct, 2)} da banca)`
+        : blocked,
+    ],
+    ["Lucro esperado", betAllowed ? fmtMoneySigned(s.expected_profit) : "—"],
+    ["Lucro se vencer", betAllowed ? fmtMoneySigned(s.gross_profit_if_win) : "—"],
+    ["Perda se perder", betAllowed ? fmtMoneySigned(-s.loss_if_lose) : "—"],
     ["Competição", s.league || "—"],
     ["Rodada", s.round_label || "—"],
   ];

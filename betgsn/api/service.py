@@ -26,7 +26,9 @@ from ..model import RHO_DEFAULT, TeamRating
 from ..pipeline import FixtureAnalysis, RunResult, run
 from ..odds_registry import default_odds_registry
 from ..providers import available_providers
-from ..signals import EV_FORTE, EV_FRACA, EV_MEDIA, MAX_SPREAD, MIN_BOOKS, Signal as CoreSignal
+from ..signals import (EV_FORTE, EV_FRACA, EV_MEDIA, MAX_SPREAD, MIN_BOOKS,
+                       Signal as CoreSignal, SignalReport as CoreSignalReport,
+                       gate_report)
 from ..timeutil import now_utc, utc_key
 from ..value_strategy import STRATEGY_NAME as OPERATIONAL_STRATEGY
 from . import schemas as S
@@ -627,11 +629,17 @@ class BetgsnService:
         o que o Quant decidiu, preservando o motivo, as verificacoes e o
         status de evidencia que fundamentou a decisao.
         """
+        from ..live_gate import build_live_gate
         from ..strategy_runner import run_strategy_decision
 
+        # Gate operacional UNICO de 7 blocos: montado da evidencia REAL do
+        # processo e passado ao decide_bet. Sem ele o check 'production_gate'
+        # falharia por ausencia (None) em vez de por evidencia — agora o
+        # motivo do NO_BET e o estado real dos blocos.
         core = run_strategy_decision(
             OPERATIONAL_STRATEGY, evidence_status=evidence_status,
-            promotion=self._strategy_promotion())
+            promotion=self._strategy_promotion(),
+            production_gate=build_live_gate())
         return S.BetDecision(
             action=core.action,
             reason=core.reason,
@@ -678,26 +686,46 @@ class BetgsnService:
             calibration=oos.calibration_channel(),
         )
 
-    def signal_report(self, snap: Snapshot) -> S.SignalReport:
-        rep = snap.result.report
-        signals = [self._signal(s, i, snap) for i, s in enumerate(rep.signals)] if rep else []
+    def _evidence_status(self, snap: Snapshot) -> str:
         # A decisao de apostar e do Quant: evidencia "synthetic" para o
         # dataset de demonstracao; para dados reais, o status das odds
         # dos fixtures (sem timestamp de publicacao).
-        evidence = "synthetic" if snap.source == "synthetic" else FIXTURES_EVIDENCE_STATUS
+        return "synthetic" if snap.source == "synthetic" else FIXTURES_EVIDENCE_STATUS
+
+    def _gated_report(
+        self, snap: Snapshot
+    ) -> tuple[S.BetDecision, CoreSignalReport | None]:
+        """Decisao UNICA + relatorio gated.
+
+        `gate_report` zera as stakes quando a decisao nao e BET, sem mutar
+        o snapshot cacheado. Todo serializer de stake/exposicao deriva
+        daqui — nunca das stakes cruas.
+        """
+        decision = self._quant_decision(self._evidence_status(snap))
+        rep = snap.result.report
+        if rep is None:
+            return decision, None
+        return decision, gate_report(rep, bet_allowed=decision.action == "BET")
+
+    def signal_report(self, snap: Snapshot) -> S.SignalReport:
+        decision, rep = self._gated_report(snap)
+        signals = [self._signal(s, i, snap) for i, s in enumerate(rep.signals)] if rep else []
+        bet_allowed = decision.action == "BET"
         return S.SignalReport(
             provenance=self.provenance(snap),
             generated_at=snap.generated_at,
             bankroll=snap.config.bankroll,
-            kpis=self.kpis(snap),
+            kpis=self.kpis(snap, report=rep),
             signals=signals,
-            top_tips=list(snap.result.tips),
+            # Sem BET, nenhuma dica operacional e exposta: a lista fica
+            # vazia em vez de carregar "APOSTAR" rejeitado pela decisao.
+            top_tips=list(snap.result.tips) if bet_allowed else [],
             source=snap.source,
-            decision=self._quant_decision(evidence),
+            decision=decision,
             source_detail=(
                 "Dataset local gerado em memoria: datas fixas no codigo e "
                 "odds sintetizadas a partir do proprio modelo. Serve para "
-                "testar o pipeline — NAO para decidir aposta."
+                "testar o pipeline - NAO para decidir aposta."
             ),
         )
 
@@ -871,8 +899,11 @@ class BetgsnService:
             rationale=s.rationale,
         )
 
-    def kpis(self, snap: Snapshot) -> S.SignalsKpis:
-        rep = snap.result.report
+    def kpis(self, snap: Snapshot, *,
+             report: CoreSignalReport | None = None) -> S.SignalsKpis:
+        # `report` (gated) tem prioridade: expor exposicao/lucro de stakes
+        # que a decisao rejeitou seria contradizer o NO_BET global.
+        rep = report if report is not None else snap.result.report
         rows = rep.signals if rep else []
         total = len(rows)
         denom = total or 1
@@ -1068,7 +1099,11 @@ class BetgsnService:
 
     def stats(self, snap: Snapshot) -> S.StatsOverview:
         res = snap.result
-        rep = res.report
+        # Stats agrega stake/EV por mercado/confianca/casa. A decisao e
+        # upstream: com NO_BET, as stakes que entram na agregacao sao zero
+        # (o relatorio cru e preservado no snapshot para quando virar BET).
+        _decision, gated = self._gated_report(snap)
+        rep = gated if gated is not None else res.report
         rows = rep.signals if rep else []
 
         by_market: dict[str, list[CoreSignal]] = {}
@@ -1224,13 +1259,14 @@ class BetgsnService:
 
     def dashboard(self, snap: Snapshot) -> S.DashboardSummary:
         res = snap.result
+        _decision, gated = self._gated_report(snap)
         n_markets = len(res.analyses[0].markets) if res.analyses else 0
         return S.DashboardSummary(
             provenance=self.provenance(snap),
             generated_at=snap.generated_at,
             computed_in_ms=snap.computed_in_ms,
             configuration=snap.config,
-            kpis=self.kpis(snap),
+            kpis=self.kpis(snap, report=gated),
             n_games=len(res.analyses),
             n_teams=len(res.ratings),
             n_bookmakers=len(BOOKMAKERS),

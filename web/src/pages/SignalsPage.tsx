@@ -166,6 +166,8 @@ export default function SignalsPage() {
   if (!data) return null;
 
   const topRows = rows.slice(0, 5);
+  // Decisão única vinda do backend: só com BET a superfície apresenta stake.
+  const betAllowed = data.decision?.action === "BET";
 
   return (
     <div className="flex flex-col gap-3">
@@ -177,6 +179,7 @@ export default function SignalsPage() {
         kpis={data.kpis}
         rows={rows}
         sampleLabel={`${fmtInt(rows.length)} de ${fmtInt(all.length)} sinais na lista`}
+        betAllowed={betAllowed}
       />
 
       <Card
@@ -211,6 +214,7 @@ export default function SignalsPage() {
             hasFilters={hasFilters}
             onClearFilters={clearFilters}
             emptyHint={emptyHint}
+            betAllowed={betAllowed}
           />
         </div>
       </Card>

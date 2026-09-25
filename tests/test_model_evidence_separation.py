@@ -162,7 +162,18 @@ def test_model_evidence_sections_note_exists():
 
 
 def test_clv_monitor_tool_exists_and_blocks():
-    """O monitor de CLV existe e continua BLOCKED < 30 (não alterado)."""
+    """O monitor de CLV existe e continua BLOCKED abaixo do MIN_CLV_SAMPLE.
+
+    Contrato alinhado (correção da auditoria): o monitor IMPORTA o mesmo
+    MIN_CLV_SAMPLE do promotion gate (= production_thresholds, 200). Não
+    pode redefinir um número próprio que divirja do gate.
+    """
+    from betgsn.config import production_thresholds
+    from betgsn.models.promotion import MIN_CLV_SAMPLE
+
     source = (_REPO / "tools" / "clv_report.py").read_text(encoding="utf-8")
-    assert "MIN_CLV_SAMPLE = 30" in source
+    assert "from betgsn.models.promotion import MIN_CLV_SAMPLE" in source
+    assert "MIN_CLV_SAMPLE = 30" not in source
     assert "BLOCKED" in source
+    # O valor operacional e o mesmo do gate: 200.
+    assert MIN_CLV_SAMPLE == production_thresholds()["min_clv_sample"] == 200

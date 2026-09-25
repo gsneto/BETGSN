@@ -454,15 +454,32 @@ def register_realtime_routes(app: FastAPI) -> None:
         bus: EventBus = eng.bus
         handle, queue = bus.subscribe()
         started = _time.monotonic()
+        # Reconexao: o cliente informa o ultimo evento visto (header SSE
+        # `Last-Event-ID` ou query). Reenviamos os eventos perdidos da
+        # janela retida — o frontend nao fica com estado antigo depois de
+        # uma queda de conexao.
+        last_event_id = (
+            request.headers.get("last-event-id")
+            or request.query_params.get("last_event_id")
+            or ""
+        )
+        replay = bus.replay_after(last_event_id)
 
         async def event_source():
             try:
                 hello = {
                     "event_type": "HELLO",
                     "event_timestamp": eng.clock().isoformat(),
-                    "payload": {"status": "connected"},
+                    "payload": {"status": "connected", "replayed": len(replay)},
                 }
                 yield f"event: HELLO\ndata: {json.dumps(hello)}\n\n"
+                for event in replay:
+                    payload = json.dumps(event.to_dict(), default=str)
+                    yield (
+                        f"id: {event.event_id}\n"
+                        f"event: {event.type}\n"
+                        f"data: {payload}\n\n"
+                    )
                 while True:
                     if await request.is_disconnected():
                         break

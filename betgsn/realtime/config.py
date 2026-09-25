@@ -91,6 +91,11 @@ class RealtimeConfig:
             fresh_seconds=float(_env("BETGSN_REALTIME_FRESH_SECONDS", "300")),
             recent_seconds=float(_env("BETGSN_REALTIME_RECENT_SECONDS", "900")),
             stale_seconds=float(_env("BETGSN_REALTIME_STALE_SECONDS", "3600")),
+            #: antes documentado no README mas nao lido aqui (divergencia
+            #: doc/codigo corrigida): o knobs de consensus agora e real.
+            consensus_min_books=int(_env("BETGSN_REALTIME_CONSENSUS_BOOKS", "3")),
+            rapid_move_seconds=float(_env("BETGSN_REALTIME_RAPID_SECONDS", "180")),
+            signal_ttl_seconds=float(_env("BETGSN_REALTIME_TTL_SECONDS", "1800")),
         )
         config.validate()
         return config

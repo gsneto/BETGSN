@@ -56,9 +56,14 @@ def test_signal_count_matches_pipeline(svc_snapshot, core):
 
 
 def test_signal_numbers_are_untouched(svc_snapshot, core):
-    """A API nao arredonda nem recalcula EV, edge, prob ou stake."""
+    """A API nao arredonda nem recalcula EV, edge ou prob.
+
+    P0: sob NO_BET (evidencia sintetica), `stake` e ZERADO na superficie —
+    o valor cru computado permanece preservado no relatorio do snapshot.
+    """
     svc, snap = svc_snapshot
     rep = svc.signal_report(snap)
+    assert rep.decision is not None and rep.decision.action == "NO_BET"
     for api_sig, core_sig in zip(rep.signals, core.report.signals):
         assert api_sig.match == core_sig.match
         assert api_sig.market == core_sig.market
@@ -70,7 +75,9 @@ def test_signal_numbers_are_untouched(svc_snapshot, core):
         assert api_sig.edge == core_sig.edge
         assert api_sig.ev == core_sig.ev
         assert api_sig.kelly == core_sig.kelly
-        assert api_sig.stake == core_sig.stake
+        # NO_BET: stake zerado na superficie, valor cru preservado no core.
+        assert api_sig.stake == 0.0
+        assert core_sig.stake > 0.0
         assert api_sig.confidence == core_sig.confidence.value
 
 
@@ -136,11 +143,18 @@ def test_recalculate_is_deterministic(svc_snapshot):
 
 def test_different_bankroll_scales_stakes_not_probabilities(svc_snapshot):
     svc, _ = svc_snapshot
-    a = svc.signal_report(svc.recalculate(S.ModelConfiguration(bankroll=1000.0)))
-    b = svc.signal_report(svc.recalculate(S.ModelConfiguration(bankroll=2000.0)))
+    snap_a = svc.recalculate(S.ModelConfiguration(bankroll=1000.0))
+    snap_b = svc.recalculate(S.ModelConfiguration(bankroll=2000.0))
+    a = svc.signal_report(snap_a)
+    b = svc.signal_report(snap_b)
     assert [s.model_prob for s in a.signals] == [s.model_prob for s in b.signals]
     assert [s.ev for s in a.signals] == [s.ev for s in b.signals]
-    assert b.kpis.total_exposure > a.kpis.total_exposure
+    # A API gated zera a exposicao sob NO_BET; a escala por banca vive no
+    # relatorio CRU preservado no snapshot (evidencia para quando virar BET).
+    assert a.kpis.total_exposure == 0.0
+    assert b.kpis.total_exposure == 0.0
+    assert (snap_b.result.report.total_exposure()
+            > snap_a.result.report.total_exposure())
 
 
 # ------------------------------------------------------------- serializacao

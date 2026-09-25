@@ -435,8 +435,17 @@ def test_v3_database_migrates_to_v4(tmp_path):
     assert rec.entry_odd == 2.0
     assert rec.home == ""
     assert rec.execution_status == "UNKNOWN"
-    # schema version atualizada
+    # schema version atualizada (v4 CLV provenance + v5 timestamp_source)
+    from betgsn.odds_snapshots import SCHEMA_VERSION
+
     version = store._conn().execute(
         "SELECT value FROM schema_meta WHERE key='version'").fetchone()
     store._conn().close()
-    assert version["value"] == "4"
+    assert version["value"] == str(SCHEMA_VERSION)
+    # v5: coluna de origem do timestamp tambem migrada
+    cols_obs = {
+        r["name"] for r in store._conn().execute(
+            "PRAGMA table_info(odds_observations)")
+    }
+    store._conn().close()
+    assert "timestamp_source" in cols_obs

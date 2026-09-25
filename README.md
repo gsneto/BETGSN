@@ -246,12 +246,19 @@ sozinho.
 | `BETGSN_REALTIME_MARKETS` | `h2h,totals,btts` | mercados pedidos |
 | `BETGSN_REALTIME_FRESH/RECENT/STALE_SECONDS` | 300/900/3600 | thresholds de frescor |
 | `BETGSN_REALTIME_CONSENSUS_BOOKS` | `3` | casas minimas para CONSENSUS_MOVE |
+| `BETGSN_REALTIME_RAPID_SECONDS` | `180` | janela (s) em que um movimento conta como RAPID |
+| `BETGSN_REALTIME_TTL_SECONDS` | `1800` | idade maxima de um sinal antes de EXPIRED |
 
 Providers da operacao atual: **The Odds API**, **ParlayAPI**, **OddsPapi**.
-Odds-API.io e OpticOdds existem no registry mas NAO sao consultados pelo
-engine. Nenhum provider derruba o sistema: falha vira health/erro
-contabilizado e o tick seguinte segue. O log operacional fica em
-`output/logs/realtime.jsonl` (rotativo, fora do Git).
+Odds-API.io e OpticOdds ficam **LEGACY**: permanecem registrados para
+health/historico, mas NAO participam do capture nem do engine
+(`operational_providers()`). Para uma validacao pontual de um legacy, use
+`--providers=<nome>` explicitamente (com aviso). Um provider que falha
+entra em **circuit breaker** (cooldown; half-open apos o periodo) e deixa
+de ser chamado ate recuperar — nao martela chave invalida. Nenhum provider
+derruba o sistema: falha vira health/erro contabilizado e o tick seguinte
+segue. O log operacional fica em `output/logs/realtime.jsonl` (rotativo,
+fora do Git).
 
 ### Honestidade de dados (regras fixas)
 

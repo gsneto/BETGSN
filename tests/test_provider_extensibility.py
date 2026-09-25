@@ -776,8 +776,8 @@ def test_cli_capture_without_configured_provider_keeps_error(monkeypatch, capsys
 
     assert rc == 1
     out = capsys.readouterr().out
-    assert "ERRO: BETGSN_ODDS_API_KEY nao configurada." in out
-    assert "Configure no .env ou no ambiente para capturar odds." in out
+    assert "ERRO: nenhum provider operacional configurado." in out
+    assert "BETGSN_ODDS_API_KEY" in out
 
 
 def test_cli_capture_uses_registry_providers(monkeypatch, capsys, tmp_path):
@@ -785,7 +785,13 @@ def test_cli_capture_uses_registry_providers(monkeypatch, capsys, tmp_path):
     from betgsn.config import output_root
 
     monkeypatch.setenv("BETGSN_OUTPUT_DIR", str(tmp_path))
-    provider = FakeProviderA()
+    # kickoff no FUTURO distante: a captura usa o relogio real, e um kickoff
+    # fixo ja vencido faria `pre_kickoff` descartar tudo (teste sensivel ao
+    # relogio). O ponto do teste e o registry, nao o calendario.
+    provider = FakeProviderA(
+        events=[_h2h_event("Alfa FC", "Bravo FC",
+                           kickoff="2099-01-01T12:00:00Z")]
+    )
     registry = OddsProviderRegistry()
     registry.register(
         ProviderSpec(name="fake-a", factory=lambda: provider, priority=1)

@@ -203,6 +203,9 @@ class RealtimeOddsEngine:
         # Não presume execução: enquanto vazio, execution_status permanece UNKNOWN
         # e nenhum sinal recebe gap absoluto/relativo — política nunca fabrica fill.
         self._executions: dict[str, tuple[float, str]] = {}
+        #: falhas de persistencia de execucao (writer) — explicitas, nunca
+        #: engolidas silenciosamente.
+        self._write_errors: list[str] = []
         # Fair calibrado por chave — só chega via register_fair_override
         # (job offline de calibração por janela). Sem override o bloco
         # MARKET/PROVENANCE do sinal permanece PENDING.
@@ -238,6 +241,8 @@ class RealtimeOddsEngine:
                 return False
             self._stop.clear()
             self.started_at = self.clock().isoformat()
+            # Execucoes medidas persistem entre reinicios: hidrata no boot.
+            self._load_persisted_executions()
             self.logger.write("engine_start", {"providers": [l.name for l in self.loops]})
             self._thread = threading.Thread(
                 target=self._run, name="betgsn-realtime", daemon=True
@@ -632,17 +637,49 @@ class RealtimeOddsEngine:
 
     def record_execution(self, *, event_key: str, market: str, selection: str,
                          executed_price: float, executed_at: str) -> str:
-        """Registra uma fill medida. Sem chamada externa, a política mantém
-        `execution_status='UNKNOWN'` — nada aqui infere execução."""
+        """Registra uma fill medida e PERSISTE no store operacional.
+
+        Sem chamada externa, a política mantém `execution_status='UNKNOWN'`
+        — nada aqui infere execução. Com a fill, a execução fica
+        rastreável entre reinícios (tabela `execution_records`), não só
+        em memória.
+        """
         key = f"{event_key}|{market}|{selection}"
         with self._lock:
             self._executions[key] = (float(executed_price), executed_at)
+        try:
+            self.store.save_execution(
+                match_key=event_key, market=market, outcome=selection,
+                executed_price=float(executed_price), executed_at=executed_at,
+            )
+        except Exception as exc:  # noqa: BLE001 - persistencia nao derruba o live
+            with self._lock:
+                self._write_errors.append(
+                    f"EXECUTION_PERSIST_FAILED: {type(exc).__name__}: {str(exc)[:180]}"
+                )
         return key
 
     def clear_execution(self, *, event_key: str, market: str, selection: str) -> None:
         key = f"{event_key}|{market}|{selection}"
         with self._lock:
             self._executions.pop(key, None)
+        try:
+            self.store.delete_execution(
+                match_key=event_key, market=market, outcome=selection)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _load_persisted_executions(self) -> None:
+        """Hidrata execucoes persistidas no boot (rastreabilidade)."""
+        try:
+            rows = self.store.load_executions()
+        except Exception:  # noqa: BLE001
+            return
+        with self._lock:
+            for (match_key, market, outcome), rec in rows.items():
+                self._executions[f"{match_key}|{market}|{outcome}"] = (
+                    float(rec["executed_price"]), rec["executed_at"],
+                )
 
     def priced_signals(self, event_key: str | None = None) -> list[dict]:
         """PricedSignals mais recentes calculados no live.
@@ -692,7 +729,16 @@ class RealtimeOddsEngine:
     def problems(self, limit: int = 50) -> list[dict]:
         with self._lock:
             recent = list(self.state.problems)[-limit:]
-            return [p.to_dict() for p in recent]
+            out = [p.to_dict() for p in recent]
+            # Falhas do WRITER (persistencia de execucao) sao explicitas:
+            # nunca desaparecem silenciosamente.
+            out.extend(
+                {"reason": "WRITE_ERROR", "detail": msg, "provider": "",
+                 "event_id": "", "bookmaker": "", "market": "", "selection": "",
+                 "timestamp": "", "price": None}
+                for msg in self._write_errors[-limit:]
+            )
+            return out
 
 
 def build_engine_from_env(

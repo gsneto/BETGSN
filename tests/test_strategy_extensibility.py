@@ -553,13 +553,45 @@ def test_api_no_bet_surfaces_with_runner_decision():
             signals = client.get("/api/signals",
                                  params={"source": "synthetic"})
             assert signals.status_code == 200
-            decision = signals.json()["decision"]
+            body = signals.json()
+            decision = body["decision"]
             assert decision["action"] == "NO_BET"
             assert decision["fraction"] == 0.0
+
+            # P0: NO_BET zera stake em TODAS as superficies do relatorio.
+            assert body["signals"], "ha linhas de triagem, mas zeradas"
+            assert all(s["stake"] == 0.0 for s in body["signals"]), (
+                "NO_BET nao pode expor stake positivo em nenhuma linha"
+            )
+            assert all(s["stake_pct"] == 0.0 for s in body["signals"])
+            assert all(s["expected_profit"] == 0.0 for s in body["signals"])
+            assert all(s["gross_profit_if_win"] == 0.0 for s in body["signals"])
+            assert body["top_tips"] == [], (
+                "NO_BET nao pode emitir dica operacional (APOSTAR)"
+            )
+            assert body["kpis"]["total_exposure"] == 0.0
+            assert body["kpis"]["expected_profit"] == 0.0
+            assert body["kpis"]["worst_case_loss"] == 0.0
+
+            # stats agrega stake por mercado/confianca/casa: tambem zerado.
+            stats = client.get("/api/stats").json()
+            assert all(m["total_stake"] == 0.0 for m in stats["by_market"])
+            assert all(c["total_stake"] == 0.0 for c in stats["by_confidence"])
+            assert all(b["total_stake"] == 0.0 for b in stats["by_book"])
+
+            # dashboard republica os KPIs: idem.
+            dash = client.get("/api/dashboard").json()
+            assert dash["kpis"]["total_exposure"] == 0.0
+            assert dash["kpis"]["expected_profit"] == 0.0
 
             parlays = client.get("/api/portfolio/best-parlays")
             assert parlays.status_code == 200
             assert parlays.json() == []
+
+            exposure = client.get("/api/portfolio/exposure").json()
+            assert exposure["decision_action"] == "NO_BET"
+            assert exposure["total_exposure"] == 0.0
+            assert exposure["total_exposure_pct"] == 0.0
     finally:
         from betgsn.api.service import service as real_service
         server.service = real_service

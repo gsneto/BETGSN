@@ -338,9 +338,24 @@ class MLWindowAdapter:
     # ------------------------------------------------------------ fit
 
     def fit(self, matches: Sequence, train_end: str):
+        from .temporal import result_time
+        from .timeutil import utc_key
+
         corpus = self.corpus
         cutoff = str(train_end)
-        train_idx = [i for i, t in enumerate(corpus.times) if t < cutoff]
+        # Mesma disciplina do EnsembleWindowAdapter: o label precisa estar
+        # DISPONIVEL (nao apenas ter kickoff antes do corte). Sem isso o
+        # modelo base treinaria em resultados publicados depois do corte —
+        # vazamento temporal. Features continuam PIT por construcao.
+        available = {
+            (m.home, m.away, str(m.kickoff)[:10]): result_time(m)
+            for m in matches
+        }
+        train_idx = [
+            i for i, t in enumerate(corpus.times)
+            if t < cutoff
+            and available.get(corpus.rows[i], "9999") < utc_key(cutoff)
+        ]
         if len(train_idx) < MIN_TRAIN_MATCHES:
             return None
 

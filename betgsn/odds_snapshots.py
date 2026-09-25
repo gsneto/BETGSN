@@ -21,7 +21,7 @@ from .timeutil import now_utc, parse_kickoff, utc_key
 #: league, casa representativa da entrada, execution_status) — a entrada
 #: deixa de ser apenas um preco e passa a ser rastreavel ate o evento e
 #: a casa que a sustentaram. Bases v3 sao migradas por ALTER TABLE.
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 #: Fonte canonica das entradas de CLV prospectivo: o registro acontece em
 #: `real_signal_report`, no instante da decisao, a partir de `line_at`.
@@ -87,6 +87,10 @@ class OddsObservation:
     provider: str = ""
     is_opening: bool = False
     is_closing: bool = False
+    #: origem do timestamp: QUOTE_TIMESTAMP (por outcome) / EVENT_TIMESTAMP /
+    #: CAPTURE_TIMESTAMP (fetched_at) / UNKNOWN. Nunca apresentar um
+    #: fetched_at como horario individual do bookmaker.
+    timestamp_source: str = "QUOTE_TIMESTAMP"
 
     def __post_init__(self) -> None:
         if not math.isfinite(self.odd) or self.odd <= 1.0:
@@ -144,6 +148,9 @@ def observations_from_quotes(
                     timestamp=quote.timestamp,
                     kickoff=quote.kickoff,
                     provider=getattr(quote, "provider", "") or default_provider,
+                    timestamp_source=getattr(
+                        quote, "timestamp_source", "QUOTE_TIMESTAMP"
+                    ) or "QUOTE_TIMESTAMP",
                 )
             )
         except ValueError:
@@ -481,6 +488,7 @@ class OddsSnapshotStore:
                         is_opening INTEGER DEFAULT 0,
                         is_closing INTEGER DEFAULT 0,
                         minutes_before_kickoff REAL,
+                        timestamp_source TEXT DEFAULT 'QUOTE_TIMESTAMP',
                         UNIQUE(match_key, market, outcome, bookmaker, timestamp)
                     );
                     CREATE INDEX IF NOT EXISTS idx_obs_line
@@ -521,6 +529,20 @@ class OddsSnapshotStore:
                     );
                     CREATE INDEX IF NOT EXISTS idx_clv_entries_line
                         ON clv_entries(match_key, market, outcome);
+                    CREATE TABLE IF NOT EXISTS execution_records (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        match_key TEXT NOT NULL,
+                        market TEXT NOT NULL,
+                        outcome TEXT NOT NULL,
+                        executed_price REAL NOT NULL,
+                        executed_at TEXT NOT NULL,
+                        observed_price REAL,
+                        decision_timestamp TEXT,
+                        recorded_at TEXT NOT NULL,
+                        UNIQUE(match_key, market, outcome)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_exec_line
+                        ON execution_records(match_key, market, outcome);
                     """
                 )
                 conn.execute(
@@ -528,6 +550,7 @@ class OddsSnapshotStore:
                     ("version", str(SCHEMA_VERSION)),
                 )
                 self._migrate_clv_entries(conn)
+                self._migrate_odds_observations(conn)
                 conn.commit()
             finally:
                 conn.close()
@@ -557,6 +580,24 @@ class OddsSnapshotStore:
                 conn.execute(
                     f"ALTER TABLE clv_entries ADD COLUMN {col} {decl}")
 
+    @staticmethod
+    def _migrate_odds_observations(conn: sqlite3.Connection) -> None:
+        """v4 -> v5: origem do timestamp em odds_observations.
+
+        Linhas antigas ficam com o default declarado QUOTE_TIMESTAMP — a
+        origem nao era registrada na epoca; o valor e o rotulo conservador
+        (nao fabrica CAPTURE nem inventa horario de bookmaker).
+        """
+        cols = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(odds_observations)")
+        }
+        if "timestamp_source" not in cols:
+            conn.execute(
+                "ALTER TABLE odds_observations ADD COLUMN "
+                "timestamp_source TEXT DEFAULT 'QUOTE_TIMESTAMP'"
+            )
+
     # ------------------------------------------------------------- escrita
 
     def add(self, observations: Sequence[OddsObservation]) -> int:
@@ -569,6 +610,7 @@ class OddsSnapshotStore:
                 utc_key(o.timestamp), utc_key(o.kickoff), o.provider,
                 int(o.is_opening), int(o.is_closing),
                 round(o.minutes_before_kickoff, 3),
+                o.timestamp_source,
             )
             for o in observations
         ]
@@ -579,8 +621,8 @@ class OddsSnapshotStore:
                     """INSERT OR IGNORE INTO odds_observations
                        (match_key, market, outcome, bookmaker, odd, timestamp,
                         kickoff, provider, is_opening, is_closing,
-                        minutes_before_kickoff)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                        minutes_before_kickoff, timestamp_source)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                     rows,
                 )
                 conn.commit()
@@ -1489,6 +1531,7 @@ class OddsSnapshotStore:
 
     @staticmethod
     def _to_obs(row: sqlite3.Row) -> OddsObservation:
+        keys = row.keys()
         return OddsObservation(
             match_key=row["match_key"], market=row["market"],
             outcome=row["outcome"], bookmaker=row["bookmaker"],
@@ -1496,4 +1539,87 @@ class OddsSnapshotStore:
             kickoff=row["kickoff"], provider=row["provider"] or "",
             is_opening=bool(row["is_opening"]),
             is_closing=bool(row["is_closing"]),
+            timestamp_source=(
+                (row["timestamp_source"] if "timestamp_source" in keys else None)
+                or "QUOTE_TIMESTAMP"
+            ),
         )
+
+    # ------------------------------------------------------ execucao medida
+
+    def save_execution(
+        self,
+        *,
+        match_key: str,
+        market: str,
+        outcome: str,
+        executed_price: float,
+        executed_at: str,
+        observed_price: float | None = None,
+        decision_timestamp: str | None = None,
+    ) -> None:
+        """Persiste uma EXECUCAO medida (upsert por linha).
+
+        Diferente de `clv_entries` (FIRST-WINS da entrada), a execucao pode
+        ser corrigida/limpa: o operador registra a fill real e a API deixa
+        de mostrar UNKNOWN. Sem chamada, nada e gravado — execucao nunca e
+        presumida.
+        """
+        if not math.isfinite(executed_price) or executed_price <= 1.0:
+            raise ValueError("executed_price precisa ser finito e > 1.0")
+        if not executed_at:
+            raise ValueError("execucao exige executed_at")
+        with self._lock:
+            conn = self._conn()
+            try:
+                conn.execute(
+                    """INSERT OR REPLACE INTO execution_records
+                       (match_key, market, outcome, executed_price, executed_at,
+                        observed_price, decision_timestamp, recorded_at)
+                       VALUES (?,?,?,?,?,?,?,?)""",
+                    (
+                        match_key, market, outcome, float(executed_price),
+                        utc_key(executed_at), observed_price,
+                        decision_timestamp, utc_key(executed_at),
+                    ),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+    def delete_execution(self, *, match_key: str, market: str, outcome: str) -> None:
+        with self._lock:
+            conn = self._conn()
+            try:
+                conn.execute(
+                    """DELETE FROM execution_records
+                       WHERE match_key=? AND market=? AND outcome=?""",
+                    (match_key, market, outcome),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+    def load_executions(self) -> dict[tuple[str, str, str], dict]:
+        """Execucoes persistidas por (match_key, market, outcome)."""
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    """SELECT match_key, market, outcome, executed_price,
+                              executed_at, observed_price, decision_timestamp,
+                              recorded_at
+                       FROM execution_records"""
+                ).fetchall()
+            finally:
+                conn.close()
+        return {
+            (r["match_key"], r["market"], r["outcome"]): {
+                "executed_price": r["executed_price"],
+                "executed_at": r["executed_at"],
+                "observed_price": r["observed_price"],
+                "decision_timestamp": r["decision_timestamp"],
+                "recorded_at": r["recorded_at"],
+            }
+            for r in rows
+        }

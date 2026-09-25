@@ -1055,6 +1055,13 @@ class LiveOddsCapture:
         self.store = store
         #: relogio de performance injetavel (testes) para latencia REAL.
         self._perf = perf
+        #: circuit breaker por provider, PERSISTENTE entre chamadas de
+        #: `capture()` (o engine roda ticks no mesmo processo): um provider
+        #: invalido/sem credito deixa de ser chamado durante o cooldown em
+        #: vez de ser martelado a cada tick.
+        from .odds_health import CircuitBreaker
+
+        self._breaker = CircuitBreaker()
         #: callback opcional para o realtime engine: recebe, por lote,
         #: (provider, quotes, observacoes, match_keys) DEPOIS da
         #: contabilizacao. Falha do observer vira erro de report —
@@ -1180,6 +1187,13 @@ class LiveOddsCapture:
         if LIVE_ODDS_PROVIDER not in report.providers_used:
             report.providers_used.append(LIVE_ODDS_PROVIDER)
 
+        if not self._breaker.allow(LIVE_ODDS_PROVIDER):
+            report.errors.append(
+                f"{LIVE_ODDS_PROVIDER}/{sport}: circuit "
+                f"{self._breaker.state(LIVE_ODDS_PROVIDER).value} — pulada"
+            )
+            return
+
         call_started = self._perf()
         events, headers, used_markets, failure = self._fetch_with_fallback(
             sport, report
@@ -1190,6 +1204,7 @@ class LiveOddsCapture:
 
         if failure is not None:
             kind, _retryable = classify_exception(failure)
+            self._breaker.record_failure(LIVE_ODDS_PROVIDER, kind)
             health.record_failure(
                 LIVE_ODDS_PROVIDER, kind, str(failure)[:300],
                 status=getattr(failure, "status", None),
@@ -1210,11 +1225,13 @@ class LiveOddsCapture:
         if not events or not with_odds:
             # resposta sem cobertura: nao e falha do provider —
             # apenas nao ha jogos com odds neste esporte agora.
+            self._breaker.record_success(LIVE_ODDS_PROVIDER)
             health.record_no_coverage(LIVE_ODDS_PROVIDER)
             report.events += len(events)
             report.events_with_odds += len(with_odds)
             return
 
+        self._breaker.record_success(LIVE_ODDS_PROVIDER)
         health.record_success(
             LIVE_ODDS_PROVIDER,
             observations=len(with_odds),
@@ -1269,6 +1286,15 @@ class LiveOddsCapture:
         if name and name not in report.providers_used:
             report.providers_used.append(name)
 
+        # Circuit breaker: provider em OPEN nao e chamado (economiza request
+        # e evita martelar chave invalida). O skip e explicito no report.
+        if name and not self._breaker.allow(name):
+            report.errors.append(
+                f"{name}/{sport}: circuit {self._breaker.state(name).value} "
+                f"— chamada pulada (cooldown)"
+            )
+            return
+
         request = OddsFetchRequest(
             divisions=divisions_for(provider, sport),
             markets=self._contract_market_labels(),
@@ -1280,6 +1306,7 @@ class LiveOddsCapture:
             result = provider.fetch_odds(request)
         except Exception as exc:  # noqa: BLE001 - um provider nao aborta os demais
             kind, _retryable = classify_exception(exc)
+            self._breaker.record_failure(name, kind)
             health.record_failure(
                 name, kind, str(exc)[:300],
                 status=getattr(exc, "status", None),
@@ -1307,9 +1334,12 @@ class LiveOddsCapture:
         if result.no_coverage or not result.quotes:
             # sem cobertura e sinal explicito do provider, nao erro:
             # health NO_COVERAGE e nada gravado — nunca dado sintetico.
+            # A chamada respondeu: fecha o breaker (nao e provider doente).
+            self._breaker.record_success(name)
             health.record_no_coverage(name)
             return
 
+        self._breaker.record_success(name)
         health.record_success(
             name,
             observations=len(result.quotes),

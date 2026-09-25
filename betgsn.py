@@ -341,13 +341,17 @@ def capture_odds_cli(args: list[str]) -> int:
     from betgsn.odds_snapshots import OddsSnapshotStore
     from betgsn.providers import sport_keys_for_divisions
 
-    # providers de odds via registry (FASE B): todos os CONFIGURADOS, em
-    # ordem de prioridade — a captura e multi-provider, com contabilizacao
-    # de colisoes no store canonico.
-    providers = default_odds_registry().available_providers()
+    # providers de odds via registry (FASE B): apenas os OPERACIONAIS
+    # (The Odds API, ParlayAPI, OddsPapi). Providers LEGACY (Odds-API.io,
+    # OpticOdds) ficam fora do capture — nao gastam requests nem creditos
+    # e nao contaminam o store operacional. Para incluir um legacy numa
+    # validacao pontual, use --providers=<nome> explicitamente.
+    registry = default_odds_registry()
+    providers = registry.operational_providers()
     if not providers:
-        print("ERRO: BETGSN_ODDS_API_KEY nao configurada.")
-        print("Configure no .env ou no ambiente para capturar odds.")
+        print("ERRO: nenhum provider operacional configurado.")
+        print("Configure BETGSN_ODDS_API_KEY / BETGSN_PARLAY_API_KEY / "
+              "BETGSN_ODDSPAPI_API_KEY no .env para capturar odds.")
         return 1
 
     # Filtro de providers (--providers=ParlayAPI[,OddsPapi...]): captura
@@ -357,13 +361,22 @@ def capture_odds_cli(args: list[str]) -> int:
     raw_providers = _arg(args, "providers", "")
     if raw_providers:
         wanted = [p.strip() for p in raw_providers.split(",") if p.strip()]
-        available_names = [name for name, _p in providers]
+        # Selecao EXPLICITA pode incluir um provider LEGACY (validacao
+        # pontual): a lista de nomes validos e a de TODOS os configurados,
+        # nao so os operacionais. Sem --providers, o default operacional
+        # ja exclui os legacy.
+        all_configured = registry.available_providers()
+        available_names = [name for name, _p in all_configured]
         unknown = [p for p in wanted if p not in available_names]
         if unknown:
             print(f"ERRO: providers desconhecidos: {', '.join(unknown)}")
             print(f"  disponiveis: {', '.join(available_names)}")
             return 1
-        providers = [(n, p) for n, p in providers if n in wanted]
+        legacy_selected = [p for p in wanted if p in registry.legacy_names()]
+        if legacy_selected:
+            print(f"  AVISO: providers LEGACY selecionados explicitamente: "
+                  f"{', '.join(legacy_selected)}")
+        providers = [(n, p) for n, p in all_configured if n in wanted]
         print(f"  providers selecionados: {', '.join(n for n, _ in providers)}")
 
     raw = _arg(args, "sports", "")

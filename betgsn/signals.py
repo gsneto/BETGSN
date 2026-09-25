@@ -13,7 +13,7 @@ O ranking usa EV como criterio principal e a confianca como desempate.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Sequence
 
@@ -288,8 +288,36 @@ def _cap_total_exposure(report: SignalReport, frac: float) -> None:
     report.exposure_scaled_by = scale
 
 
-def top_tips(report: SignalReport, n: int = 5) -> list[str]:
-    """As N melhores dicas em texto, formato direto pro bilhete."""
+def gate_report(report: SignalReport, *, bet_allowed: bool) -> SignalReport:
+    """Devolve o relatorio com stakes zeradas quando a decisao NAO autoriza
+    aposta. NAO muta o original: o snapshot cacheado preserva as stakes
+    computadas para quando a evidencia virar GREEN.
+
+    Este e o ponto unico de gating: qualquer serializer (API, adapter,
+    CLI) que apresente `stake`, `stake_pct`, `expected_profit` ou
+    exposicao deve derivar do relatorio gated — nunca das stakes cruas.
+    """
+    if bet_allowed:
+        return report
+    return SignalReport(
+        generated_at=report.generated_at,
+        bankroll=report.bankroll,
+        signals=[replace(s, stake=0.0) for s in report.signals],
+        exposure_scaled_by=0.0,
+    )
+
+
+def top_tips(report: SignalReport, n: int = 5, *,
+             bet_allowed: bool = True) -> list[str]:
+    """As N melhores dicas em texto, formato direto pro bilhete.
+
+    `bet_allowed=False` (decisao global NAO autoriza aposta) devolve lista
+    VAZIA: a superficie nao pode carregar linguagem operacional ("APOSTAR")
+    quando a decisao e NO_BET. A decisao e unica e upstream; aqui apenas
+    respeitamos.
+    """
+    if not bet_allowed:
+        return []
     tips: list[str] = []
     for i, s in enumerate(report.signals[:n], 1):
         tips.append(

@@ -561,13 +561,20 @@ class SignalEngine:
         ]
 
     def _moves_in_window(self, moves: Sequence[LineMove]) -> list[LineMove]:
+        """Movimentos com 0 <= idade <= janela.
+
+        O limite INFERIOR e obrigatorio: um movimento carimbado no futuro
+        tem idade negativa e jamais pode contar como "recente" — seria
+        look-ahead. Idade negativa e descartada (nao vira sinal).
+        """
         now = self._now()
         result = []
         for move in moves:
             moment = parse_stamp(move.new_timestamp)
             if moment is None:
                 continue
-            if (now - moment).total_seconds() <= self.rules.move_window_seconds:
+            age = (now - moment).total_seconds()
+            if 0.0 <= age <= self.rules.move_window_seconds:
                 result.append(move)
         return result
 
@@ -718,8 +725,11 @@ class SignalEngine:
         moves: Sequence[LineMove],
         models: Mapping[str, float],
     ) -> list[Signal]:
+        # Reversao exige janela: so movimentos recentes (0 <= idade <=
+        # janela) contam — sem isso, historico antigo acumulado (inclusive
+        # de um restart) dispararia reversao fora de contexto temporal.
         by_book: dict[str, list[LineMove]] = {}
-        for move in sorted(moves, key=lambda m: m.new_timestamp):
+        for move in sorted(self._moves_in_window(moves), key=lambda m: m.new_timestamp):
             by_book.setdefault(move.bookmaker, []).append(move)
         signals: list[Signal] = []
         for bookmaker, book_moves in by_book.items():

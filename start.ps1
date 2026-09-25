@@ -64,6 +64,8 @@ if (Test-Port $WebPort) {
 
 # 3. Espera os dois responderem
 Write-Host "Aguardando os servidores responderem..." -ForegroundColor Cyan
+$backendUp = $false
+$frontendUp = $false
 $deadline = (Get-Date).AddSeconds(45)
 while ((Get-Date) -lt $deadline) {
     $backendUp = $false
@@ -98,7 +100,28 @@ try {
     $realtime = "indisponivel (backend antigo?)"
 }
 
-# 5. Abre o navegador
+# 5. Veredito HONESTO: nao anunciar "no ar" se algum servico nao subiu.
+if (-not ($backendUp -and $frontendUp)) {
+    Write-Host ""
+    Write-Host "BETGSN NAO SUBIU COMPLETO." -ForegroundColor Red
+    if (-not $backendUp) {
+        Write-Host "  Backend   NAO respondeu em $apiUrl/api/health" -ForegroundColor Red
+        Write-Host "            veja a janela minimizada do python (erro de porta/dependencia)." -ForegroundColor Yellow
+    } else {
+        Write-Host "  Backend   OK  $apiUrl/docs" -ForegroundColor Green
+    }
+    if (-not $frontendUp) {
+        Write-Host "  Frontend  NAO respondeu em $url" -ForegroundColor Red
+        Write-Host "            veja a janela do npm (porta ocupada / erro de build)." -ForegroundColor Yellow
+    } else {
+        Write-Host "  Frontend  OK  $url" -ForegroundColor Green
+    }
+    Write-Host ""
+    Write-Host "Navegador NAO foi aberto. Corrija o que faltou e rode .\start.ps1 de novo." -ForegroundColor Yellow
+    Write-Host "Para PARAR TUDO: .\stop.ps1   |   Para ver estado: .\status.ps1"
+    exit 1
+}
+
 Write-Host ""
 Write-Host "BETGSN no ar:" -ForegroundColor Green
 Write-Host "  Frontend  $url  (aba LIVE = terminal em tempo real)" -ForegroundColor Green

@@ -37,9 +37,11 @@ from ..markets import validate_selection_line
 #: Profundidade maxima do historico por linha (casa x linha).
 HISTORY_DEPTH = 64
 
-#: Tolerancia de skew de relogio: carimbo ate 2 min no futuro e aceito
-#: (relogios de provider/server divergem), acima disso e erro de dados.
-MAX_CLOCK_SKEW_SECONDS = 120.0
+#: Nenhuma tolerancia de futuro: um carimbo posterior a `now` e recusado.
+#: Aceitar skew positivo abriria look-ahead (uma quote futura entrando no
+#: sinal decidido em T). Um relogio de provider adiantado e tratado como
+#: problema de dados (FUTURE_TIMESTAMP), nunca como validade assumida.
+MAX_CLOCK_SKEW_SECONDS = 0.0
 
 
 def _parse(value: str) -> datetime | None:

@@ -16,6 +16,7 @@ o estado vira STALE e `stale=True` acompanha a resposta.
 
 from __future__ import annotations
 
+import time as _time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -337,3 +338,91 @@ def estimated_request_cost(n_markets: int, n_regions: int) -> int:
     x-requests-last e substitui esta estimativa.
     """
     return max(1, int(n_markets)) * max(1, int(n_regions))
+
+
+class CircuitState(str, Enum):
+    CLOSED = "CLOSED"        # saudavel: chamadas passam
+    OPEN = "OPEN"            # em cooldown: chamadas bloqueadas
+    HALF_OPEN = "HALF_OPEN"  # cooldown venceu: UMA sonda e permitida
+
+
+@dataclass
+class _BreakerRecord:
+    failures: int = 0
+    opened_at: Optional[float] = None
+    opened_kind: str = ""
+
+
+class CircuitBreaker:
+    """Circuit breaker por provider (evita martelar provider invalido).
+
+    Regras:
+      - falha DURA (401/403/sem creditos): abre IMEDIATAMENTE, com cooldown
+        longo — a chave esta invalida/sem credito; retentar nao ajuda.
+      - falha RETENTAVEL (timeout/rede/429/5xx): abre apos `threshold`
+        falhas consecutivas, com cooldown curto.
+      - cooldown vencido: estado HALF_OPEN e UMA sonda e permitida.
+        Sucesso fecha o circuito; falha reabre.
+      - providers sao isolados: um aberto nao afeta os demais.
+
+    O relogio e injetavel (`clock`) para testes deterministicos.
+    """
+
+    def __init__(
+        self,
+        *,
+        threshold: int = 3,
+        cooldown_seconds: float = 300.0,
+        hard_cooldown_seconds: float = 3600.0,
+        clock: Callable[[], float] = _time.monotonic,
+    ) -> None:
+        self._threshold = max(1, int(threshold))
+        self._cooldown = float(cooldown_seconds)
+        self._hard_cooldown = float(hard_cooldown_seconds)
+        self._clock = clock
+        self._records: dict[str, _BreakerRecord] = {}
+
+    def _record(self, provider: str) -> _BreakerRecord:
+        rec = self._records.get(provider)
+        if rec is None:
+            rec = _BreakerRecord()
+            self._records[provider] = rec
+        return rec
+
+    def state(self, provider: str) -> CircuitState:
+        rec = self._record(provider)
+        if rec.opened_at is None:
+            return CircuitState.CLOSED
+        cooldown = (
+            self._hard_cooldown if rec.opened_kind in _HARD_KINDS
+            else self._cooldown
+        )
+        if self._clock() - rec.opened_at >= cooldown:
+            return CircuitState.HALF_OPEN
+        return CircuitState.OPEN
+
+    def allow(self, provider: str) -> bool:
+        """True se a chamada pode acontecer agora (CLOSED/HALF_OPEN)."""
+        return self.state(provider) != CircuitState.OPEN
+
+    def record_success(self, provider: str) -> None:
+        self._records[provider] = _BreakerRecord()
+
+    def record_failure(self, provider: str, kind: str) -> None:
+        rec = self._record(provider)
+        rec.failures += 1
+        hard = kind in _HARD_KINDS
+        if hard or rec.failures >= self._threshold:
+            rec.opened_at = self._clock()
+            rec.opened_kind = kind
+
+    def snapshot(self) -> dict[str, dict]:
+        out: dict[str, dict] = {}
+        for name in sorted(self._records):
+            rec = self._records[name]
+            out[name] = {
+                "state": self.state(name).value,
+                "consecutive_failures": rec.failures,
+                "opened_kind": rec.opened_kind,
+            }
+        return out
