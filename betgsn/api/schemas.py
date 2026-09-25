@@ -419,6 +419,25 @@ class BetDecision(BaseModel):
         return self.action == "BET"
 
 
+class CacheMeta(BaseModel):
+    """Metadados de cache do relatorio.
+
+    `status` NUNCA e 'LIVE': computo fresco (cache miss) NAO expoe
+    `cache` no payload. Presenca deste bloco = leitura de cache com
+    idade explicita.
+      - STALE: dentro do TTL, servido do cache com `age_seconds` real
+      - EXPIRED: retornado apenas quando a computacao pos-TTL ainda
+        esta em andamento e o cliente pediu snapshot antigo (o Servico
+        prefere recomputar; usado em cenarios de contencao)
+    """
+    status: Literal["STALE", "EXPIRED"]
+    age_seconds: float
+    ttl_seconds: float
+    key_fingerprint: str
+    computed_at: str
+    computed_in_ms: float
+
+
 class SignalReport(BaseModel):
     provenance: Provenance = Field(default_factory=Provenance)
     generated_at: str
@@ -438,6 +457,8 @@ class SignalReport(BaseModel):
     calibration: ModelCalibrationInfo | None = None
     #: decisao do Quant sobre a evidencia atual (BET | NO_BET), com motivo
     decision: BetDecision | None = None
+    #: presente apenas em cache hit; ausente = computo fresco.
+    cache: CacheMeta | None = None
 
 
 # --------------------------------------------------------------------------

@@ -40,6 +40,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
+import time as _time_mod
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -47,6 +49,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .. import __version__
+from ..config import production_policy_fingerprint
 from . import backtest_schemas as B
 from . import schemas as S
 from .backtest_service import get_backtest_service
@@ -155,6 +158,74 @@ register_realtime_routes(app)
 
 def _svc() -> BetgsnService:
     return service
+
+
+# ---------------------------------------------------------------------------
+# Cache do /api/signals (real). Justificativa: cada request roda o pipeline
+# de valor sobre ~600 fixtures reais e leva ~60s. Sem cache, chamadas
+# repetidas (recarregar UI, dois usuarios) serializam pelo GIL e pioram.
+#
+# Chave: (source, market_keys, min_ev, use_xg, bankroll, snapshot_gen_at,
+# policy_fingerprint). Invalidacao natural: recalculate muda o snapshot,
+# muda o generated_at, muda a chave. Nunca fabrica dado — cache hit
+# devolve o mesmo objeto que a computacao original devolveu, com
+# `cache.status='STALE'` e `age_seconds` real. `LIVE fresco` NAO existe
+# como valor de status: computo fresco NAO expoe o bloco `cache`.
+# ---------------------------------------------------------------------------
+
+SIGNALS_CACHE_TTL_SECONDS = 60.0
+
+_signals_cache: dict[tuple, tuple[S.SignalReport, float, float]] = {}
+_signals_cache_locks: dict[tuple, threading.Lock] = {}
+_signals_cache_registry_lock = threading.Lock()
+
+
+def _signals_cache_key(*, source: str, market_keys: tuple[str, ...] | None,
+                       min_ev: float | None, use_xg: bool | None,
+                       bankroll: float | None, snapshot_generated_at: str,
+                       ) -> tuple:
+    return (
+        source,
+        tuple(sorted(market_keys)) if market_keys else (),
+        min_ev,
+        use_xg,
+        bankroll,
+        snapshot_generated_at,
+        production_policy_fingerprint(),
+    )
+
+
+def _signals_cache_lock_for(key: tuple) -> threading.Lock:
+    with _signals_cache_registry_lock:
+        lock = _signals_cache_locks.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _signals_cache_locks[key] = lock
+        return lock
+
+
+def _signals_cache_get_fresh(key: tuple, now: float,
+                              ) -> tuple[S.SignalReport, float, float] | None:
+    entry = _signals_cache.get(key)
+    if entry is None:
+        return None
+    _report, computed_at, computed_in_ms = entry
+    if now - computed_at > SIGNALS_CACHE_TTL_SECONDS:
+        return None
+    return entry
+
+
+def _signals_cache_reset_for_tests() -> None:
+    """Usado APENAS pelos testes. Nao expor via HTTP."""
+    with _signals_cache_registry_lock:
+        _signals_cache.clear()
+        _signals_cache_locks.clear()
+
+
+def _fingerprint_key(key: tuple) -> str:
+    import hashlib
+
+    return hashlib.sha256(repr(key).encode()).hexdigest()[:16]
 
 
 def _snapshot() -> Snapshot:
@@ -334,29 +405,84 @@ def signals(
     """
     svc = _svc()
     if source == "synthetic":
+        # Synthetic e barato (~ms): NAO cacheia — evita mascarar bugs de
+        # reprodutibilidade do modo demo.
         demo = BetgsnService(source="synthetic")
         return demo.signal_report(demo.snapshot())
 
-    config = _snapshot().config
-    try:
-        return svc.real_signal_report(
-            bankroll=bankroll if bankroll is not None else config.bankroll,
-            kelly_frac=config.kelly_fraction,
-            stake_cap=config.stake_cap,
-            min_ev=min_ev if min_ev is not None else config.min_ev,
-            max_exposure=config.max_exposure,
-            use_xg=use_xg if use_xg is not None else config.use_xg,
-            market_keys=market_keys,
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                f"dados reais indisponiveis: {exc}. Rode "
-                f"`python betgsn.py --import-fixtures-live` para baixar os "
-                f"jogos da rodada, ou use source=synthetic."
-            ),
-        ) from exc
+    snap = _snapshot()
+    config = snap.config
+    resolved_min_ev = min_ev if min_ev is not None else config.min_ev
+    resolved_use_xg = use_xg if use_xg is not None else config.use_xg
+    resolved_bankroll = bankroll if bankroll is not None else config.bankroll
+    key = _signals_cache_key(
+        source=source,
+        market_keys=tuple(market_keys) if market_keys else None,
+        min_ev=resolved_min_ev,
+        use_xg=resolved_use_xg,
+        bankroll=resolved_bankroll,
+        snapshot_generated_at=snap.generated_at,
+    )
+
+    now = _time_mod.monotonic()
+    entry = _signals_cache_get_fresh(key, now)
+    if entry is not None:
+        report, computed_at, computed_in_ms = entry
+        # Devolve o MESMO relatorio, com o bloco `cache` recalculado a
+        # cada leitura (age muda). Copia via model_copy para nao mutar o
+        # objeto cacheado (ausencia = cache miss em requests futuros).
+        return report.model_copy(update={"cache": S.CacheMeta(
+            status="STALE",
+            age_seconds=max(0.0, now - computed_at),
+            ttl_seconds=SIGNALS_CACHE_TTL_SECONDS,
+            key_fingerprint=_fingerprint_key(key),
+            computed_at=report.generated_at,
+            computed_in_ms=computed_in_ms,
+        )})
+
+    # Cache miss: trava por chave para nao computar em paralelo. Segunda
+    # request espera a primeira e sai com STALE (a primeira acabou de
+    # gravar o cache — computou fresco, mas as demais leem cache).
+    lock = _signals_cache_lock_for(key)
+    with lock:
+        # Double-check: outra thread pode ter populado enquanto esperava.
+        now = _time_mod.monotonic()
+        entry = _signals_cache_get_fresh(key, now)
+        if entry is not None:
+            report, computed_at, computed_in_ms = entry
+            return report.model_copy(update={"cache": S.CacheMeta(
+                status="STALE",
+                age_seconds=max(0.0, now - computed_at),
+                ttl_seconds=SIGNALS_CACHE_TTL_SECONDS,
+                key_fingerprint=_fingerprint_key(key),
+                computed_at=report.generated_at,
+                computed_in_ms=computed_in_ms,
+            )})
+        started = _time_mod.monotonic()
+        try:
+            report = svc.real_signal_report(
+                bankroll=resolved_bankroll,
+                kelly_frac=config.kelly_fraction,
+                stake_cap=config.stake_cap,
+                min_ev=resolved_min_ev,
+                max_exposure=config.max_exposure,
+                use_xg=resolved_use_xg,
+                market_keys=market_keys,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"dados reais indisponiveis: {exc}. Rode "
+                    f"`python betgsn.py --import-fixtures-live` para baixar "
+                    f"os jogos da rodada, ou use source=synthetic."
+                ),
+            ) from exc
+        computed_in_ms = (_time_mod.monotonic() - started) * 1000.0
+        # Grava snapshot e o resultado fresco. Ausencia do bloco `cache`
+        # no retorno = computo fresco (contrato).
+        _signals_cache[key] = (report, _time_mod.monotonic(), computed_in_ms)
+        return report
 
 
 @app.get("/api/signals/status", tags=["signals"])
