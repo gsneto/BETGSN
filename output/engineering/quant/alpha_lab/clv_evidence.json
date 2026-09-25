@@ -1,5 +1,15 @@
 {
   "kind": "clv_evidence",
+  "generated_at": "2026-09-25T22:49:27Z",
+  "dataset_fingerprint": "1b6e922b85ad2c08",
+  "n_observations": 51865,
+  "stride_seconds": 1800,
+  "markets": [
+    "Resultado Final (1X2)",
+    "Total de Gols",
+    "Ambas Marcam"
+  ],
+  "max_matches": 0,
   "clv": {
     "mean": null,
     "median": null,
@@ -8,5 +18,17 @@
     "n": 0,
     "prospective": true,
     "closed_only": true
+  },
+  "progress": {
+    "target": 200,
+    "closed": 0,
+    "pending": 885,
+    "no_close": 9,
+    "invalid": 0,
+    "mismatch": 0,
+    "n_entries": 894,
+    "remaining": 200,
+    "status": "CLV_INSUFFICIENT_DATA",
+    "note": "CLV válido = CLOSED + closing_odd + closing_timestamp reais. PENDING/NO_CLOSE/INVALID/MISMATCH não contam."
   }
 }

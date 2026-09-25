@@ -1,7 +1,15 @@
 {
   "kind": "alpha_evaluations",
-  "fingerprint": "1b6e922b85ad2c08",
+  "generated_at": "2026-09-25T22:49:27Z",
+  "dataset_fingerprint": "1b6e922b85ad2c08",
   "n_observations": 51865,
+  "stride_seconds": 1800,
+  "markets": [
+    "Resultado Final (1X2)",
+    "Total de Gols",
+    "Ambas Marcam"
+  ],
+  "max_matches": 0,
   "evaluations": {
     "BEST_PRICE_GAP": {
       "alpha_id": "best_price_gap",
@@ -12,13 +20,18 @@
       "primary_label": "converged_rate",
       "ci_low": 0.29660314830157414,
       "ci_high": 0.3204639602319801,
+      "mean_market_move_1m": 0.01889398321457976,
       "mean_market_move_5m": 0.012998790886994087,
       "mean_market_move_60m": 0.004373618933263239,
       "mean_closing_move": null,
       "consistency": {
         "market": 1.0,
         "league": 1.0,
-        "book": 0.8571428571428571
+        "book": 0.8571428571428571,
+        "odds_band": 0.8,
+        "ttk_band": 1.0,
+        "gap_band": 1.0,
+        "book_band": 1.0
       },
       "status": "VALIDATED",
       "limitations": [
@@ -30,6 +43,7 @@
           "n": 5930,
           "follow_rate": null,
           "converged_rate": 0.34937857565594793,
+          "mean_move_1m": 0.01847553576773624,
           "mean_move_5m": 0.012411411421849507,
           "signed_move_5m": null
         },
@@ -37,6 +51,7 @@
           "n": 1225,
           "follow_rate": null,
           "converged_rate": 0.09420289855072464,
+          "mean_move_1m": 0.026179084666183218,
           "mean_move_5m": 0.027088118189999563,
           "signed_move_5m": null
         }
@@ -46,6 +61,7 @@
           "n": 7155,
           "follow_rate": null,
           "converged_rate": 0.30853355426677714,
+          "mean_move_1m": 0.01889398321457976,
           "mean_move_5m": 0.012998790886994087,
           "signed_move_5m": null
         }
@@ -55,6 +71,7 @@
           "n": 3043,
           "follow_rate": null,
           "converged_rate": 0.28979272585060617,
+          "mean_move_1m": 0.014970988814521462,
           "mean_move_5m": 0.00881743188819137,
           "signed_move_5m": null
         },
@@ -62,6 +79,7 @@
           "n": 31,
           "follow_rate": null,
           "converged_rate": 0.06896551724137931,
+          "mean_move_1m": 0.0,
           "mean_move_5m": 0.0,
           "signed_move_5m": null
         },
@@ -69,6 +87,7 @@
           "n": 49,
           "follow_rate": null,
           "converged_rate": 0.2857142857142857,
+          "mean_move_1m": 0.007782836853293899,
           "mean_move_5m": 0.002611763336556137,
           "signed_move_5m": null
         },
@@ -76,6 +95,7 @@
           "n": 27,
           "follow_rate": null,
           "converged_rate": 0.19230769230769232,
+          "mean_move_1m": 0.022293189691312113,
           "mean_move_5m": 0.029803771234981027,
           "signed_move_5m": null
         },
@@ -83,6 +103,7 @@
           "n": 1,
           "follow_rate": null,
           "converged_rate": null,
+          "mean_move_1m": null,
           "mean_move_5m": null,
           "signed_move_5m": null
         },
@@ -90,6 +111,7 @@
           "n": 828,
           "follow_rate": null,
           "converged_rate": 0.364010989010989,
+          "mean_move_1m": 0.004704631478753859,
           "mean_move_5m": 0.0018336279031460128,
           "signed_move_5m": null
         },
@@ -97,6 +119,7 @@
           "n": 296,
           "follow_rate": null,
           "converged_rate": 0.15079365079365079,
+          "mean_move_1m": 0.017866470304951084,
           "mean_move_5m": 0.014227094080071442,
           "signed_move_5m": null
         },
@@ -104,6 +127,7 @@
           "n": 94,
           "follow_rate": null,
           "converged_rate": 0.20652173913043478,
+          "mean_move_1m": 0.001531007751937998,
           "mean_move_5m": -0.006896645359653996,
           "signed_move_5m": null
         },
@@ -111,6 +135,7 @@
           "n": 599,
           "follow_rate": null,
           "converged_rate": 0.344017094017094,
+          "mean_move_1m": 0.02837788115981112,
           "mean_move_5m": 0.02417598659036363,
           "signed_move_5m": null
         },
@@ -118,6 +143,7 @@
           "n": 32,
           "follow_rate": null,
           "converged_rate": 0.6451612903225806,
+          "mean_move_1m": -0.01200951167226161,
           "mean_move_5m": -0.006591557852508523,
           "signed_move_5m": null
         },
@@ -125,6 +151,7 @@
           "n": 316,
           "follow_rate": null,
           "converged_rate": 0.4533333333333333,
+          "mean_move_1m": 0.017105384207402263,
           "mean_move_5m": 0.00953167231481974,
           "signed_move_5m": null
         },
@@ -132,6 +159,7 @@
           "n": 10,
           "follow_rate": null,
           "converged_rate": 0.0,
+          "mean_move_1m": null,
           "mean_move_5m": null,
           "signed_move_5m": null
         },
@@ -139,6 +167,7 @@
           "n": 238,
           "follow_rate": null,
           "converged_rate": 0.20408163265306123,
+          "mean_move_1m": 0.020644527320455262,
           "mean_move_5m": 0.020099141637139814,
           "signed_move_5m": null
         },
@@ -146,6 +175,7 @@
           "n": 55,
           "follow_rate": null,
           "converged_rate": 0.45098039215686275,
+          "mean_move_1m": -0.0012763568309419775,
           "mean_move_5m": -0.002752073874482159,
           "signed_move_5m": null
         },
@@ -153,6 +183,7 @@
           "n": 684,
           "follow_rate": null,
           "converged_rate": 0.21428571428571427,
+          "mean_move_1m": 0.05140278430509371,
           "mean_move_5m": 0.04381602995609466,
           "signed_move_5m": null
         },
@@ -160,6 +191,7 @@
           "n": 48,
           "follow_rate": null,
           "converged_rate": 0.868421052631579,
+          "mean_move_1m": 0.004575119832930323,
           "mean_move_5m": 0.015041884431090164,
           "signed_move_5m": null
         },
@@ -167,6 +199,7 @@
           "n": 262,
           "follow_rate": null,
           "converged_rate": 0.3665158371040724,
+          "mean_move_1m": 0.03839019887985802,
           "mean_move_5m": 0.03139340716290352,
           "signed_move_5m": null
         },
@@ -174,6 +207,7 @@
           "n": 108,
           "follow_rate": null,
           "converged_rate": 0.3711340206185567,
+          "mean_move_1m": 0.011825251908959732,
           "mean_move_5m": 0.0012475283513975733,
           "signed_move_5m": null
         },
@@ -181,6 +215,7 @@
           "n": 254,
           "follow_rate": null,
           "converged_rate": 0.41037735849056606,
+          "mean_move_1m": 0.012487755985872283,
           "mean_move_5m": 0.010001469740289827,
           "signed_move_5m": null
         },
@@ -188,6 +223,7 @@
           "n": 64,
           "follow_rate": null,
           "converged_rate": 0.234375,
+          "mean_move_1m": 0.0180064978356512,
           "mean_move_5m": 0.019566687429010857,
           "signed_move_5m": null
         },
@@ -195,6 +231,7 @@
           "n": 57,
           "follow_rate": null,
           "converged_rate": 0.02127659574468085,
+          "mean_move_1m": 0.02625104427142226,
           "mean_move_5m": 0.027892666133002113,
           "signed_move_5m": null
         },
@@ -202,7 +239,128 @@
           "n": 59,
           "follow_rate": null,
           "converged_rate": 0.7142857142857143,
+          "mean_move_1m": -0.010299781271987045,
           "mean_move_5m": -0.016316244581759124,
+          "signed_move_5m": null
+        }
+      },
+      "by_odds_band": {
+        "1.30-1.50": {
+          "n": 85,
+          "follow_rate": null,
+          "converged_rate": 0.55,
+          "mean_move_1m": 0.00011011246782410092,
+          "mean_move_5m": -0.0019653436009069315,
+          "signed_move_5m": null
+        },
+        "1.50-2.00": {
+          "n": 1408,
+          "follow_rate": null,
+          "converged_rate": 0.2398190045248869,
+          "mean_move_1m": 0.015016252021447286,
+          "mean_move_5m": 0.011311121126823103,
+          "signed_move_5m": null
+        },
+        "2.00-3.00": {
+          "n": 1795,
+          "follow_rate": null,
+          "converged_rate": 0.2684948979591837,
+          "mean_move_1m": 0.0122211836609975,
+          "mean_move_5m": 0.00826953741934009,
+          "signed_move_5m": null
+        },
+        "<1.30": {
+          "n": 42,
+          "follow_rate": null,
+          "converged_rate": 0.45161290322580644,
+          "mean_move_1m": 0.004107205998126934,
+          "mean_move_5m": 0.002994291223171369,
+          "signed_move_5m": null
+        },
+        ">=3.00": {
+          "n": 3825,
+          "follow_rate": null,
+          "converged_rate": 0.34389418640418334,
+          "mean_move_1m": 0.02268955380209723,
+          "mean_move_5m": 0.015606182257891359,
+          "signed_move_5m": null
+        }
+      },
+      "by_ttk_band": {
+        "1-3d": {
+          "n": 1164,
+          "follow_rate": null,
+          "converged_rate": 0.3276553106212425,
+          "mean_move_1m": 0.013364828112734971,
+          "mean_move_5m": 0.01087508476651548,
+          "signed_move_5m": null
+        },
+        "6-24h": {
+          "n": 93,
+          "follow_rate": null,
+          "converged_rate": 0.2222222222222222,
+          "mean_move_1m": 0.020455049176297715,
+          "mean_move_5m": 0.02530816022266529,
+          "signed_move_5m": null
+        },
+        ">=3d": {
+          "n": 5898,
+          "follow_rate": null,
+          "converged_rate": 0.30594159113796576,
+          "mean_move_1m": 0.019712645040073196,
+          "mean_move_5m": 0.01322806583433827,
+          "signed_move_5m": null
+        }
+      },
+      "by_gap_band": {
+        "gap2-5%": {
+          "n": 1721,
+          "follow_rate": null,
+          "converged_rate": 0.2721474131821403,
+          "mean_move_1m": 0.008733066373786642,
+          "mean_move_5m": 0.005693466383856732,
+          "signed_move_5m": null
+        },
+        "gap5-10%": {
+          "n": 4361,
+          "follow_rate": null,
+          "converged_rate": 0.2912621359223301,
+          "mean_move_1m": 0.01627487022782489,
+          "mean_move_5m": 0.011358361184152184,
+          "signed_move_5m": null
+        },
+        "gap>=10%": {
+          "n": 1073,
+          "follow_rate": null,
+          "converged_rate": 0.4344978165938865,
+          "mean_move_1m": 0.040083857995134475,
+          "mean_move_5m": 0.026874993926873,
+          "signed_move_5m": null
+        }
+      },
+      "by_book_band": {
+        "books3-5": {
+          "n": 460,
+          "follow_rate": null,
+          "converged_rate": 0.19480519480519481,
+          "mean_move_1m": 0.02070330466413662,
+          "mean_move_5m": 0.011631539173283413,
+          "signed_move_5m": null
+        },
+        "books6-10": {
+          "n": 1095,
+          "follow_rate": null,
+          "converged_rate": 0.06864754098360656,
+          "mean_move_1m": 0.03242111098910718,
+          "mean_move_5m": 0.023509083594504338,
+          "signed_move_5m": null
+        },
+        "books>10": {
+          "n": 5600,
+          "follow_rate": null,
+          "converged_rate": 0.3679931536157467,
+          "mean_move_1m": 0.018583356942572765,
+          "mean_move_5m": 0.012890921074281025,
           "signed_move_5m": null
         }
       }
@@ -216,13 +374,18 @@
       "primary_label": "signed_market_move_5m",
       "ci_low": -0.00013040374747327985,
       "ci_high": 0.0012320078376283107,
+      "mean_market_move_1m": 0.02147943656967519,
       "mean_market_move_5m": 0.014805843317100276,
       "mean_market_move_60m": 0.005109965129357422,
       "mean_closing_move": null,
       "consistency": {
         "market": 0.5,
         "league": 1.0,
-        "book": 0.5806451612903226
+        "book": 0.5806451612903226,
+        "odds_band": 0.6,
+        "ttk_band": 0.6666666666666666,
+        "gap_band": 0.75,
+        "book_band": 1.0
       },
       "status": "NO_EVIDENCE",
       "limitations": [
@@ -232,15 +395,17 @@
       "by_market": {
         "Resultado Final (1X2)": {
           "n": 37587,
-          "follow_rate": 0.32076575823440895,
+          "follow_rate": 0.3319400323245834,
           "converged_rate": 0.3763257985713844,
+          "mean_move_1m": 0.021480014204544994,
           "mean_move_5m": 0.014699786393994843,
           "signed_move_5m": 0.0005637435449994075
         },
         "Total de Gols": {
           "n": 3332,
-          "follow_rate": 0.13043478260869565,
+          "follow_rate": 0.16624040920716113,
           "converged_rate": 0.08981818181818182,
+          "mean_move_1m": 0.021449729633508392,
           "mean_move_5m": 0.022159732841622273,
           "signed_move_5m": -0.0014549406327834919
         }
@@ -248,8 +413,9 @@
       "by_league": {
         "?": {
           "n": 40919,
-          "follow_rate": 0.30550571589685754,
+          "follow_rate": 0.318654841851643,
           "converged_rate": 0.3538715836871954,
+          "mean_move_1m": 0.02147943656967519,
           "mean_move_5m": 0.014805843317100276,
           "signed_move_5m": 0.000535044219324579
         }
@@ -257,15 +423,17 @@
       "by_book": {
         "1xBet": {
           "n": 3889,
-          "follow_rate": 0.4069703622392975,
+          "follow_rate": 0.4119099890230516,
           "converged_rate": 0.3130354957160343,
+          "mean_move_1m": 0.022692515089354468,
           "mean_move_5m": 0.015121766185087848,
           "signed_move_5m": 0.015121766185087848
         },
         "888sport": {
           "n": 852,
-          "follow_rate": 0.22426470588235295,
+          "follow_rate": 0.2267156862745098,
           "converged_rate": 0.42002600780234073,
+          "mean_move_1m": 0.019702860788459137,
           "mean_move_5m": 0.014904780933371834,
           "signed_move_5m": -0.00933103159715683
         },
@@ -273,55 +441,63 @@
           "n": 108,
           "follow_rate": 0.4230769230769231,
           "converged_rate": 0.4090909090909091,
+          "mean_move_1m": 0.02118260369121148,
           "mean_move_5m": 0.013614072582517636,
           "signed_move_5m": 0.013614072582517636
         },
         "BetOnline.ag": {
           "n": 214,
-          "follow_rate": 0.42788461538461536,
+          "follow_rate": 0.4326923076923077,
           "converged_rate": 0.29896907216494845,
+          "mean_move_1m": 0.02154194328709569,
           "mean_move_5m": 0.017076607834990414,
           "signed_move_5m": 0.01795155341065515
         },
         "Betclic (FR)": {
           "n": 3192,
-          "follow_rate": 0.1817884048476908,
+          "follow_rate": 0.20569931215198164,
           "converged_rate": 0.3374624624624625,
+          "mean_move_1m": 0.023710521108376344,
           "mean_move_5m": 0.01773536626819262,
           "signed_move_5m": -0.01773536626819262
         },
         "Betfair": {
           "n": 1948,
-          "follow_rate": 0.3623730625334046,
+          "follow_rate": 0.38321753073222875,
           "converged_rate": 0.3283236994219653,
+          "mean_move_1m": 0.016124687479166858,
           "mean_move_5m": 0.00973199735578944,
           "signed_move_5m": 0.0021843893334117293
         },
         "Betsson": {
           "n": 1051,
-          "follow_rate": 0.2601787487586892,
+          "follow_rate": 0.25521350546176763,
           "converged_rate": 0.3562231759656652,
+          "mean_move_1m": 0.028418401266882564,
           "mean_move_5m": 0.020419306762872964,
           "signed_move_5m": -0.012030689220033959
         },
         "Codere (IT)": {
           "n": 611,
-          "follow_rate": 0.15577889447236182,
+          "follow_rate": 0.16917922948073702,
           "converged_rate": 0.21518987341772153,
+          "mean_move_1m": 0.020459180252509906,
           "mean_move_5m": 0.014351482495346608,
           "signed_move_5m": -0.011839998644178699
         },
         "Coolbet": {
           "n": 1260,
-          "follow_rate": 0.4793388429752066,
+          "follow_rate": 0.48512396694214877,
           "converged_rate": 0.36792452830188677,
+          "mean_move_1m": 0.02568453492390376,
           "mean_move_5m": 0.020017534068040625,
           "signed_move_5m": 0.01847544789872075
         },
         "Everygame": {
           "n": 248,
-          "follow_rate": 0.30962343096234307,
+          "follow_rate": 0.3138075313807531,
           "converged_rate": 0.4765957446808511,
+          "mean_move_1m": 0.005809224248731604,
           "mean_move_5m": 0.0012528244611437207,
           "signed_move_5m": 4.1544568519431335e-05
         },
@@ -329,27 +505,31 @@
           "n": 91,
           "follow_rate": 0.4065934065934066,
           "converged_rate": 0.42857142857142855,
+          "mean_move_1m": 0.006886562223656195,
           "mean_move_5m": 0.0051206605349374025,
           "signed_move_5m": 0.0054233632376401025
         },
         "LeoVegas (SE)": {
           "n": 1438,
-          "follow_rate": 0.359796067006555,
+          "follow_rate": 0.3823743627093955,
           "converged_rate": 0.35895465026902384,
+          "mean_move_1m": 0.020881834572814232,
           "mean_move_5m": 0.014207563985787573,
           "signed_move_5m": 0.0019411684562906095
         },
         "Marathon Bet": {
           "n": 1066,
-          "follow_rate": 0.458984375,
+          "follow_rate": 0.4658203125,
           "converged_rate": 0.3067685589519651,
+          "mean_move_1m": 0.0319304062761146,
           "mean_move_5m": 0.022504231562653028,
           "signed_move_5m": 0.022504231562653028
         },
         "Matchbook": {
           "n": 581,
-          "follow_rate": 0.3786231884057971,
+          "follow_rate": 0.391304347826087,
           "converged_rate": 0.26195426195426197,
+          "mean_move_1m": 0.018754515253094167,
           "mean_move_5m": 0.019288160660359276,
           "signed_move_5m": 0.019288160660359276
         },
@@ -357,34 +537,39 @@
           "n": 279,
           "follow_rate": 0.2727272727272727,
           "converged_rate": 0.3702127659574468,
+          "mean_move_1m": 0.010126213385408651,
           "mean_move_5m": 0.0038267385299280213,
           "signed_move_5m": -0.0038267385299280213
         },
         "Nordic Bet": {
           "n": 1036,
-          "follow_rate": 0.27062374245472837,
+          "follow_rate": 0.26458752515090544,
           "converged_rate": 0.39200863930885527,
+          "mean_move_1m": 0.02672898546068959,
           "mean_move_5m": 0.019413092580810073,
           "signed_move_5m": -0.012461138042616997
         },
         "PMU": {
           "n": 1648,
-          "follow_rate": 0.3364544319600499,
+          "follow_rate": 0.3408239700374532,
           "converged_rate": 0.412258064516129,
+          "mean_move_1m": 0.005459806201825721,
           "mean_move_5m": 0.0019558503480699755,
           "signed_move_5m": -0.0015675721766324903
         },
         "PMU (FR)": {
           "n": 3338,
-          "follow_rate": 0.16559897501601537,
+          "follow_rate": 0.18417680973734785,
           "converged_rate": 0.24488355681016233,
+          "mean_move_1m": 0.01137165061089531,
           "mean_move_5m": 0.007555231836779449,
           "signed_move_5m": -0.007039408914331234
         },
         "Pinnacle": {
           "n": 1609,
-          "follow_rate": 0.566793893129771,
+          "follow_rate": 0.5763358778625954,
           "converged_rate": 0.29258976317799845,
+          "mean_move_1m": 0.04787305630714326,
           "mean_move_5m": 0.03713087832597687,
           "signed_move_5m": 0.04005014813674445
         },
@@ -392,6 +577,7 @@
           "n": 375,
           "follow_rate": 0.5730027548209367,
           "converged_rate": 0.6176470588235294,
+          "mean_move_1m": 0.04270494935513394,
           "mean_move_5m": 0.028512704674668012,
           "signed_move_5m": 0.035762940717634625
         },
@@ -399,69 +585,79 @@
           "n": 20,
           "follow_rate": 0.8,
           "converged_rate": 0.05555555555555555,
+          "mean_move_1m": 0.029731525784157404,
           "mean_move_5m": 0.02811574390521765,
           "signed_move_5m": 0.02811574390521765
         },
         "Suprabets": {
           "n": 217,
-          "follow_rate": 0.42924528301886794,
+          "follow_rate": 0.4339622641509434,
           "converged_rate": 0.33516483516483514,
+          "mean_move_1m": 0.05124307245062935,
           "mean_move_5m": 0.038543838917862956,
           "signed_move_5m": 0.04447068653584494
         },
         "Tipico": {
           "n": 1489,
-          "follow_rate": 0.4466898954703833,
+          "follow_rate": 0.4522648083623693,
           "converged_rate": 0.36341059602649006,
+          "mean_move_1m": 0.03351217707826989,
           "mean_move_5m": 0.026030914569957746,
           "signed_move_5m": 0.021706487728512747
         },
         "Unibet": {
           "n": 547,
-          "follow_rate": 0.4018867924528302,
+          "follow_rate": 0.4075471698113208,
           "converged_rate": 0.5533596837944664,
+          "mean_move_1m": 0.013014249762107492,
           "mean_move_5m": 0.003182997813011181,
           "signed_move_5m": 0.005472496038540081
         },
         "Unibet (FR)": {
           "n": 4149,
-          "follow_rate": 0.20381194409148665,
+          "follow_rate": 0.2243964421855146,
           "converged_rate": 0.378534333525678,
+          "mean_move_1m": 0.018547223933817757,
           "mean_move_5m": 0.013290088127252917,
           "signed_move_5m": -0.013290088127252917
         },
         "Unibet (NL)": {
           "n": 1212,
-          "follow_rate": 0.4383088869715272,
+          "follow_rate": 0.4460742018981881,
           "converged_rate": 0.46422018348623856,
+          "mean_move_1m": 0.016015926790090163,
           "mean_move_5m": 0.011243245271048611,
           "signed_move_5m": 0.010422647021187512
         },
         "Unibet (SE)": {
           "n": 1462,
-          "follow_rate": 0.41768511861969804,
+          "follow_rate": 0.4227174694464414,
           "converged_rate": 0.4314912944738834,
+          "mean_move_1m": 0.016930835497854943,
           "mean_move_5m": 0.010268265313478209,
           "signed_move_5m": 0.009584025180758229
         },
         "William Hill": {
           "n": 1106,
-          "follow_rate": 0.19811320754716982,
+          "follow_rate": 0.22075471698113208,
           "converged_rate": 0.37435897435897436,
+          "mean_move_1m": 0.02910730522287217,
           "mean_move_5m": 0.022072391679024094,
           "signed_move_5m": -0.005571737914586031
         },
         "Winamax (DE)": {
           "n": 2085,
-          "follow_rate": 0.19679519278918378,
+          "follow_rate": 0.22183274912368553,
           "converged_rate": 0.33698788228505483,
+          "mean_move_1m": 0.020532154151707494,
           "mean_move_5m": 0.014279717644764225,
           "signed_move_5m": -0.011798139575201446
         },
         "Winamax (FR)": {
           "n": 3539,
-          "follow_rate": 0.1995256448265639,
+          "follow_rate": 0.219389267714201,
           "converged_rate": 0.34893184130213634,
+          "mean_move_1m": 0.02123315230311644,
           "mean_move_5m": 0.014933930329215707,
           "signed_move_5m": -0.014048326874630332
         },
@@ -469,8 +665,137 @@
           "n": 259,
           "follow_rate": 0.22935779816513763,
           "converged_rate": 0.7135678391959799,
+          "mean_move_1m": 0.012741253188945334,
           "mean_move_5m": 0.001196357279560184,
           "signed_move_5m": -0.009873825804480197
+        }
+      },
+      "by_odds_band": {
+        "1.30-1.50": {
+          "n": 261,
+          "follow_rate": 0.3089430894308943,
+          "converged_rate": 0.4391304347826087,
+          "mean_move_1m": 0.0009446377160693087,
+          "mean_move_5m": -0.004738886122882495,
+          "signed_move_5m": 0.002158750113917288
+        },
+        "1.50-2.00": {
+          "n": 4082,
+          "follow_rate": 0.2449461800997637,
+          "converged_rate": 0.2328514303291295,
+          "mean_move_1m": 0.012647980886100613,
+          "mean_move_5m": 0.010106120776498351,
+          "signed_move_5m": -0.0017509562454794596
+        },
+        "2.00-3.00": {
+          "n": 8876,
+          "follow_rate": 0.28297220913801224,
+          "converged_rate": 0.25281634791721247,
+          "mean_move_1m": 0.016414283282273262,
+          "mean_move_5m": 0.011799311164490725,
+          "signed_move_5m": -0.0013012114722409144
+        },
+        "<1.30": {
+          "n": 117,
+          "follow_rate": 0.34545454545454546,
+          "converged_rate": 0.62,
+          "mean_move_1m": -0.0005617063165013765,
+          "mean_move_5m": -0.0002607495943136181,
+          "signed_move_5m": 2.0248355485768612e-05
+        },
+        ">=3.00": {
+          "n": 27583,
+          "follow_rate": 0.3407823348636036,
+          "converged_rate": 0.40072882633827595,
+          "mean_move_1m": 0.023580890526411963,
+          "mean_move_5m": 0.01603885547803355,
+          "signed_move_5m": 0.0010977944748391789
+        }
+      },
+      "by_ttk_band": {
+        "1-3d": {
+          "n": 5857,
+          "follow_rate": 0.3117782909930716,
+          "converged_rate": 0.3715740015661707,
+          "mean_move_1m": 0.015024525655418045,
+          "mean_move_5m": 0.010810387321626183,
+          "signed_move_5m": 0.0011393586707886098
+        },
+        "6-24h": {
+          "n": 507,
+          "follow_rate": 0.3375,
+          "converged_rate": 0.20984455958549222,
+          "mean_move_1m": 0.01333106555241965,
+          "mean_move_5m": 0.02052192490919813,
+          "signed_move_5m": -0.0023017901295024966
+        },
+        ">=3d": {
+          "n": 34555,
+          "follow_rate": 0.3195562984348883,
+          "converged_rate": 0.35269471194458524,
+          "mean_move_1m": 0.022451164383737083,
+          "mean_move_5m": 0.015396556383295637,
+          "signed_move_5m": 0.0004708697134172266
+        }
+      },
+      "by_gap_band": {
+        "gap2-5%": {
+          "n": 7637,
+          "follow_rate": 0.26577569578396254,
+          "converged_rate": 0.26275752773375594,
+          "mean_move_1m": 0.010547047550824218,
+          "mean_move_5m": 0.006879612150039002,
+          "signed_move_5m": -0.004033236235440405
+        },
+        "gap5-10%": {
+          "n": 21445,
+          "follow_rate": 0.3192124981634752,
+          "converged_rate": 0.31968503937007875,
+          "mean_move_1m": 0.016773968259914708,
+          "mean_move_5m": 0.012225073974134375,
+          "signed_move_5m": 8.7938328359238e-05
+        },
+        "gap<2%": {
+          "n": 808,
+          "follow_rate": 0.18393782383419688,
+          "converged_rate": 0.08776978417266187,
+          "mean_move_1m": -0.0024553072742855716,
+          "mean_move_5m": -0.010932031473285978,
+          "signed_move_5m": 0.00575919204162361
+        },
+        "gap>=10%": {
+          "n": 11029,
+          "follow_rate": 0.3637482252721249,
+          "converged_rate": 0.4975695521770607,
+          "mean_move_1m": 0.035330883064552975,
+          "mean_move_5m": 0.023274019504246884,
+          "signed_move_5m": 0.0031469573770076978
+        }
+      },
+      "by_book_band": {
+        "books3-5": {
+          "n": 1537,
+          "follow_rate": 0.24346629986244842,
+          "converged_rate": 0.1462663587374904,
+          "mean_move_1m": 0.010724373076215047,
+          "mean_move_5m": 0.0035355674613583433,
+          "signed_move_5m": 0.001685885840958107
+        },
+        "books6-10": {
+          "n": 4378,
+          "follow_rate": 0.16694772344013492,
+          "converged_rate": 0.06599110232328226,
+          "mean_move_1m": 0.023157056696792577,
+          "mean_move_5m": 0.009017332491525884,
+          "signed_move_5m": 0.007444564953736467
+        },
+        "books>10": {
+          "n": 35004,
+          "follow_rate": 0.3407764374869047,
+          "converged_rate": 0.4020979020979021,
+          "mean_move_1m": 0.021638037204497532,
+          "mean_move_5m": 0.015189714275521496,
+          "signed_move_5m": 0.0004527340969547674
         }
       }
     },
@@ -483,13 +808,18 @@
       "primary_label": "converged_rate",
       "ci_low": 0.2911034265954103,
       "ci_high": 0.3237975479408991,
+      "mean_market_move_1m": 0.026537867611903604,
       "mean_market_move_5m": 0.018779882991451745,
       "mean_market_move_60m": 0.005894813871894652,
       "mean_closing_move": null,
       "consistency": {
         "market": 1.0,
         "league": 1.0,
-        "book": 0.8888888888888888
+        "book": 0.8888888888888888,
+        "odds_band": 1.0,
+        "ttk_band": 1.0,
+        "gap_band": 1.0,
+        "book_band": 1.0
       },
       "status": "VALIDATED",
       "limitations": [
@@ -501,6 +831,7 @@
           "n": 3677,
           "follow_rate": null,
           "converged_rate": 0.31546458739441197,
+          "mean_move_1m": 0.026537867611903604,
           "mean_move_5m": 0.018768149434012324,
           "signed_move_5m": null
         },
@@ -508,6 +839,7 @@
           "n": 114,
           "follow_rate": null,
           "converged_rate": 0.05825242718446602,
+          "mean_move_1m": null,
           "mean_move_5m": 0.0428571428571429,
           "signed_move_5m": null
         }
@@ -517,6 +849,7 @@
           "n": 3791,
           "follow_rate": null,
           "converged_rate": 0.3071361207167557,
+          "mean_move_1m": 0.026537867611903604,
           "mean_move_5m": 0.018779882991451745,
           "signed_move_5m": null
         }
@@ -526,6 +859,7 @@
           "n": 1239,
           "follow_rate": null,
           "converged_rate": 0.28612997090203685,
+          "mean_move_1m": 0.02202340653095214,
           "mean_move_5m": 0.013586664337294668,
           "signed_move_5m": null
         },
@@ -533,6 +867,7 @@
           "n": 22,
           "follow_rate": null,
           "converged_rate": 0.0,
+          "mean_move_1m": null,
           "mean_move_5m": null,
           "signed_move_5m": null
         },
@@ -540,6 +875,7 @@
           "n": 6,
           "follow_rate": null,
           "converged_rate": 0.25,
+          "mean_move_1m": null,
           "mean_move_5m": null,
           "signed_move_5m": null
         },
@@ -547,6 +883,7 @@
           "n": 23,
           "follow_rate": null,
           "converged_rate": 0.08695652173913043,
+          "mean_move_1m": 0.024189175327109996,
           "mean_move_5m": 0.03145817360383401,
           "signed_move_5m": null
         },
@@ -554,6 +891,7 @@
           "n": 1,
           "follow_rate": null,
           "converged_rate": null,
+          "mean_move_1m": null,
           "mean_move_5m": null,
           "signed_move_5m": null
         },
@@ -561,6 +899,7 @@
           "n": 353,
           "follow_rate": null,
           "converged_rate": 0.3903225806451613,
+          "mean_move_1m": 0.008539740201442278,
           "mean_move_5m": 0.0023879966647240613,
           "signed_move_5m": null
         },
@@ -568,6 +907,7 @@
           "n": 261,
           "follow_rate": null,
           "converged_rate": 0.1141552511415525,
+          "mean_move_1m": 0.021725244289768124,
           "mean_move_5m": 0.018799905229733283,
           "signed_move_5m": null
         },
@@ -575,6 +915,7 @@
           "n": 58,
           "follow_rate": null,
           "converged_rate": 0.22413793103448276,
+          "mean_move_1m": -0.0009593023255813869,
           "mean_move_5m": -0.011879542151162792,
           "signed_move_5m": null
         },
@@ -582,6 +923,7 @@
           "n": 358,
           "follow_rate": null,
           "converged_rate": 0.35144927536231885,
+          "mean_move_1m": 0.0364671369786823,
           "mean_move_5m": 0.03252464774487887,
           "signed_move_5m": null
         },
@@ -589,6 +931,7 @@
           "n": 3,
           "follow_rate": null,
           "converged_rate": 0.6666666666666666,
+          "mean_move_1m": -0.02850877192982454,
           "mean_move_5m": -0.010684414524683791,
           "signed_move_5m": null
         },
@@ -596,6 +939,7 @@
           "n": 210,
           "follow_rate": null,
           "converged_rate": 0.4187192118226601,
+          "mean_move_1m": 0.01979599896471241,
           "mean_move_5m": 0.01113036742468789,
           "signed_move_5m": null
         },
@@ -603,6 +947,7 @@
           "n": 95,
           "follow_rate": null,
           "converged_rate": 0.18666666666666668,
+          "mean_move_1m": 0.025064117655194607,
           "mean_move_5m": 0.02474943042895402,
           "signed_move_5m": null
         },
@@ -610,6 +955,7 @@
           "n": 48,
           "follow_rate": null,
           "converged_rate": 0.37777777777777777,
+          "mean_move_1m": -0.0012763568309419775,
           "mean_move_5m": -0.003005174116243031,
           "signed_move_5m": null
         },
@@ -617,6 +963,7 @@
           "n": 1,
           "follow_rate": null,
           "converged_rate": null,
+          "mean_move_1m": null,
           "mean_move_5m": -0.15299999999999994,
           "signed_move_5m": null
         },
@@ -624,6 +971,7 @@
           "n": 537,
           "follow_rate": null,
           "converged_rate": 0.21377672209026127,
+          "mean_move_1m": 0.050181885455577495,
           "mean_move_5m": 0.04090672299903077,
           "signed_move_5m": null
         },
@@ -631,6 +979,7 @@
           "n": 39,
           "follow_rate": null,
           "converged_rate": 0.9354838709677419,
+          "mean_move_1m": -0.01903807615230465,
           "mean_move_5m": 0.0076957803727181195,
           "signed_move_5m": null
         },
@@ -638,6 +987,7 @@
           "n": 218,
           "follow_rate": null,
           "converged_rate": 0.3879781420765027,
+          "mean_move_1m": 0.041381368579496425,
           "mean_move_5m": 0.03418149684823526,
           "signed_move_5m": null
         },
@@ -645,6 +995,7 @@
           "n": 56,
           "follow_rate": null,
           "converged_rate": 0.42857142857142855,
+          "mean_move_1m": 0.02077320641245497,
           "mean_move_5m": -0.002039269357450854,
           "signed_move_5m": null
         },
@@ -652,6 +1003,7 @@
           "n": 128,
           "follow_rate": null,
           "converged_rate": 0.4411764705882353,
+          "mean_move_1m": 0.016973916584619067,
           "mean_move_5m": 0.015194855837621767,
           "signed_move_5m": null
         },
@@ -659,6 +1011,7 @@
           "n": 59,
           "follow_rate": null,
           "converged_rate": 0.23728813559322035,
+          "mean_move_1m": 0.0180064978356512,
           "mean_move_5m": 0.019566687429010857,
           "signed_move_5m": null
         },
@@ -666,6 +1019,7 @@
           "n": 20,
           "follow_rate": null,
           "converged_rate": 0.05,
+          "mean_move_1m": null,
           "mean_move_5m": null,
           "signed_move_5m": null
         },
@@ -673,7 +1027,128 @@
           "n": 56,
           "follow_rate": null,
           "converged_rate": 0.723404255319149,
+          "mean_move_1m": -0.010299781271987045,
           "mean_move_5m": -0.016577826968906417,
+          "signed_move_5m": null
+        }
+      },
+      "by_odds_band": {
+        "1.30-1.50": {
+          "n": 10,
+          "follow_rate": null,
+          "converged_rate": 0.0,
+          "mean_move_1m": null,
+          "mean_move_5m": null,
+          "signed_move_5m": null
+        },
+        "1.50-2.00": {
+          "n": 162,
+          "follow_rate": null,
+          "converged_rate": 0.1889763779527559,
+          "mean_move_1m": 0.019713262102684,
+          "mean_move_5m": 0.015113805627738732,
+          "signed_move_5m": null
+        },
+        "2.00-3.00": {
+          "n": 808,
+          "follow_rate": null,
+          "converged_rate": 0.15174506828528073,
+          "mean_move_1m": 0.0276322238900018,
+          "mean_move_5m": 0.023689366886788073,
+          "signed_move_5m": null
+        },
+        ">=3.00": {
+          "n": 2811,
+          "follow_rate": null,
+          "converged_rate": 0.35765199161425576,
+          "mean_move_1m": 0.026504915251438936,
+          "mean_move_5m": 0.01804875889741168,
+          "signed_move_5m": null
+        }
+      },
+      "by_ttk_band": {
+        "1-3d": {
+          "n": 507,
+          "follow_rate": null,
+          "converged_rate": 0.3167420814479638,
+          "mean_move_1m": 0.020318240645156187,
+          "mean_move_5m": 0.01654247764219016,
+          "signed_move_5m": null
+        },
+        "6-24h": {
+          "n": 47,
+          "follow_rate": null,
+          "converged_rate": 0.2702702702702703,
+          "mean_move_1m": 0.014240487751012386,
+          "mean_move_5m": 0.02174806719494474,
+          "signed_move_5m": null
+        },
+        ">=3d": {
+          "n": 3237,
+          "follow_rate": null,
+          "converged_rate": 0.3060695780903035,
+          "mean_move_1m": 0.027504179277197408,
+          "mean_move_5m": 0.019104620835769404,
+          "signed_move_5m": null
+        }
+      },
+      "by_gap_band": {
+        "gap2-5%": {
+          "n": 562,
+          "follow_rate": null,
+          "converged_rate": 0.1873589164785553,
+          "mean_move_1m": 0.02026921568909628,
+          "mean_move_5m": 0.014634599376314962,
+          "signed_move_5m": null
+        },
+        "gap5-10%": {
+          "n": 2124,
+          "follow_rate": null,
+          "converged_rate": 0.27540255413659076,
+          "mean_move_1m": 0.020237043986092853,
+          "mean_move_5m": 0.015528522172057975,
+          "signed_move_5m": null
+        },
+        "gap<2%": {
+          "n": 49,
+          "follow_rate": null,
+          "converged_rate": 0.17142857142857143,
+          "mean_move_1m": 0.01426949827423758,
+          "mean_move_5m": -0.01982311708845821,
+          "signed_move_5m": null
+        },
+        "gap>=10%": {
+          "n": 1056,
+          "follow_rate": null,
+          "converged_rate": 0.43458980044345896,
+          "mean_move_1m": 0.040398829411532514,
+          "mean_move_5m": 0.027068473091275743,
+          "signed_move_5m": null
+        }
+      },
+      "by_book_band": {
+        "books3-5": {
+          "n": 259,
+          "follow_rate": null,
+          "converged_rate": 0.2930232558139535,
+          "mean_move_1m": 0.020376505990504393,
+          "mean_move_5m": 0.007013208030334969,
+          "signed_move_5m": null
+        },
+        "books6-10": {
+          "n": 516,
+          "follow_rate": null,
+          "converged_rate": 0.06952965235173825,
+          "mean_move_1m": null,
+          "mean_move_5m": -0.022965975242530943,
+          "signed_move_5m": null
+        },
+        "books>10": {
+          "n": 3016,
+          "follow_rate": null,
+          "converged_rate": 0.3552684699232943,
+          "mean_move_1m": 0.026796097352951343,
+          "mean_move_5m": 0.020183997023364337,
           "signed_move_5m": null
         }
       }

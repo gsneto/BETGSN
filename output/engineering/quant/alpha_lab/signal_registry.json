@@ -1,6 +1,15 @@
 {
   "kind": "signal_registry",
-  "fingerprint": "1b6e922b85ad2c08",
+  "generated_at": "2026-09-25T22:49:27Z",
+  "dataset_fingerprint": "1b6e922b85ad2c08",
+  "n_observations": 51865,
+  "stride_seconds": 1800,
+  "markets": [
+    "Resultado Final (1X2)",
+    "Total de Gols",
+    "Ambas Marcam"
+  ],
+  "max_matches": 0,
   "signals": {
     "BEST_PRICE_GAP": {
       "signal_id": "BEST_PRICE_GAP",
@@ -21,7 +30,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "CONSISTENT",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "candidato a mais validação; NÃO é produção e não implica ROI",
         "CLV/closing indisponível (kickoffs futuros)"
@@ -45,7 +54,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "Uma casa que move primeiro e seguida por outras identifica liderança de preço (sharp anchor)."
       ]
@@ -68,7 +77,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "Uma casa que move primeiro e seguida por outras identifica liderança de preço (sharp anchor)."
       ]
@@ -92,7 +101,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "efeito dentro do IC95% [-0.0001, 0.0012] — não distinguível do nulo",
         "CLV/closing indisponível (kickoffs futuros)"
@@ -116,7 +125,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "Quando N casas movem na mesma direção, o movimento continua (momentum) ou reverte."
       ]
@@ -140,7 +149,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "CONSISTENT",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "candidato a mais validação; NÃO é produção e não implica ROI",
         "CLV/closing indisponível (kickoffs futuros)"
@@ -164,7 +173,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "Uma casa que inverte a direção do próprio movimento sinaliza fim de fluxo (reversão)."
       ]
@@ -187,7 +196,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "Casas que convergem rápido para o mesmo preço indicam reprecificação concluída (sem follow-through)."
       ]
@@ -210,7 +219,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "Uma casa com preço parado enquanto o resto atualiza sinaliza preço desatualizado explorável."
       ]
@@ -232,7 +241,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "Favoritos são subprecificados e longshots sobreprecificados de forma sistemática."
       ]
@@ -252,7 +261,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "Escalações inesperadas reprecificam o mercado."
       ]
@@ -272,7 +281,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "Reação do mercado a gols ao vivo."
       ]
@@ -295,7 +304,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "A diferença entre probabilidade de modelo e fair do mercado contém informação OOS."
       ]
@@ -318,7 +327,7 @@
       "execution_status": "UNKNOWN",
       "robustness": "NOT_RUN",
       "fingerprint": "1b6e922b85ad2c08",
-      "last_updated": "2026-09-25T19:02:34Z",
+      "last_updated": "2026-09-25T22:49:27Z",
       "notes": [
         "O movimento relativo ao tempo até o kickoff antecipa o fechamento (drift pré-jogo)."
       ]

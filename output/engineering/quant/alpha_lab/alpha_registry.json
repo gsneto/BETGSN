@@ -1,6 +1,15 @@
 {
   "kind": "alpha_registry",
-  "fingerprint": "1b6e922b85ad2c08",
+  "generated_at": "2026-09-25T22:49:27Z",
+  "dataset_fingerprint": "1b6e922b85ad2c08",
+  "n_observations": 51865,
+  "stride_seconds": 1800,
+  "markets": [
+    "Resultado Final (1X2)",
+    "Total de Gols",
+    "Ambas Marcam"
+  ],
+  "max_matches": 0,
   "alphas": {
     "bookmaker_outlier": {
       "alpha_id": "bookmaker_outlier",

@@ -1,0 +1,36 @@
+{
+  "kind": "line_shopping_ablation",
+  "generated_at": "2026-09-25T22:49:27Z",
+  "dataset_fingerprint": "1b6e922b85ad2c08",
+  "n_observations": 51865,
+  "stride_seconds": 1800,
+  "markets": [
+    "Resultado Final (1X2)",
+    "Total de Gols",
+    "Ambas Marcam"
+  ],
+  "max_matches": 0,
+  "ablation": {
+    "BEST_PRICE_GAP": {
+      "n": 7155,
+      "entry_advantage_pct": 0.07699403085512353,
+      "best_persistence_5m": 0.9475465313028765,
+      "median_move_5m": 0.012998790886994087,
+      "note": "entry_advantage = ganho BRUTO de pegar a melhor cotação; persistence = a melhor cotação se manteve. Nenhum dos dois é edge de modelo por si só."
+    },
+    "BOOKMAKER_OUTLIER": {
+      "n": 40919,
+      "entry_advantage_pct": 0.09321465992541958,
+      "best_persistence_5m": 0.976437587657784,
+      "median_move_5m": 0.014805843317100276,
+      "note": "entry_advantage = ganho BRUTO de pegar a melhor cotação; persistence = a melhor cotação se manteve. Nenhum dos dois é edge de modelo por si só."
+    },
+    "DISPERSION_SPIKE": {
+      "n": 3791,
+      "entry_advantage_pct": 0.09256736972778473,
+      "best_persistence_5m": 1.0,
+      "median_move_5m": 0.018779882991451745,
+      "note": "entry_advantage = ganho BRUTO de pegar a melhor cotação; persistence = a melhor cotação se manteve. Nenhum dos dois é edge de modelo por si só."
+    }
+  }
+}

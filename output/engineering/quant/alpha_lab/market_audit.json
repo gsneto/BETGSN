@@ -1,5 +1,9 @@
 {
   "kind": "market_audit",
+  "generated_at": "2026-09-25T22:49:27Z",
+  "dataset_fingerprint": "1b6e922b85ad2c08",
+  "n_observations": 51865,
+  "stride_seconds": 1800,
   "markets": {
     "Resultado Final (1X2)": {
       "market": "Resultado Final (1X2)",
@@ -70,5 +74,6 @@
         "MARKET_RAW = 1/odd (com margem); MARKET_FAIR = de-vig do grupo completo. Mercado incompleto não gera fair utilizável."
       ]
     }
-  }
+  },
+  "max_matches": 0
 }

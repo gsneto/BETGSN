@@ -1,14 +1,26 @@
 {
   "kind": "promotion_report",
-  "fingerprint": "1b6e922b85ad2c08",
+  "generated_at": "2026-09-25T22:49:27Z",
+  "dataset_fingerprint": "1b6e922b85ad2c08",
+  "n_observations": 51865,
+  "stride_seconds": 1800,
+  "markets": [
+    "Resultado Final (1X2)",
+    "Total de Gols",
+    "Ambas Marcam"
+  ],
+  "max_matches": 0,
   "clv_ok": false,
   "clv_n": 0,
+  "clv_closed": 0,
+  "clv_target": 200,
   "execution_status": "UNKNOWN",
   "validated_alphas": [
     "BEST_PRICE_GAP",
     "DISPERSION_SPIKE"
   ],
   "production_eligible": false,
-  "verdict": "NO_BET",
-  "note": "production_eligible exige OOS + CLV n>=200 + execução medida. Enquanto faltar qualquer gate, NO_BET."
+  "capture_readiness": "WAITING_FOR_PROVIDER_QUOTA",
+  "verdict": "BLOCKED_EXTERNAL_PROVIDER_QUOTA",
+  "note": "production_eligible exige OOS + CLV n>=200 + execução medida. Enquanto faltar qualquer gate, NO_BET. Sem quota de provider, BLOCKED_EXTERNAL_PROVIDER_QUOTA (o store acumulado segue analisável)."
 }

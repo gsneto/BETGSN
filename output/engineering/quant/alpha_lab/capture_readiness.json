@@ -1,0 +1,51 @@
+{
+  "kind": "capture_readiness",
+  "generated_at": "2026-09-25T22:49:27Z",
+  "dataset_fingerprint": "1b6e922b85ad2c08",
+  "n_observations": 51865,
+  "stride_seconds": 1800,
+  "markets": [
+    "Resultado Final (1X2)",
+    "Total de Gols",
+    "Ambas Marcam"
+  ],
+  "max_matches": 0,
+  "readiness": {
+    "status": "WAITING_FOR_PROVIDER_QUOTA",
+    "attemptable": [],
+    "blocked": [
+      "The Odds API",
+      "ParlayAPI",
+      "OddsPapi"
+    ],
+    "providers": {
+      "The Odds API": {
+        "provider": "The Odds API",
+        "state": "EXHAUSTED",
+        "cooldown_seconds": 21600.0,
+        "next_attempt_at": "2026-09-26T01:12:32Z",
+        "last_failure_at": "2026-09-25T19:12:32Z",
+        "last_success_at": "",
+        "reason": "HTTP 401 em https://api.the-odds-api.com/v4/sports/soccer_argentina_primera_division/odds?apiKey=REDACTED&regions=eu&markets=h2h%2Ctotals&oddsFormat=decimal: {\"message\":\"Usage quota has been reached. "
+      },
+      "ParlayAPI": {
+        "provider": "ParlayAPI",
+        "state": "EXHAUSTED",
+        "cooldown_seconds": 21600.0,
+        "next_attempt_at": "2026-09-26T01:12:35Z",
+        "last_failure_at": "2026-09-25T19:12:35Z",
+        "last_success_at": "",
+        "reason": "HTTP 403 em https://parlay-api.com/v1/sports/soccer_argentina_primera_division/odds?oddsFormat=decimal&markets=h2h%2Ctotals%2Cbtts&regions=eu: {\"detail\":{\"error\":\"OUT_OF_USAGE_CREDITS\",\"message\":\"Mont"
+      },
+      "OddsPapi": {
+        "provider": "OddsPapi",
+        "state": "EXHAUSTED",
+        "cooldown_seconds": 21600.0,
+        "next_attempt_at": "2026-09-26T01:12:37Z",
+        "last_failure_at": "2026-09-25T19:12:37Z",
+        "last_success_at": "",
+        "reason": "HTTP 429 em https://api.oddspapi.io/v4/tournaments?sportId=10&apiKey=REDACTED: {\"error\":{\"message\":\"Request limit exceeded\",\"code\":\"REQUEST_LIMIT_EXCEEDED\",\"details\":\"You have exceeded your request li"
+      }
+    }
+  }
+}
