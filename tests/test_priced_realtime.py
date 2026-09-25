@@ -106,6 +106,69 @@ def test_price_engine_forte_only_with_full_evidence_and_matching_market():
     assert signal["spread"] <= 0.12
 
 
+def _priced_with_fill(engine, executions):
+    view = _view([_quote("A", 2.30), _quote("B", 2.29), _quote("C", 2.28)])
+    return engine.priced(
+        view, decision_ts="2026-01-01T12:00:45Z",
+        models={"ev|home|away|Total de Gols|Over 2.5": ("fp", 0.70)},
+        fair_probs={"ev|home|away|Total de Gols|Over 2.5": 0.5},
+        executions=executions,
+    )[0].to_dict()
+
+
+def test_executed_within_window_marks_executed_and_gap():
+    engine = PricedRealtimeEngine(gate=_gate_green())
+    signal = _priced_with_fill(engine, {
+        "ev|home|away|Total de Gols|Over 2.5": (2.27, "2026-01-01T12:01:15Z"),
+    })
+    assert signal["execution_status"] == "EXECUTED"
+    assert signal["executed_price"] == 2.27
+    assert signal["executed_at"] == "2026-01-01T12:01:15Z"
+    # gap = 2.27 - 2.30 = -0.03 (fill pior que o preço selecionado)
+    assert signal["execution_absolute_gap"] == pytest.approx(-0.03)
+    assert signal["execution_relative_gap"] == pytest.approx(-0.03 / 2.30)
+
+
+def test_executed_without_timestamp_marks_expired():
+    engine = PricedRealtimeEngine(gate=_gate_green())
+    signal = _priced_with_fill(engine, {
+        "ev|home|away|Total de Gols|Over 2.5": (2.27, ""),
+    })
+    assert signal["execution_status"] == "EXPIRED"
+    assert signal["executed_price"] is None
+    assert signal["execution_absolute_gap"] is None
+    assert signal["execution_relative_gap"] is None
+
+
+def test_executed_outside_window_marks_expired():
+    engine = PricedRealtimeEngine(gate=_gate_green())
+    signal = _priced_with_fill(engine, {
+        # decision = 12:00:45, fill @ 12:05:00 = 255s > 60s (janela)
+        "ev|home|away|Total de Gols|Over 2.5": (2.27, "2026-01-01T12:05:00Z"),
+    })
+    assert signal["execution_status"] == "EXPIRED"
+    assert signal["executed_price"] is None
+
+
+def test_execution_erosion_flags_over_fifty_percent():
+    from betgsn.priced_signals import execution_diagnostics, execution_erosion
+
+    # observed=2.20, executed=2.15, closing=2.00
+    # clv_before = 2.20/2.00 - 1 = +10.0%
+    # clv_after  = 2.15/2.00 - 1 =  +7.5%
+    # ratio = (10 - 7.5) / 10 = 25% → abaixo do teto de 50%
+    below = execution_diagnostics(2.20, 2.15, 2.00)
+    assert execution_erosion([below])["status"] == "MEASURED"
+    assert execution_erosion([below])["ratio"] == pytest.approx(0.25)
+
+    # observed=2.20, executed=2.05, closing=2.00
+    # clv_before = +10%; clv_after = +2.5%; ratio = 75% → EROSION
+    eroded = execution_diagnostics(2.20, 2.05, 2.00)
+    result = execution_erosion([eroded])
+    assert result["status"] == "EXECUTION_EROSION"
+    assert result["ratio"] > 0.5
+
+
 def test_stale_quote_drops_by_freshness():
     engine = PricedRealtimeEngine(gate=_gate_green())
     view = _view([_quote("A", 2.30, "2026-01-01T11:00:00Z"),

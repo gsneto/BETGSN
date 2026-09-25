@@ -198,6 +198,11 @@ class RealtimeOddsEngine:
         )
         self.priced_engine = PricedRealtimeEngine(gate=_default_priced_gate())
         self._priced_by_event: dict[str, list[PricedSignal]] = {}
+        # Fills registrados externamente (operador/order manager).
+        # Chave: "event|market|selection"; valor: (executed_price, executed_at ISO-UTC).
+        # Não presume execução: enquanto vazio, execution_status permanece UNKNOWN
+        # e nenhum sinal recebe gap absoluto/relativo — política nunca fabrica fill.
+        self._executions: dict[str, tuple[float, str]] = {}
         self.loops = [
             ProviderLoop(name=name, capture=capture, interval_seconds=interval)
             for name, capture, interval in captures
@@ -475,6 +480,7 @@ class RealtimeOddsEngine:
         for view in views:
             self._priced_by_event[view.event_key] = self.priced_engine.priced(
                 view, decision_ts=now.isoformat(), models={},
+                executions=self._executions,
             )
         if views or movements:
             evaluation = self.signals.evaluate(views, movements)
@@ -602,6 +608,20 @@ class RealtimeOddsEngine:
                 for signal in self.signals.active_signals(event_key)
             ]
 
+    def record_execution(self, *, event_key: str, market: str, selection: str,
+                         executed_price: float, executed_at: str) -> str:
+        """Registra uma fill medida. Sem chamada externa, a política mantém
+        `execution_status='UNKNOWN'` — nada aqui infere execução."""
+        key = f"{event_key}|{market}|{selection}"
+        with self._lock:
+            self._executions[key] = (float(executed_price), executed_at)
+        return key
+
+    def clear_execution(self, *, event_key: str, market: str, selection: str) -> None:
+        key = f"{event_key}|{market}|{selection}"
+        with self._lock:
+            self._executions.pop(key, None)
+
     def priced_signals(self, event_key: str | None = None) -> list[dict]:
         """PricedSignals mais recentes calculados no live.
 
@@ -617,18 +637,18 @@ class RealtimeOddsEngine:
             return [signal.to_dict() for signal in signals]
 
     def execution_diagnostics(self, event_key: str) -> list[dict]:
-        """Diagnóstico por sinal precificado — execução medida quando existir."""
+        """Diagnóstico por sinal precificado — mesmo status/gap do build."""
         rows: list[dict] = []
         with self._lock:
             for signal in self._priced_by_event.get(event_key, []):
                 payload = signal.to_dict()
-                rows.append(
-                    _execution_diagnostics(
-                        payload["observed_price"],
-                        payload.get("executed_price"),
-                        payload.get("closing_price"),
-                    )
-                )
+                rows.append(_execution_diagnostics(
+                    payload["selected_price"],
+                    payload.get("executed_price"),
+                    payload.get("closing_price"),
+                    executed_at=payload.get("executed_at"),
+                    decision_timestamp=payload.get("decision_timestamp"),
+                ))
         return rows
 
     def execution_erosion(self, event_key: str | None = None) -> dict:
@@ -638,13 +658,13 @@ class RealtimeOddsEngine:
             for evt in events:
                 for signal in self._priced_by_event.get(evt, []):
                     payload = signal.to_dict()
-                    rows.append(
-                        _execution_diagnostics(
-                            payload["observed_price"],
-                            payload.get("executed_price"),
-                            payload.get("closing_price"),
-                        )
-                    )
+                    rows.append(_execution_diagnostics(
+                        payload["selected_price"],
+                        payload.get("executed_price"),
+                        payload.get("closing_price"),
+                        executed_at=payload.get("executed_at"),
+                        decision_timestamp=payload.get("decision_timestamp"),
+                    ))
         return _execution_erosion(rows)
 
     def problems(self, limit: int = 50) -> list[dict]:

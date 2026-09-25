@@ -60,13 +60,24 @@ class PricedRealtimeEngine:
         decision_ts: str,
         models: Mapping[str, tuple[str, float]],
         fair_probs: Mapping[str, float] | None = None,
+        executions: Mapping[str, tuple[float, str]] | None = None,
     ) -> list[PricedSignal]:
+        """Materializa PricedSignals para as seleções do evento.
+
+        `executions` mapeia `event_key|market|selection` para uma tupla
+        `(executed_price, executed_at ISO-UTC)`. A janela e o status
+        (UNKNOWN/EXECUTED/EXPIRED) são decididos por
+        `execution_diagnostics`; nada é assumido no engine.
+        """
         if view is None or not view.matched:
             return []
         signals: list[PricedSignal] = []
         overrides = dict(fair_probs or {})
+        fills = dict(executions or {})
         for market_view in view.markets:
-            signals.extend(self._market_signals(view, market_view, decision_ts, models, overrides))
+            signals.extend(
+                self._market_signals(view, market_view, decision_ts, models, overrides, fills)
+            )
         return signals
 
     def _market_signals(
@@ -76,6 +87,7 @@ class PricedRealtimeEngine:
         decision_ts: str,
         models: Mapping[str, tuple[str, float]],
         overrides: Mapping[str, float],
+        fills: Mapping[str, tuple[float, str]],
     ) -> list[PricedSignal]:
         out: list[PricedSignal] = []
         for selection in market_view.selections:
@@ -102,6 +114,9 @@ class PricedRealtimeEngine:
             model_fp = model_pair[0] if model_pair else ""
             ev = model_prob * selected.price - 1 if model_prob is not None else None
             spread = getattr(selection, "dispersion", None)
+            fill = fills.get(key)
+            executed_price = fill[0] if fill else None
+            executed_at = fill[1] if fill else None
             try:
                 signal = build_priced_signal(
                     quote=selected,
@@ -114,6 +129,8 @@ class PricedRealtimeEngine:
                     decision_timestamp=decision_ts,
                     gate=self.gate,
                     model_fingerprint=model_fp,
+                    executed_price=executed_price,
+                    executed_at=executed_at,
                 )
             except ValueError:
                 # dropped quotes carry a reason inside build_priced_signal; no fake signal
