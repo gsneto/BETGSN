@@ -6,6 +6,8 @@
  */
 import { apiGet } from "./client";
 import type {
+  ExecutionErosion,
+  PricedSignalPayload,
   RealtimeBoard,
   RealtimeMatchDetail,
   RealtimeProvidersResponse,
@@ -52,4 +54,20 @@ export function startRealtimeEngine(): Promise<{ started: boolean }> {
 
 export function stopRealtimeEngine(): Promise<{ stopped: boolean }> {
   return apiGet<{ stopped: boolean }>("/api/realtime/stop");
+}
+
+export function fetchPricedSignals(
+  eventKey?: string,
+  signal?: AbortSignal,
+): Promise<{
+  generated_at: string;
+  policy_fingerprint: string;
+  priced_signals: PricedSignalPayload[];
+  execution_erosion: ExecutionErosion;
+}> {
+  return apiGet(
+    "/api/realtime/priced-signals",
+    eventKey ? { event_key: eventKey } : undefined,
+    { signal },
+  );
 }

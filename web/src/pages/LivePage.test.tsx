@@ -34,6 +34,8 @@ function boardFixture(): RealtimeBoard {
     generated_at: "2026-09-24T12:00:00Z",
     boot: { building: false, error: "", engine_ready: true, engine_running: true },
     problems: [],
+    priced_signals: [],
+    policy_fingerprint: "test-fixture-fp",
     last_moves: {
       [`${EVENT_KEY}|${MARKET}`]: {
         event_key: EVENT_KEY,
@@ -164,6 +166,16 @@ function stubRealtimeApi() {
       return jsonResponse({
         event: boardFixture().events[0],
         signals: [],
+        priced_signals: [],
+        policy_fingerprint: "test-fixture-fp",
+        execution_diagnostics: [],
+        execution_erosion: {
+          n: 0,
+          ratio: null,
+          status: "UNKNOWN",
+          clv_before: null,
+          clv_after: null,
+        },
         movement_timeline: [],
         model_comparison: { status: "NO_MODEL", source: "pipeline", model: null },
         clv: { n: 0, status: "NO_ENTRIES", entries: [] },

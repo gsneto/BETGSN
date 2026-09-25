@@ -27,8 +27,13 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
+from ..config import production_policy_fingerprint
 from ..realtime.engine import RealtimeOddsEngine, build_engine_from_env
 from ..realtime.events import EventBus
+
+
+def _policy_fingerprint() -> str:
+    return production_policy_fingerprint()
 
 _boot_lock = threading.Lock()
 _engine: Optional[RealtimeOddsEngine] = None
@@ -272,6 +277,8 @@ def register_realtime_routes(app: FastAPI) -> None:
             "generated_at": eng.clock().isoformat(),
             "events": events,
             "signals": signals,
+            "priced_signals": eng.priced_signals(),
+            "policy_fingerprint": _policy_fingerprint(),
             "last_moves": eng.last_moves(),
             "problems": eng.problems(50),
             "boot": boot_state(),
@@ -289,6 +296,10 @@ def register_realtime_routes(app: FastAPI) -> None:
         return {
             "event": view,
             "signals": eng.signals_snapshot(event_key),
+            "priced_signals": eng.priced_signals(event_key),
+            "policy_fingerprint": _policy_fingerprint(),
+            "execution_diagnostics": eng.execution_diagnostics(event_key),
+            "execution_erosion": eng.execution_erosion(event_key),
             "movement_timeline": _movement_timeline(event_key, eng),
             "model_comparison": _model_comparison(event_key),
             "clv": _clv_summary(event_key, eng),
@@ -296,6 +307,18 @@ def register_realtime_routes(app: FastAPI) -> None:
                 p for p in eng.problems(200)
                 if p.get("event_id") == event_key
             ],
+        }
+
+    @app.get("/api/realtime/priced-signals", tags=["realtime"])
+    def realtime_priced_signals(
+        event_key: Optional[str] = Query(None),
+    ) -> dict:
+        eng = engine_or_503()
+        return {
+            "generated_at": eng.clock().isoformat(),
+            "policy_fingerprint": _policy_fingerprint(),
+            "priced_signals": eng.priced_signals(event_key),
+            "execution_erosion": eng.execution_erosion(event_key),
         }
 
     @app.get("/api/realtime/signals", tags=["realtime"])

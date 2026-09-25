@@ -149,10 +149,60 @@ export interface LastMoveInfo {
   }[];
 }
 
+export interface PricedSignalPayload {
+  signal_id: string;
+  alpha_id: string;
+  event_id: string;
+  market: string;
+  selection: string;
+  line: number | null;
+  decision_timestamp: string;
+  observed_price: number | null;
+  selected_price: number | null;
+  executed_price: number | null;
+  closing_price: number | null;
+  book: string;
+  model_prob: number | null;
+  market_prob: number | null;
+  fair_prob: number | null;
+  edge: number | null;
+  ev: number | null;
+  spread: number | null;
+  books_count: number;
+  execution_status: "MEASURED" | "UNKNOWN";
+  freshness: "LIVE" | "STALE" | "EXPIRED" | "UNKNOWN";
+  evidence_status: "FORTE" | "RESEARCH";
+  production: "REVIEW" | "NO_BET";
+  stake: number;
+  research_reasons: string[];
+  policy_fingerprint: string;
+  model_fingerprint: string;
+  provenance: {
+    provider: string;
+    observed_at: string;
+    selected_provider: string;
+    selected_at: string;
+  };
+  sharp_reference: Record<string, unknown>;
+  bookmaker_close: unknown;
+  exchange_close: unknown;
+  consensus_close: unknown;
+}
+
+export interface ExecutionErosion {
+  n: number;
+  ratio: number | null;
+  status: "UNKNOWN" | "MEASURED" | "EXECUTION_EROSION";
+  clv_before: number | null;
+  clv_after: number | null;
+}
+
 export interface RealtimeBoard {
   generated_at: string;
   events: EventView[];
   signals: RealtimeSignal[];
+  priced_signals: PricedSignalPayload[];
+  policy_fingerprint: string;
   last_moves: Record<string, LastMoveInfo>;
   problems: QualityProblem[];
   boot: RealtimeBoot;
@@ -220,6 +270,16 @@ export interface QualityProblem {
 export interface RealtimeMatchDetail {
   event: EventView;
   signals: RealtimeSignal[];
+  priced_signals: PricedSignalPayload[];
+  policy_fingerprint: string;
+  execution_diagnostics: {
+    execution_status: string;
+    absolute: number | null;
+    relative: number | null;
+    clv_before: number | null;
+    clv_after: number | null;
+  }[];
+  execution_erosion: ExecutionErosion;
   movement_timeline: MovementTimelineRow[];
   model_comparison: ModelComparison;
   clv: ClvEventSummary;

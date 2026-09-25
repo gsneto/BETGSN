@@ -147,9 +147,46 @@ def main() -> int:
     evidence = cached_oos_evidence(config)
     assert evidence is not None, "cache recém-gravado precisa ler"
     clv = prospective_clv_evidence()
+    from betgsn.config import production_thresholds, production_policy_fingerprint
+    from betgsn.production_policy import GateBlock, ProductionGate, REQUIRED_BLOCKS
+
+    limits = production_thresholds()
     print("\n=== CLV PROSPECTIVO (store operacional) ===")
-    print(f"  n={clv['n']} (mínimo do gate: 30) | mean={clv['mean']:+.4%} | "
-          f"prospective={clv['prospective']}")
+    fmt_mean = "n/d" if clv["mean"] is None else f"{clv['mean']:+.4%}"
+    fmt_median = "n/d" if clv.get("median") is None else f"{clv['median']:+.4%}"
+    fmt_rate = "n/d" if clv.get("positive_rate") is None else f"{clv['positive_rate']:.2%}"
+    print(f"  n={clv['n']} (mínimo do gate: {limits['min_clv_sample']}) | "
+          f"mean={fmt_mean} | median={fmt_median} | "
+          f"beat-close={fmt_rate} | prospective={clv['prospective']}")
+
+    blocks: dict[str, GateBlock] = {}
+    blocks["MODEL"] = GateBlock("PENDING", ("brier/logloss vs MARKET_RAW/FAIR ainda não pareado com modelo calibrado por janela",))
+    blocks["CLV"] = GateBlock(
+        "GREEN" if (clv["n"] >= limits["min_clv_sample"]
+                    and clv.get("mean") is not None and clv["mean"] > 0
+                    and clv.get("median") is not None and clv["median"] > 0
+                    and clv.get("positive_rate") is not None and clv["positive_rate"] >= limits["min_beat_close"])
+        else "RED",
+        (f"n={clv['n']}", f"mean={fmt_mean}", f"median={fmt_median}", f"beat_close={fmt_rate}"),
+    )
+    blocks["MARKET"] = GateBlock("PENDING", ("EVgap absoluto <3pp por janela ainda não publicado",))
+    blocks["EXECUTION"] = GateBlock("PENDING", ("execução medida ainda não coletada (executed_price=null)",))
+    def _rob_ok(sc: dict) -> bool:
+        deg = sc.get("degradation_vs_baseline")
+        n_w = int(sc.get("n_windows_valid") or 0)
+        return (deg is not None and deg > -limits["max_execution_erosion"]
+                and n_w >= limits["min_windows"])
+    ok_rows = [s for s in payload["robustness"] if _rob_ok(s)]
+    blocks["ROBUSTNESS"] = GateBlock(
+        "GREEN" if ok_rows else "RED",
+        (f"{len(ok_rows)}/{len(payload['robustness'])} cenários dentro do orçamento de degradação",),
+    )
+    blocks["PROVENANCE"] = GateBlock("PENDING", ("odds FDUK sem timestamp de publicação",))
+    blocks["TEMPORAL"] = GateBlock(
+        "GREEN" if payload["aggregate"]["n_windows_valid"] >= limits["min_windows"] else "RED",
+        (f"{payload['aggregate']['n_windows_valid']} janelas OOS válidas",),
+    )
+    gate = ProductionGate(blocks, production_policy_fingerprint())
 
     decision = evaluate_strategy_promotion(
         STRATEGY_NAME,
@@ -159,10 +196,93 @@ def main() -> int:
         clv=clv,
         max_drawdown=evidence.max_drawdown,
         calibration=evidence.calibration_channel(),
+        production_gate=gate,
     )
     print("\n=== PROMOTION GATE ===")
     print(decision.summary())
+    for name, block in blocks.items():
+        print(f"  {name}: {block.status} — {'; '.join(block.reasons) if block.reasons else 'ok'}")
 
+    from collections import defaultdict
+    import math
+
+    def _bucket_metrics(bets, key_fn):
+        out = defaultdict(lambda: {"n": 0, "sum_ret": 0.0, "sum_p_raw_diff2": 0.0,
+                                    "sum_p_fair_diff2": 0.0, "sum_p_cal_diff2": 0.0,
+                                    "sum_log_raw": 0.0, "sum_log_fair": 0.0,
+                                    "sum_log_cal": 0.0, "sum_evgap": 0.0,
+                                    "n_fair": 0, "n_cal": 0})
+        for b in bets:
+            res = b.get("res")
+            if res == "push":
+                continue
+            odd = float(b.get("odd") or b.get("median") or 0)
+            if odd <= 1.0:
+                continue
+            key = key_fn(b)
+            row = out[key]
+            row["n"] += 1
+            row["sum_ret"] += (odd - 1) if res == "win" else -1
+            y = 1 if res == "win" else 0
+            p_raw = 1.0 / odd
+            row["sum_p_raw_diff2"] += (p_raw - y) ** 2
+            row["sum_log_raw"] += -math.log(max(1e-6, p_raw if y else 1 - p_raw))
+            fair = b.get("fair")
+            if fair is not None and 0 < fair < 1:
+                row["n_fair"] += 1
+                row["sum_p_fair_diff2"] += (fair - y) ** 2
+                row["sum_log_fair"] += -math.log(max(1e-6, fair if y else 1 - fair))
+            p_cal = b.get("p_calibrated")
+            if p_cal is not None and 0 < p_cal < 1:
+                row["n_cal"] += 1
+                row["sum_p_cal_diff2"] += (p_cal - y) ** 2
+                row["sum_log_cal"] += -math.log(max(1e-6, p_cal if y else 1 - p_cal))
+                ev_pred = p_cal * odd - 1
+                realized = (odd - 1) if y else -1
+                row["sum_evgap"] += ev_pred - realized
+        rows = []
+        for key, r in sorted(out.items()):
+            if r["n"] == 0:
+                continue
+            def _safe(sum_key, n_key="n"):
+                n = r[n_key]
+                return None if n == 0 else r[sum_key] / n
+            rows.append({
+                "bucket": key, "n": r["n"], "roi": _safe("sum_ret"),
+                "brier_raw": _safe("sum_p_raw_diff2"),
+                "logloss_raw": _safe("sum_log_raw"),
+                "brier_fair": _safe("sum_p_fair_diff2", "n_fair"),
+                "logloss_fair": _safe("sum_log_fair", "n_fair"),
+                "brier_calibrated": _safe("sum_p_cal_diff2", "n_cal"),
+                "logloss_calibrated": _safe("sum_log_cal", "n_cal"),
+                "n_fair": r["n_fair"], "n_calibrated": r["n_cal"],
+                "evgap_calibrated": _safe("sum_evgap", "n_cal"),
+            })
+        return rows
+
+    oos_bets = list(evidence.oos_rule_bets)
+    market_bets = list(evidence.oos_market_bets)
+    def _band(odd):
+        return next(
+            (label for label, lo, hi in (
+                ("<1.30", 0, 1.30), ("1.30-1.50", 1.30, 1.50),
+                ("1.50-2.00", 1.50, 2.00), ("2.00-3.00", 2.00, 3.00),
+                (">=3.00", 3.00, math.inf))
+            if lo <= odd < hi),
+            "unknown",
+        )
+    breakdown = {
+        "por_janela": _bucket_metrics(oos_bets, lambda b: b.get("window", "?")),
+        "por_liga": _bucket_metrics(oos_bets, lambda b: b.get("lg") or "?"),
+        "por_mercado": _bucket_metrics(oos_bets, lambda b: b.get("mkt") or "?"),
+        "por_odd": _bucket_metrics(oos_bets, lambda b: _band(float(b.get("odd") or 0))),
+    }
+    market_breakdown = {
+        "por_janela": _bucket_metrics(market_bets, lambda b: b.get("window", "?")),
+        "por_liga": _bucket_metrics(market_bets, lambda b: b.get("lg") or "?"),
+        "por_mercado": _bucket_metrics(market_bets, lambda b: b.get("mkt") or "?"),
+        "por_odd": _bucket_metrics(market_bets, lambda b: _band(float(b.get("odd") or 0))),
+    }
     report = {
         "kind": "quant_oos_validation",
         "strategy": STRATEGY_NAME,
@@ -174,6 +294,15 @@ def main() -> int:
         "ablation": payload["ablation"],
         "clv_prospective": clv,
         "promotion": decision.to_dict(),
+        "production_gate": {
+            "fingerprint": gate.fingerprint,
+            "eligible": gate.production_eligible,
+            "blocks": {name: {"status": block.status, "reasons": list(block.reasons)}
+                       for name, block in blocks.items()},
+        },
+        "thresholds": limits,
+        "breakdown_rule": breakdown,
+        "breakdown_market": market_breakdown,
         "sections": {
             # SEPARAÇÃO EXPLÍCITA (ETAPA 1): nunca misturar origens
             "modelo": (

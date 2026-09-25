@@ -29,7 +29,12 @@ from datetime import datetime, timezone
 from typing import Callable, Mapping, Optional, Sequence
 
 from ..backtest_sources import LiveOddsCapture
+from ..config import production_policy_fingerprint
 from ..odds_snapshots import OddsSnapshotStore
+from ..priced_signals import PricedSignal
+from ..priced_signals import execution_diagnostics as _execution_diagnostics
+from ..priced_signals import execution_erosion as _execution_erosion
+from ..production_policy import GateBlock, ProductionGate, REQUIRED_BLOCKS
 from .config import RealtimeConfig
 from .events import (
     EVENT_DATA_QUALITY,
@@ -45,9 +50,26 @@ from .events import (
 )
 from .freshness import FreshnessThresholds
 from .movement import MovementEngine
+from .priced_engine import PricedRealtimeEngine
 from .signals import SignalEngine, SignalRules
 from .state import LineKey, MarketState, QuoteProblem
 from .views import build_event_view, event_views
+
+
+def _default_priced_gate() -> ProductionGate:
+    """Realtime bootstrap gate: PENDING blocks reveal ausência de evidência."""
+    return ProductionGate(
+        {
+            "MODEL": GateBlock("PENDING", ("modelo calibrado por janela não pareado no live",)),
+            "CLV": GateBlock("PENDING", ("aguarda coleta CLV CLOSED >=200",)),
+            "MARKET": GateBlock("PENDING", ("EVgap não pareado no live",)),
+            "EXECUTION": GateBlock("PENDING", ("execução medida indisponível",)),
+            "ROBUSTNESS": GateBlock("PENDING", ("robustez OOS ainda não pareada com preço live",)),
+            "PROVENANCE": GateBlock("PENDING", ("odds live sem selo de execução",)),
+            "TEMPORAL": GateBlock("PENDING", ("aguarda cobertura temporal completa no live",)),
+        },
+        production_policy_fingerprint(),
+    )
 
 #: Heartbeat do sistema: mesmo sem captura, o mundo sabe que estamos vivos.
 HEARTBEAT_SECONDS = 30.0
@@ -174,6 +196,8 @@ class RealtimeOddsEngine:
             ),
             now=clock,
         )
+        self.priced_engine = PricedRealtimeEngine(gate=_default_priced_gate())
+        self._priced_by_event: dict[str, list[PricedSignal]] = {}
         self.loops = [
             ProviderLoop(name=name, capture=capture, interval_seconds=interval)
             for name, capture, interval in captures
@@ -447,6 +471,11 @@ class RealtimeOddsEngine:
             view = build_event_view(self.state, event_key, thresholds, now)
             if view is not None:
                 views.append(view)
+        # Regenerate priced signals for the events that just changed.
+        for view in views:
+            self._priced_by_event[view.event_key] = self.priced_engine.priced(
+                view, decision_ts=now.isoformat(), models={},
+            )
         if views or movements:
             evaluation = self.signals.evaluate(views, movements)
             for signal in evaluation.created:
@@ -572,6 +601,51 @@ class RealtimeOddsEngine:
                 signal.to_dict()
                 for signal in self.signals.active_signals(event_key)
             ]
+
+    def priced_signals(self, event_key: str | None = None) -> list[dict]:
+        """PricedSignals mais recentes calculados no live.
+
+        Sem quote nova, o valor persistido reflete o último tick — status
+        (LIVE/STALE/EXPIRED/RESEARCH) vem de `build_priced_signal`, não do
+        UI. Modelo ainda não plugado no live: reasons trazem MODEL_UNAVAILABLE.
+        """
+        with self._lock:
+            if event_key:
+                signals = self._priced_by_event.get(event_key, [])
+            else:
+                signals = [s for lst in self._priced_by_event.values() for s in lst]
+            return [signal.to_dict() for signal in signals]
+
+    def execution_diagnostics(self, event_key: str) -> list[dict]:
+        """Diagnóstico por sinal precificado — execução medida quando existir."""
+        rows: list[dict] = []
+        with self._lock:
+            for signal in self._priced_by_event.get(event_key, []):
+                payload = signal.to_dict()
+                rows.append(
+                    _execution_diagnostics(
+                        payload["observed_price"],
+                        payload.get("executed_price"),
+                        payload.get("closing_price"),
+                    )
+                )
+        return rows
+
+    def execution_erosion(self, event_key: str | None = None) -> dict:
+        rows: list[dict] = []
+        with self._lock:
+            events = [event_key] if event_key else list(self._priced_by_event)
+            for evt in events:
+                for signal in self._priced_by_event.get(evt, []):
+                    payload = signal.to_dict()
+                    rows.append(
+                        _execution_diagnostics(
+                            payload["observed_price"],
+                            payload.get("executed_price"),
+                            payload.get("closing_price"),
+                        )
+                    )
+        return _execution_erosion(rows)
 
     def problems(self, limit: int = 50) -> list[dict]:
         with self._lock:

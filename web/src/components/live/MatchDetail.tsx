@@ -32,6 +32,7 @@ import {
   SIGNAL_TYPE_LABEL,
   SignalStatusBadge,
 } from "@/components/live/badges";
+import PricedSignalCard from "@/components/live/PricedSignalCard";
 import { cn } from "@/utils/cn";
 import { fmtDateTime, fmtInt, fmtNum, fmtOdd, fmtPct } from "@/utils/format";
 import type { RealtimeSignal } from "@/types/realtime";
@@ -372,6 +373,39 @@ export default function MatchDetail({
                 <div className="p-3">
                   <SignalsList signals={data.signals} />
                 </div>
+              </Card>
+
+              {/* PRICED SIGNALS: mercado + modelo + gate + execução */}
+              <Card
+                title="Priced signals (informativo)"
+                hint={
+                  data.priced_signals.length === 0
+                    ? "nenhum sinal precificado neste evento"
+                    : `${fmtInt(data.priced_signals.length)} sinal(is) · gate ${data.policy_fingerprint.slice(0, 8)}`
+                }
+              >
+                <div className="grid gap-3 p-3 md:grid-cols-2">
+                  {data.priced_signals.map((signal) => (
+                    <PricedSignalCard key={signal.signal_id} signal={signal} />
+                  ))}
+                </div>
+                {data.execution_erosion.status !== "UNKNOWN" ? (
+                  <p className="px-3 pb-3 text-[11px] text-ink-3">
+                    Erosão de execução:{" "}
+                    {data.execution_erosion.ratio == null
+                      ? "n/d"
+                      : `${(data.execution_erosion.ratio * 100).toFixed(2)}%`}{" "}
+                    · status {data.execution_erosion.status} · CLV antes/depois:{" "}
+                    {data.execution_erosion.clv_before == null
+                      ? "—"
+                      : (data.execution_erosion.clv_before * 100).toFixed(2) + "%"}{" "}
+                    →{" "}
+                    {data.execution_erosion.clv_after == null
+                      ? "—"
+                      : (data.execution_erosion.clv_after * 100).toFixed(2) + "%"}
+                    .
+                  </p>
+                ) : null}
               </Card>
 
               {/* CLV do evento */}
