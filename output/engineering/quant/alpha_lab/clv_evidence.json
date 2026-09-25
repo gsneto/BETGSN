@@ -1,0 +1,12 @@
+{
+  "kind": "clv_evidence",
+  "clv": {
+    "mean": null,
+    "median": null,
+    "positive_rate": null,
+    "n_positive": 0,
+    "n": 0,
+    "prospective": true,
+    "closed_only": true
+  }
+}

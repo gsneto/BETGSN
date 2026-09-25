@@ -1,0 +1,14 @@
+{
+  "kind": "promotion_report",
+  "fingerprint": "1b6e922b85ad2c08",
+  "clv_ok": false,
+  "clv_n": 0,
+  "execution_status": "UNKNOWN",
+  "validated_alphas": [
+    "BEST_PRICE_GAP",
+    "DISPERSION_SPIKE"
+  ],
+  "production_eligible": false,
+  "verdict": "NO_BET",
+  "note": "production_eligible exige OOS + CLV n>=200 + execução medida. Enquanto faltar qualquer gate, NO_BET."
+}

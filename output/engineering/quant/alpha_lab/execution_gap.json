@@ -1,0 +1,12 @@
+{
+  "kind": "execution_gap",
+  "execution": {
+    "n_executions": 0,
+    "n_measured": 0,
+    "status": "UNKNOWN",
+    "erosion_ratio": null,
+    "clv_before": null,
+    "clv_after": null,
+    "note": "Sem execução registrada, o gap é UNKNOWN — nunca presumido. Erosão > 50% marca EXECUTION_EROSION e impede promoção."
+  }
+}

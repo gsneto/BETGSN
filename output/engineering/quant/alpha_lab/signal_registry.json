@@ -1,0 +1,327 @@
+{
+  "kind": "signal_registry",
+  "fingerprint": "1b6e922b85ad2c08",
+  "signals": {
+    "BEST_PRICE_GAP": {
+      "signal_id": "BEST_PRICE_GAP",
+      "version": "1.0",
+      "status": "VALIDATED",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols",
+        "Ambas Marcam"
+      ],
+      "required_books": 3,
+      "freshness": "quote fresca na decisão",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 7155,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "CONSISTENT",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "candidato a mais validação; NÃO é produção e não implica ROI",
+        "CLV/closing indisponível (kickoffs futuros)"
+      ]
+    },
+    "BOOKMAKER_LAG": {
+      "signal_id": "BOOKMAKER_LAG",
+      "version": "1.0",
+      "status": "RESEARCH",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 2,
+      "freshness": "movimento recente (janela)",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "Uma casa que move primeiro e seguida por outras identifica liderança de preço (sharp anchor)."
+      ]
+    },
+    "BOOKMAKER_LEAD": {
+      "signal_id": "BOOKMAKER_LEAD",
+      "version": "1.0",
+      "status": "RESEARCH",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 2,
+      "freshness": "movimento recente (janela)",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "Uma casa que move primeiro e seguida por outras identifica liderança de preço (sharp anchor)."
+      ]
+    },
+    "BOOKMAKER_OUTLIER": {
+      "signal_id": "BOOKMAKER_OUTLIER",
+      "version": "1.0",
+      "status": "NO_EVIDENCE",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols",
+        "Ambas Marcam"
+      ],
+      "required_books": 3,
+      "freshness": "quote fresca na decisão",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 40919,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "efeito dentro do IC95% [-0.0001, 0.0012] — não distinguível do nulo",
+        "CLV/closing indisponível (kickoffs futuros)"
+      ]
+    },
+    "CONSENSUS_MOVE": {
+      "signal_id": "CONSENSUS_MOVE",
+      "version": "1.0",
+      "status": "RESEARCH",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 3,
+      "freshness": "movimento recente (janela)",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "Quando N casas movem na mesma direção, o movimento continua (momentum) ou reverte."
+      ]
+    },
+    "DISPERSION_SPIKE": {
+      "signal_id": "DISPERSION_SPIKE",
+      "version": "1.0",
+      "status": "VALIDATED",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols",
+        "Ambas Marcam"
+      ],
+      "required_books": 3,
+      "freshness": "quote fresca na decisão",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 3791,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "CONSISTENT",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "candidato a mais validação; NÃO é produção e não implica ROI",
+        "CLV/closing indisponível (kickoffs futuros)"
+      ]
+    },
+    "PRICE_REVERSAL": {
+      "signal_id": "PRICE_REVERSAL",
+      "version": "1.0",
+      "status": "RESEARCH",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 1,
+      "freshness": "movimento recente (janela)",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "Uma casa que inverte a direção do próprio movimento sinaliza fim de fluxo (reversão)."
+      ]
+    },
+    "RAPID_CONVERGENCE": {
+      "signal_id": "RAPID_CONVERGENCE",
+      "version": "1.0",
+      "status": "RESEARCH",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 2,
+      "freshness": "movimento recente (janela)",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "Casas que convergem rápido para o mesmo preço indicam reprecificação concluída (sem follow-through)."
+      ]
+    },
+    "STALE_PRICE": {
+      "signal_id": "STALE_PRICE",
+      "version": "1.0",
+      "status": "RESEARCH",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 2,
+      "freshness": "exige ao menos uma casa fresca",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "Uma casa com preço parado enquanto o resto atualiza sinaliza preço desatualizado explorável."
+      ]
+    },
+    "favorite_longshot": {
+      "signal_id": "favorite_longshot",
+      "version": "1.0",
+      "status": "BLOCKED",
+      "market": [
+        "Resultado Final (1X2)"
+      ],
+      "required_books": 3,
+      "freshness": "closing real",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "Favoritos são subprecificados e longshots sobreprecificados de forma sistemática."
+      ]
+    },
+    "lineup_shock": {
+      "signal_id": "lineup_shock",
+      "version": "0.1",
+      "status": "BLOCKED",
+      "market": [],
+      "required_books": 3,
+      "freshness": "escalação PIT",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "Escalações inesperadas reprecificam o mercado."
+      ]
+    },
+    "live_goal_reaction": {
+      "signal_id": "live_goal_reaction",
+      "version": "0.1",
+      "status": "BLOCKED",
+      "market": [],
+      "required_books": 3,
+      "freshness": "in-play",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "Reação do mercado a gols ao vivo."
+      ]
+    },
+    "market_residual": {
+      "signal_id": "market_residual",
+      "version": "1.0",
+      "status": "BLOCKED",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 3,
+      "freshness": "modelo + fair PIT",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "A diferença entre probabilidade de modelo e fair do mercado contém informação OOS."
+      ]
+    },
+    "movement_vs_kickoff": {
+      "signal_id": "movement_vs_kickoff",
+      "version": "1.0",
+      "status": "BLOCKED",
+      "market": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 3,
+      "freshness": "closing real",
+      "threshold": "SignalRules defaults (não calibrado)",
+      "calibration": "INSUFFICIENT_DATA",
+      "sample_size": 0,
+      "clv_status": "RED",
+      "oos_status": "NOT_RUN",
+      "execution_status": "UNKNOWN",
+      "robustness": "NOT_RUN",
+      "fingerprint": "1b6e922b85ad2c08",
+      "last_updated": "2026-09-25T19:02:34Z",
+      "notes": [
+        "O movimento relativo ao tempo até o kickoff antecipa o fechamento (drift pré-jogo)."
+      ]
+    }
+  }
+}

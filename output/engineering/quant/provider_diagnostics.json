@@ -1,0 +1,89 @@
+{
+  "kind": "provider_diagnostics",
+  "operational": [
+    "OddsPapi",
+    "ParlayAPI",
+    "The Odds API"
+  ],
+  "legacy": [
+    "Odds-API.io",
+    "OpticOdds"
+  ],
+  "providers": {
+    "Odds-API.io": {
+      "provider": "Odds-API.io",
+      "configured": true,
+      "operational": false,
+      "reachable": "no",
+      "authenticated": "no",
+      "quota_status": "unknown",
+      "quota_remaining": null,
+      "latency_ms": null,
+      "last_success": "",
+      "last_failure": "2026-09-25T02:01:14Z",
+      "last_error": "HTTP 401 em https://api.odds-api.io/v3/leagues?sport=football&apiKey=REDACTED: {\"error\":\"You need to provide a valid apiKey\"}",
+      "available": false,
+      "timestamp_quality": "unknown"
+    },
+    "OddsPapi": {
+      "provider": "OddsPapi",
+      "configured": true,
+      "operational": true,
+      "reachable": "yes",
+      "authenticated": "yes",
+      "quota_status": "exhausted",
+      "quota_remaining": null,
+      "latency_ms": null,
+      "last_success": "",
+      "last_failure": "2026-09-25T17:06:48Z",
+      "last_error": "HTTP 429 em https://api.oddspapi.io/v4/tournaments?sportId=10&apiKey=REDACTED: {\"error\":{\"message\":\"Request limit exceeded\",\"code\":\"REQUEST_LIMIT_EXCEEDED\",\"details\":\"You have exceeded your request li",
+      "available": true,
+      "timestamp_quality": "quote"
+    },
+    "OpticOdds": {
+      "provider": "OpticOdds",
+      "configured": true,
+      "operational": false,
+      "reachable": "no",
+      "authenticated": "no",
+      "quota_status": "unknown",
+      "quota_remaining": null,
+      "latency_ms": null,
+      "last_success": "",
+      "last_failure": "2026-09-25T02:01:15Z",
+      "last_error": "HTTP 401 em https://api.opticodds.com/api/v3/leagues?sport=soccer: {\"error\":\"Invalid or inactive API key\"}\n",
+      "available": false,
+      "timestamp_quality": "unknown"
+    },
+    "ParlayAPI": {
+      "provider": "ParlayAPI",
+      "configured": true,
+      "operational": true,
+      "reachable": "yes",
+      "authenticated": "yes",
+      "quota_status": "exhausted",
+      "quota_remaining": null,
+      "latency_ms": null,
+      "last_success": "",
+      "last_failure": "2026-09-25T17:06:46Z",
+      "last_error": "HTTP 403 em https://parlay-api.com/v1/sports/soccer_argentina_primera_division/odds?oddsFormat=decimal&markets=h2h%2Ctotals%2Cbtts&regions=eu: {\"detail\":{\"error\":\"OUT_OF_USAGE_CREDITS\",\"message\":\"Mont",
+      "available": true,
+      "timestamp_quality": "quote"
+    },
+    "The Odds API": {
+      "provider": "The Odds API",
+      "configured": true,
+      "operational": true,
+      "reachable": "yes",
+      "authenticated": "yes",
+      "quota_status": "exhausted",
+      "quota_remaining": null,
+      "latency_ms": null,
+      "last_success": "",
+      "last_failure": "2026-09-25T17:06:34Z",
+      "last_error": "HTTP 401 em https://api.the-odds-api.com/v4/sports/soccer_argentina_primera_division/odds?apiKey=REDACTED&regions=eu&markets=h2h%2Ctotals&oddsFormat=decimal: {\"message\":\"Usage quota has been reached. ",
+      "available": true,
+      "timestamp_quality": "quote"
+    }
+  }
+}

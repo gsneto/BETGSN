@@ -1,0 +1,632 @@
+{
+  "kind": "robustness_report",
+  "by_signal": {
+    "BEST_PRICE_GAP": {
+      "consistency": {
+        "market": 1.0,
+        "league": 1.0,
+        "book": 0.8571428571428571
+      },
+      "by_market": {
+        "Resultado Final (1X2)": {
+          "n": 5930,
+          "follow_rate": null,
+          "converged_rate": 0.34937857565594793,
+          "mean_move_5m": 0.012411411421849507,
+          "signed_move_5m": null
+        },
+        "Total de Gols": {
+          "n": 1225,
+          "follow_rate": null,
+          "converged_rate": 0.09420289855072464,
+          "mean_move_5m": 0.027088118189999563,
+          "signed_move_5m": null
+        }
+      },
+      "by_league": {
+        "?": {
+          "n": 7155,
+          "follow_rate": null,
+          "converged_rate": 0.30853355426677714,
+          "mean_move_5m": 0.012998790886994087,
+          "signed_move_5m": null
+        }
+      },
+      "by_book": {
+        "1xBet": {
+          "n": 3043,
+          "follow_rate": null,
+          "converged_rate": 0.28979272585060617,
+          "mean_move_5m": 0.00881743188819137,
+          "signed_move_5m": null
+        },
+        "888sport": {
+          "n": 31,
+          "follow_rate": null,
+          "converged_rate": 0.06896551724137931,
+          "mean_move_5m": 0.0,
+          "signed_move_5m": null
+        },
+        "BetAnything": {
+          "n": 49,
+          "follow_rate": null,
+          "converged_rate": 0.2857142857142857,
+          "mean_move_5m": 0.002611763336556137,
+          "signed_move_5m": null
+        },
+        "BetOnline.ag": {
+          "n": 27,
+          "follow_rate": null,
+          "converged_rate": 0.19230769230769232,
+          "mean_move_5m": 0.029803771234981027,
+          "signed_move_5m": null
+        },
+        "Betclic (FR)": {
+          "n": 1,
+          "follow_rate": null,
+          "converged_rate": null,
+          "mean_move_5m": null,
+          "signed_move_5m": null
+        },
+        "Betfair": {
+          "n": 828,
+          "follow_rate": null,
+          "converged_rate": 0.364010989010989,
+          "mean_move_5m": 0.0018336279031460128,
+          "signed_move_5m": null
+        },
+        "Betsson": {
+          "n": 296,
+          "follow_rate": null,
+          "converged_rate": 0.15079365079365079,
+          "mean_move_5m": 0.014227094080071442,
+          "signed_move_5m": null
+        },
+        "Codere (IT)": {
+          "n": 94,
+          "follow_rate": null,
+          "converged_rate": 0.20652173913043478,
+          "mean_move_5m": -0.006896645359653996,
+          "signed_move_5m": null
+        },
+        "Coolbet": {
+          "n": 599,
+          "follow_rate": null,
+          "converged_rate": 0.344017094017094,
+          "mean_move_5m": 0.02417598659036363,
+          "signed_move_5m": null
+        },
+        "GTbets": {
+          "n": 32,
+          "follow_rate": null,
+          "converged_rate": 0.6451612903225806,
+          "mean_move_5m": -0.006591557852508523,
+          "signed_move_5m": null
+        },
+        "LeoVegas (SE)": {
+          "n": 316,
+          "follow_rate": null,
+          "converged_rate": 0.4533333333333333,
+          "mean_move_5m": 0.00953167231481974,
+          "signed_move_5m": null
+        },
+        "Marathon Bet": {
+          "n": 10,
+          "follow_rate": null,
+          "converged_rate": 0.0,
+          "mean_move_5m": null,
+          "signed_move_5m": null
+        },
+        "Matchbook": {
+          "n": 238,
+          "follow_rate": null,
+          "converged_rate": 0.20408163265306123,
+          "mean_move_5m": 0.020099141637139814,
+          "signed_move_5m": null
+        },
+        "Nordic Bet": {
+          "n": 55,
+          "follow_rate": null,
+          "converged_rate": 0.45098039215686275,
+          "mean_move_5m": -0.002752073874482159,
+          "signed_move_5m": null
+        },
+        "Pinnacle": {
+          "n": 684,
+          "follow_rate": null,
+          "converged_rate": 0.21428571428571427,
+          "mean_move_5m": 0.04381602995609466,
+          "signed_move_5m": null
+        },
+        "Pinnacle Sports": {
+          "n": 48,
+          "follow_rate": null,
+          "converged_rate": 0.868421052631579,
+          "mean_move_5m": 0.015041884431090164,
+          "signed_move_5m": null
+        },
+        "Tipico": {
+          "n": 262,
+          "follow_rate": null,
+          "converged_rate": 0.3665158371040724,
+          "mean_move_5m": 0.03139340716290352,
+          "signed_move_5m": null
+        },
+        "Unibet": {
+          "n": 108,
+          "follow_rate": null,
+          "converged_rate": 0.3711340206185567,
+          "mean_move_5m": 0.0012475283513975733,
+          "signed_move_5m": null
+        },
+        "Unibet (NL)": {
+          "n": 254,
+          "follow_rate": null,
+          "converged_rate": 0.41037735849056606,
+          "mean_move_5m": 0.010001469740289827,
+          "signed_move_5m": null
+        },
+        "Unibet (SE)": {
+          "n": 64,
+          "follow_rate": null,
+          "converged_rate": 0.234375,
+          "mean_move_5m": 0.019566687429010857,
+          "signed_move_5m": null
+        },
+        "William Hill": {
+          "n": 57,
+          "follow_rate": null,
+          "converged_rate": 0.02127659574468085,
+          "mean_move_5m": 0.027892666133002113,
+          "signed_move_5m": null
+        },
+        "bet365": {
+          "n": 59,
+          "follow_rate": null,
+          "converged_rate": 0.7142857142857143,
+          "mean_move_5m": -0.016316244581759124,
+          "signed_move_5m": null
+        }
+      }
+    },
+    "BOOKMAKER_OUTLIER": {
+      "consistency": {
+        "market": 0.5,
+        "league": 1.0,
+        "book": 0.5806451612903226
+      },
+      "by_market": {
+        "Resultado Final (1X2)": {
+          "n": 37587,
+          "follow_rate": 0.32076575823440895,
+          "converged_rate": 0.3763257985713844,
+          "mean_move_5m": 0.014699786393994843,
+          "signed_move_5m": 0.0005637435449994075
+        },
+        "Total de Gols": {
+          "n": 3332,
+          "follow_rate": 0.13043478260869565,
+          "converged_rate": 0.08981818181818182,
+          "mean_move_5m": 0.022159732841622273,
+          "signed_move_5m": -0.0014549406327834919
+        }
+      },
+      "by_league": {
+        "?": {
+          "n": 40919,
+          "follow_rate": 0.30550571589685754,
+          "converged_rate": 0.3538715836871954,
+          "mean_move_5m": 0.014805843317100276,
+          "signed_move_5m": 0.000535044219324579
+        }
+      },
+      "by_book": {
+        "1xBet": {
+          "n": 3889,
+          "follow_rate": 0.4069703622392975,
+          "converged_rate": 0.3130354957160343,
+          "mean_move_5m": 0.015121766185087848,
+          "signed_move_5m": 0.015121766185087848
+        },
+        "888sport": {
+          "n": 852,
+          "follow_rate": 0.22426470588235295,
+          "converged_rate": 0.42002600780234073,
+          "mean_move_5m": 0.014904780933371834,
+          "signed_move_5m": -0.00933103159715683
+        },
+        "BetAnything": {
+          "n": 108,
+          "follow_rate": 0.4230769230769231,
+          "converged_rate": 0.4090909090909091,
+          "mean_move_5m": 0.013614072582517636,
+          "signed_move_5m": 0.013614072582517636
+        },
+        "BetOnline.ag": {
+          "n": 214,
+          "follow_rate": 0.42788461538461536,
+          "converged_rate": 0.29896907216494845,
+          "mean_move_5m": 0.017076607834990414,
+          "signed_move_5m": 0.01795155341065515
+        },
+        "Betclic (FR)": {
+          "n": 3192,
+          "follow_rate": 0.1817884048476908,
+          "converged_rate": 0.3374624624624625,
+          "mean_move_5m": 0.01773536626819262,
+          "signed_move_5m": -0.01773536626819262
+        },
+        "Betfair": {
+          "n": 1948,
+          "follow_rate": 0.3623730625334046,
+          "converged_rate": 0.3283236994219653,
+          "mean_move_5m": 0.00973199735578944,
+          "signed_move_5m": 0.0021843893334117293
+        },
+        "Betsson": {
+          "n": 1051,
+          "follow_rate": 0.2601787487586892,
+          "converged_rate": 0.3562231759656652,
+          "mean_move_5m": 0.020419306762872964,
+          "signed_move_5m": -0.012030689220033959
+        },
+        "Codere (IT)": {
+          "n": 611,
+          "follow_rate": 0.15577889447236182,
+          "converged_rate": 0.21518987341772153,
+          "mean_move_5m": 0.014351482495346608,
+          "signed_move_5m": -0.011839998644178699
+        },
+        "Coolbet": {
+          "n": 1260,
+          "follow_rate": 0.4793388429752066,
+          "converged_rate": 0.36792452830188677,
+          "mean_move_5m": 0.020017534068040625,
+          "signed_move_5m": 0.01847544789872075
+        },
+        "Everygame": {
+          "n": 248,
+          "follow_rate": 0.30962343096234307,
+          "converged_rate": 0.4765957446808511,
+          "mean_move_5m": 0.0012528244611437207,
+          "signed_move_5m": 4.1544568519431335e-05
+        },
+        "GTbets": {
+          "n": 91,
+          "follow_rate": 0.4065934065934066,
+          "converged_rate": 0.42857142857142855,
+          "mean_move_5m": 0.0051206605349374025,
+          "signed_move_5m": 0.0054233632376401025
+        },
+        "LeoVegas (SE)": {
+          "n": 1438,
+          "follow_rate": 0.359796067006555,
+          "converged_rate": 0.35895465026902384,
+          "mean_move_5m": 0.014207563985787573,
+          "signed_move_5m": 0.0019411684562906095
+        },
+        "Marathon Bet": {
+          "n": 1066,
+          "follow_rate": 0.458984375,
+          "converged_rate": 0.3067685589519651,
+          "mean_move_5m": 0.022504231562653028,
+          "signed_move_5m": 0.022504231562653028
+        },
+        "Matchbook": {
+          "n": 581,
+          "follow_rate": 0.3786231884057971,
+          "converged_rate": 0.26195426195426197,
+          "mean_move_5m": 0.019288160660359276,
+          "signed_move_5m": 0.019288160660359276
+        },
+        "MyBookie.ag": {
+          "n": 279,
+          "follow_rate": 0.2727272727272727,
+          "converged_rate": 0.3702127659574468,
+          "mean_move_5m": 0.0038267385299280213,
+          "signed_move_5m": -0.0038267385299280213
+        },
+        "Nordic Bet": {
+          "n": 1036,
+          "follow_rate": 0.27062374245472837,
+          "converged_rate": 0.39200863930885527,
+          "mean_move_5m": 0.019413092580810073,
+          "signed_move_5m": -0.012461138042616997
+        },
+        "PMU": {
+          "n": 1648,
+          "follow_rate": 0.3364544319600499,
+          "converged_rate": 0.412258064516129,
+          "mean_move_5m": 0.0019558503480699755,
+          "signed_move_5m": -0.0015675721766324903
+        },
+        "PMU (FR)": {
+          "n": 3338,
+          "follow_rate": 0.16559897501601537,
+          "converged_rate": 0.24488355681016233,
+          "mean_move_5m": 0.007555231836779449,
+          "signed_move_5m": -0.007039408914331234
+        },
+        "Pinnacle": {
+          "n": 1609,
+          "follow_rate": 0.566793893129771,
+          "converged_rate": 0.29258976317799845,
+          "mean_move_5m": 0.03713087832597687,
+          "signed_move_5m": 0.04005014813674445
+        },
+        "Pinnacle Sports": {
+          "n": 375,
+          "follow_rate": 0.5730027548209367,
+          "converged_rate": 0.6176470588235294,
+          "mean_move_5m": 0.028512704674668012,
+          "signed_move_5m": 0.035762940717634625
+        },
+        "Superbet": {
+          "n": 20,
+          "follow_rate": 0.8,
+          "converged_rate": 0.05555555555555555,
+          "mean_move_5m": 0.02811574390521765,
+          "signed_move_5m": 0.02811574390521765
+        },
+        "Suprabets": {
+          "n": 217,
+          "follow_rate": 0.42924528301886794,
+          "converged_rate": 0.33516483516483514,
+          "mean_move_5m": 0.038543838917862956,
+          "signed_move_5m": 0.04447068653584494
+        },
+        "Tipico": {
+          "n": 1489,
+          "follow_rate": 0.4466898954703833,
+          "converged_rate": 0.36341059602649006,
+          "mean_move_5m": 0.026030914569957746,
+          "signed_move_5m": 0.021706487728512747
+        },
+        "Unibet": {
+          "n": 547,
+          "follow_rate": 0.4018867924528302,
+          "converged_rate": 0.5533596837944664,
+          "mean_move_5m": 0.003182997813011181,
+          "signed_move_5m": 0.005472496038540081
+        },
+        "Unibet (FR)": {
+          "n": 4149,
+          "follow_rate": 0.20381194409148665,
+          "converged_rate": 0.378534333525678,
+          "mean_move_5m": 0.013290088127252917,
+          "signed_move_5m": -0.013290088127252917
+        },
+        "Unibet (NL)": {
+          "n": 1212,
+          "follow_rate": 0.4383088869715272,
+          "converged_rate": 0.46422018348623856,
+          "mean_move_5m": 0.011243245271048611,
+          "signed_move_5m": 0.010422647021187512
+        },
+        "Unibet (SE)": {
+          "n": 1462,
+          "follow_rate": 0.41768511861969804,
+          "converged_rate": 0.4314912944738834,
+          "mean_move_5m": 0.010268265313478209,
+          "signed_move_5m": 0.009584025180758229
+        },
+        "William Hill": {
+          "n": 1106,
+          "follow_rate": 0.19811320754716982,
+          "converged_rate": 0.37435897435897436,
+          "mean_move_5m": 0.022072391679024094,
+          "signed_move_5m": -0.005571737914586031
+        },
+        "Winamax (DE)": {
+          "n": 2085,
+          "follow_rate": 0.19679519278918378,
+          "converged_rate": 0.33698788228505483,
+          "mean_move_5m": 0.014279717644764225,
+          "signed_move_5m": -0.011798139575201446
+        },
+        "Winamax (FR)": {
+          "n": 3539,
+          "follow_rate": 0.1995256448265639,
+          "converged_rate": 0.34893184130213634,
+          "mean_move_5m": 0.014933930329215707,
+          "signed_move_5m": -0.014048326874630332
+        },
+        "bet365": {
+          "n": 259,
+          "follow_rate": 0.22935779816513763,
+          "converged_rate": 0.7135678391959799,
+          "mean_move_5m": 0.001196357279560184,
+          "signed_move_5m": -0.009873825804480197
+        }
+      }
+    },
+    "DISPERSION_SPIKE": {
+      "consistency": {
+        "market": 1.0,
+        "league": 1.0,
+        "book": 0.8888888888888888
+      },
+      "by_market": {
+        "Resultado Final (1X2)": {
+          "n": 3677,
+          "follow_rate": null,
+          "converged_rate": 0.31546458739441197,
+          "mean_move_5m": 0.018768149434012324,
+          "signed_move_5m": null
+        },
+        "Total de Gols": {
+          "n": 114,
+          "follow_rate": null,
+          "converged_rate": 0.05825242718446602,
+          "mean_move_5m": 0.0428571428571429,
+          "signed_move_5m": null
+        }
+      },
+      "by_league": {
+        "?": {
+          "n": 3791,
+          "follow_rate": null,
+          "converged_rate": 0.3071361207167557,
+          "mean_move_5m": 0.018779882991451745,
+          "signed_move_5m": null
+        }
+      },
+      "by_book": {
+        "1xBet": {
+          "n": 1239,
+          "follow_rate": null,
+          "converged_rate": 0.28612997090203685,
+          "mean_move_5m": 0.013586664337294668,
+          "signed_move_5m": null
+        },
+        "888sport": {
+          "n": 22,
+          "follow_rate": null,
+          "converged_rate": 0.0,
+          "mean_move_5m": null,
+          "signed_move_5m": null
+        },
+        "BetAnything": {
+          "n": 6,
+          "follow_rate": null,
+          "converged_rate": 0.25,
+          "mean_move_5m": null,
+          "signed_move_5m": null
+        },
+        "BetOnline.ag": {
+          "n": 23,
+          "follow_rate": null,
+          "converged_rate": 0.08695652173913043,
+          "mean_move_5m": 0.03145817360383401,
+          "signed_move_5m": null
+        },
+        "Betclic (FR)": {
+          "n": 1,
+          "follow_rate": null,
+          "converged_rate": null,
+          "mean_move_5m": null,
+          "signed_move_5m": null
+        },
+        "Betfair": {
+          "n": 353,
+          "follow_rate": null,
+          "converged_rate": 0.3903225806451613,
+          "mean_move_5m": 0.0023879966647240613,
+          "signed_move_5m": null
+        },
+        "Betsson": {
+          "n": 261,
+          "follow_rate": null,
+          "converged_rate": 0.1141552511415525,
+          "mean_move_5m": 0.018799905229733283,
+          "signed_move_5m": null
+        },
+        "Codere (IT)": {
+          "n": 58,
+          "follow_rate": null,
+          "converged_rate": 0.22413793103448276,
+          "mean_move_5m": -0.011879542151162792,
+          "signed_move_5m": null
+        },
+        "Coolbet": {
+          "n": 358,
+          "follow_rate": null,
+          "converged_rate": 0.35144927536231885,
+          "mean_move_5m": 0.03252464774487887,
+          "signed_move_5m": null
+        },
+        "GTbets": {
+          "n": 3,
+          "follow_rate": null,
+          "converged_rate": 0.6666666666666666,
+          "mean_move_5m": -0.010684414524683791,
+          "signed_move_5m": null
+        },
+        "LeoVegas (SE)": {
+          "n": 210,
+          "follow_rate": null,
+          "converged_rate": 0.4187192118226601,
+          "mean_move_5m": 0.01113036742468789,
+          "signed_move_5m": null
+        },
+        "Matchbook": {
+          "n": 95,
+          "follow_rate": null,
+          "converged_rate": 0.18666666666666668,
+          "mean_move_5m": 0.02474943042895402,
+          "signed_move_5m": null
+        },
+        "Nordic Bet": {
+          "n": 48,
+          "follow_rate": null,
+          "converged_rate": 0.37777777777777777,
+          "mean_move_5m": -0.003005174116243031,
+          "signed_move_5m": null
+        },
+        "PMU": {
+          "n": 1,
+          "follow_rate": null,
+          "converged_rate": null,
+          "mean_move_5m": -0.15299999999999994,
+          "signed_move_5m": null
+        },
+        "Pinnacle": {
+          "n": 537,
+          "follow_rate": null,
+          "converged_rate": 0.21377672209026127,
+          "mean_move_5m": 0.04090672299903077,
+          "signed_move_5m": null
+        },
+        "Pinnacle Sports": {
+          "n": 39,
+          "follow_rate": null,
+          "converged_rate": 0.9354838709677419,
+          "mean_move_5m": 0.0076957803727181195,
+          "signed_move_5m": null
+        },
+        "Tipico": {
+          "n": 218,
+          "follow_rate": null,
+          "converged_rate": 0.3879781420765027,
+          "mean_move_5m": 0.03418149684823526,
+          "signed_move_5m": null
+        },
+        "Unibet": {
+          "n": 56,
+          "follow_rate": null,
+          "converged_rate": 0.42857142857142855,
+          "mean_move_5m": -0.002039269357450854,
+          "signed_move_5m": null
+        },
+        "Unibet (NL)": {
+          "n": 128,
+          "follow_rate": null,
+          "converged_rate": 0.4411764705882353,
+          "mean_move_5m": 0.015194855837621767,
+          "signed_move_5m": null
+        },
+        "Unibet (SE)": {
+          "n": 59,
+          "follow_rate": null,
+          "converged_rate": 0.23728813559322035,
+          "mean_move_5m": 0.019566687429010857,
+          "signed_move_5m": null
+        },
+        "William Hill": {
+          "n": 20,
+          "follow_rate": null,
+          "converged_rate": 0.05,
+          "mean_move_5m": null,
+          "signed_move_5m": null
+        },
+        "bet365": {
+          "n": 56,
+          "follow_rate": null,
+          "converged_rate": 0.723404255319149,
+          "mean_move_5m": -0.016577826968906417,
+          "signed_move_5m": null
+        }
+      }
+    }
+  }
+}

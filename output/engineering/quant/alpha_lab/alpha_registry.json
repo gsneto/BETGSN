@@ -1,0 +1,253 @@
+{
+  "kind": "alpha_registry",
+  "fingerprint": "1b6e922b85ad2c08",
+  "alphas": {
+    "bookmaker_outlier": {
+      "alpha_id": "bookmaker_outlier",
+      "name": "Bookmaker Outlier",
+      "version": "1.0",
+      "hypothesis": "Uma casa cotando fora da mediana das demais antecipa movimento do mercado (lead) ou apenas reverte (ruído).",
+      "signal_types": [
+        "BOOKMAKER_OUTLIER"
+      ],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols",
+        "Ambas Marcam"
+      ],
+      "required_books": 3,
+      "freshness_requirement": "quote fresca na decisão",
+      "data_requirements": [
+        "odds multi-casa",
+        "timestamp por quote"
+      ],
+      "status": "RESEARCH"
+    },
+    "dispersion_spike": {
+      "alpha_id": "dispersion_spike",
+      "name": "Dispersion Spike",
+      "version": "1.0",
+      "hypothesis": "Dispersão acima do normal entre casas converge depois (mercado se reprecifica para um consenso).",
+      "signal_types": [
+        "DISPERSION_SPIKE"
+      ],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols",
+        "Ambas Marcam"
+      ],
+      "required_books": 3,
+      "freshness_requirement": "quote fresca na decisão",
+      "data_requirements": [
+        "odds multi-casa",
+        "timestamp por quote"
+      ],
+      "status": "RESEARCH"
+    },
+    "best_price_gap": {
+      "alpha_id": "best_price_gap",
+      "name": "Best Price Gap",
+      "version": "1.0",
+      "hypothesis": "O melhor preço acima da mediana persiste (line shopping tem valor real) ou desaparece (preço fantasma).",
+      "signal_types": [
+        "BEST_PRICE_GAP"
+      ],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols",
+        "Ambas Marcam"
+      ],
+      "required_books": 3,
+      "freshness_requirement": "quote fresca na decisão",
+      "data_requirements": [
+        "odds multi-casa",
+        "timestamp por quote"
+      ],
+      "status": "RESEARCH"
+    },
+    "consensus_move": {
+      "alpha_id": "consensus_move",
+      "name": "Consensus Movement",
+      "version": "1.0",
+      "hypothesis": "Quando N casas movem na mesma direção, o movimento continua (momentum) ou reverte.",
+      "signal_types": [
+        "CONSENSUS_MOVE"
+      ],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 3,
+      "freshness_requirement": "movimento recente (janela)",
+      "data_requirements": [
+        "historico de precos",
+        "timestamps reais"
+      ],
+      "status": "RESEARCH"
+    },
+    "stale_price": {
+      "alpha_id": "stale_price",
+      "name": "Stale Price",
+      "version": "1.0",
+      "hypothesis": "Uma casa com preço parado enquanto o resto atualiza sinaliza preço desatualizado explorável.",
+      "signal_types": [
+        "STALE_PRICE"
+      ],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 2,
+      "freshness_requirement": "exige ao menos uma casa fresca",
+      "data_requirements": [
+        "odds multi-casa",
+        "timestamp por quote"
+      ],
+      "status": "RESEARCH"
+    },
+    "bookmaker_lead_lag": {
+      "alpha_id": "bookmaker_lead_lag",
+      "name": "Bookmaker Lead/Lag",
+      "version": "1.0",
+      "hypothesis": "Uma casa que move primeiro e seguida por outras identifica liderança de preço (sharp anchor).",
+      "signal_types": [
+        "BOOKMAKER_LEAD",
+        "BOOKMAKER_LAG"
+      ],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 2,
+      "freshness_requirement": "movimento recente (janela)",
+      "data_requirements": [
+        "historico de precos",
+        "timestamps reais"
+      ],
+      "status": "RESEARCH"
+    },
+    "rapid_convergence": {
+      "alpha_id": "rapid_convergence",
+      "name": "Rapid Convergence",
+      "version": "1.0",
+      "hypothesis": "Casas que convergem rápido para o mesmo preço indicam reprecificação concluída (sem follow-through).",
+      "signal_types": [
+        "RAPID_CONVERGENCE"
+      ],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 2,
+      "freshness_requirement": "movimento recente (janela)",
+      "data_requirements": [
+        "historico de precos",
+        "timestamps reais"
+      ],
+      "status": "RESEARCH"
+    },
+    "price_reversal": {
+      "alpha_id": "price_reversal",
+      "name": "Price Reversal",
+      "version": "1.0",
+      "hypothesis": "Uma casa que inverte a direção do próprio movimento sinaliza fim de fluxo (reversão).",
+      "signal_types": [
+        "PRICE_REVERSAL"
+      ],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 1,
+      "freshness_requirement": "movimento recente (janela)",
+      "data_requirements": [
+        "historico de precos",
+        "timestamps reais"
+      ],
+      "status": "RESEARCH"
+    },
+    "market_residual": {
+      "alpha_id": "market_residual",
+      "name": "Model minus Market (Residual)",
+      "version": "1.0",
+      "hypothesis": "A diferença entre probabilidade de modelo e fair do mercado contém informação OOS.",
+      "signal_types": [],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 3,
+      "freshness_requirement": "modelo + fair PIT",
+      "data_requirements": [
+        "modelo calibrado por janela",
+        "fair PIT",
+        "resultados"
+      ],
+      "status": "BLOCKED"
+    },
+    "favorite_longshot": {
+      "alpha_id": "favorite_longshot",
+      "name": "Favorite-Longshot Bias",
+      "version": "1.0",
+      "hypothesis": "Favoritos são subprecificados e longshots sobreprecificados de forma sistemática.",
+      "signal_types": [],
+      "markets": [
+        "Resultado Final (1X2)"
+      ],
+      "required_books": 3,
+      "freshness_requirement": "closing real",
+      "data_requirements": [
+        "resultados",
+        "closing",
+        "amostra ampla"
+      ],
+      "status": "BLOCKED"
+    },
+    "movement_vs_kickoff": {
+      "alpha_id": "movement_vs_kickoff",
+      "name": "Odds Movement vs Kickoff",
+      "version": "1.0",
+      "hypothesis": "O movimento relativo ao tempo até o kickoff antecipa o fechamento (drift pré-jogo).",
+      "signal_types": [],
+      "markets": [
+        "Resultado Final (1X2)",
+        "Total de Gols"
+      ],
+      "required_books": 3,
+      "freshness_requirement": "closing real",
+      "data_requirements": [
+        "serie temporal densa",
+        "closing real"
+      ],
+      "status": "BLOCKED"
+    },
+    "lineup_shock": {
+      "alpha_id": "lineup_shock",
+      "name": "Lineup Shock",
+      "version": "0.1",
+      "hypothesis": "Escalações inesperadas reprecificam o mercado.",
+      "signal_types": [],
+      "markets": [],
+      "required_books": 3,
+      "freshness_requirement": "escalação PIT",
+      "data_requirements": [
+        "fonte de escalação PIT"
+      ],
+      "status": "BLOCKED"
+    },
+    "live_goal_reaction": {
+      "alpha_id": "live_goal_reaction",
+      "name": "Live Goal Reaction",
+      "version": "0.1",
+      "hypothesis": "Reação do mercado a gols ao vivo.",
+      "signal_types": [],
+      "markets": [],
+      "required_books": 3,
+      "freshness_requirement": "in-play",
+      "data_requirements": [
+        "odds in-play"
+      ],
+      "status": "BLOCKED"
+    }
+  }
+}

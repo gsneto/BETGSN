@@ -1,0 +1,74 @@
+{
+  "kind": "market_audit",
+  "markets": {
+    "Resultado Final (1X2)": {
+      "market": "Resultado Final (1X2)",
+      "n_lines": 431,
+      "n_complete": 430,
+      "n_incomplete": 1,
+      "complete_ratio": 0.9977,
+      "mean_overround": 1.075123,
+      "mean_book_count": 12.267,
+      "devig_method": "multiplicative",
+      "examples_raw": {
+        "1": 0.512295,
+        "2": 0.296736,
+        "X": 0.243309
+      },
+      "examples_fair": {
+        "1": 0.486815,
+        "X": 0.231208,
+        "2": 0.281977
+      },
+      "notes": [
+        "MARKET_RAW = 1/odd (com margem); MARKET_FAIR = de-vig do grupo completo. Mercado incompleto não gera fair utilizável."
+      ]
+    },
+    "Total de Gols": {
+      "market": "Total de Gols",
+      "n_lines": 416,
+      "n_complete": 416,
+      "n_incomplete": 0,
+      "complete_ratio": 1.0,
+      "mean_overround": 1.058977,
+      "mean_book_count": 5.767,
+      "devig_method": "multiplicative",
+      "examples_raw": {
+        "Over 1.25": 0.555556,
+        "Over 3.25": 0.505051,
+        "Under 1.25": 0.5,
+        "Under 3.25": 0.537057
+      },
+      "examples_fair": {
+        "Over 1.25": 0.526316,
+        "Under 1.25": 0.473684,
+        "Over 3.25": 0.484643,
+        "Under 3.25": 0.515357
+      },
+      "notes": [
+        "MARKET_RAW = 1/odd (com margem); MARKET_FAIR = de-vig do grupo completo. Mercado incompleto não gera fair utilizável."
+      ]
+    },
+    "Ambas Marcam": {
+      "market": "Ambas Marcam",
+      "n_lines": 33,
+      "n_complete": 33,
+      "n_incomplete": 0,
+      "complete_ratio": 1.0,
+      "mean_overround": 1.071984,
+      "mean_book_count": 1.606,
+      "devig_method": "multiplicative",
+      "examples_raw": {
+        "BTTS Nao": 0.592066,
+        "BTTS Sim": 0.492611
+      },
+      "examples_fair": {
+        "BTTS Sim": 0.454154,
+        "BTTS Nao": 0.545846
+      },
+      "notes": [
+        "MARKET_RAW = 1/odd (com margem); MARKET_FAIR = de-vig do grupo completo. Mercado incompleto não gera fair utilizável."
+      ]
+    }
+  }
+}
