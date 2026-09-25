@@ -34,7 +34,53 @@ from .realtime.signals import SignalRules
 from .timeutil import parse_kickoff, utc_key
 
 #: Horizontes de movimento posterior (segundos) para a observação forward.
-FORWARD_HORIZONS = (300, 900, 1800, 3600)
+#: Inclui os horizontes curtos (1/5/10m) exigidos pelo replay intra-line.
+FORWARD_HORIZONS = (60, 300, 600, 900, 1800, 3600)
+
+
+def _odds_band(price: float) -> str:
+    if price < 1.30:
+        return "<1.30"
+    if price < 1.50:
+        return "1.30-1.50"
+    if price < 2.00:
+        return "1.50-2.00"
+    if price < 3.00:
+        return "2.00-3.00"
+    return ">=3.00"
+
+
+def _ttk_band(seconds: float) -> str:
+    hours = seconds / 3600.0
+    if hours < 1:
+        return "<1h"
+    if hours < 6:
+        return "1-6h"
+    if hours < 24:
+        return "6-24h"
+    if hours < 72:
+        return "1-3d"
+    return ">=3d"
+
+
+def _gap_band(gap_ratio: float) -> str:
+    if gap_ratio < 0.02:
+        return "gap<2%"
+    if gap_ratio < 0.05:
+        return "gap2-5%"
+    if gap_ratio < 0.10:
+        return "gap5-10%"
+    return "gap>=10%"
+
+
+def _book_band(count: int) -> str:
+    if count <= 2:
+        return "books<=2"
+    if count <= 5:
+        return "books3-5"
+    if count <= 10:
+        return "books6-10"
+    return "books>10"
 
 #: Amostra mínima para um alpha sair de INSUFFICIENT_DATA.
 MIN_ALPHA_SAMPLE = 100
@@ -316,6 +362,11 @@ class ForwardObservation:
     market_followed: bool | None
     #: True quando a dispersão/gap caiu depois (convergência).
     converged: bool | None
+    #: faixas derivadas (segmentação de pesquisa; não alteram o sinal).
+    odds_band: str = ""
+    ttk_band: str = ""
+    gap_band: str = ""
+    book_band: str = ""
     provider: str = ""
     league: str = ""
 
@@ -353,6 +404,10 @@ class ForwardObservation:
             ),
             "market_followed": self.market_followed,
             "converged": self.converged,
+            "odds_band": self.odds_band,
+            "ttk_band": self.ttk_band,
+            "gap_band": self.gap_band,
+            "book_band": self.book_band,
             "provider": self.provider,
             "league": self.league,
         }
@@ -470,12 +525,13 @@ def observe_signal(
     market_followed: bool | None = None
     if direction in ("UP", "DOWN"):
         sign = 1.0 if direction == "UP" else -1.0
-        moves = [m for m in market_move.values() if m is not None]
-        if moves:
-            # usa o primeiro horizonte com dado (5m)
-            first = market_move.get(FORWARD_HORIZONS[0])
-            if first is None:
-                first = moves[0]
+        # "seguiu" = o mercado moveu na direção implícita em +5min (300s);
+        # sem 5m, usa o primeiro horizonte disponível.
+        first = market_move.get(300)
+        if first is None:
+            candidates = [m for m in market_move.values() if m is not None]
+            first = candidates[0] if candidates else None
+        if first is not None:
             market_followed = (first * sign) > 0
 
     # "converged": a dispersão caiu no primeiro horizonte com dado.
@@ -494,6 +550,10 @@ def observe_signal(
             converged = future_disp < dispersion_ratio
 
     closing_move = _pct_move(median_price, closing_price)
+    seconds_to_kickoff = (
+        parse_kickoff(kickoff) - parse_kickoff(signal_timestamp)
+    ).total_seconds()
+    gap_ratio = (best_price - median_price) / median_price if median_price > 0 else 0.0
     return ForwardObservation(
         signal_type=signal_type,
         alpha_id=alpha_id,
@@ -510,15 +570,17 @@ def observe_signal(
         dispersion_ratio=dispersion_ratio,
         deviation=deviation,
         direction=direction,
-        seconds_to_kickoff=(
-            parse_kickoff(kickoff) - parse_kickoff(signal_timestamp)
-        ).total_seconds(),
+        seconds_to_kickoff=seconds_to_kickoff,
         market_move=market_move,
         reference_move=reference_move,
         closing_price=closing_price,
         closing_move=closing_move,
         market_followed=market_followed,
         converged=converged,
+        odds_band=_odds_band(median_price),
+        ttk_band=_ttk_band(seconds_to_kickoff),
+        gap_band=_gap_band(gap_ratio),
+        book_band=_book_band(book_count),
         provider=provider,
         league=league,
     )
@@ -576,6 +638,7 @@ class AlphaEvaluation:
     primary_label: str
     ci_low: float | None
     ci_high: float | None
+    mean_market_move_1m: float | None
     mean_market_move_5m: float | None
     mean_market_move_60m: float | None
     mean_closing_move: float | None
@@ -585,6 +648,10 @@ class AlphaEvaluation:
     by_market: dict[str, dict] = field(default_factory=dict)
     by_league: dict[str, dict] = field(default_factory=dict)
     by_book: dict[str, dict] = field(default_factory=dict)
+    by_odds_band: dict[str, dict] = field(default_factory=dict)
+    by_ttk_band: dict[str, dict] = field(default_factory=dict)
+    by_gap_band: dict[str, dict] = field(default_factory=dict)
+    by_book_band: dict[str, dict] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -596,6 +663,7 @@ class AlphaEvaluation:
             "primary_label": self.primary_label,
             "ci_low": self.ci_low,
             "ci_high": self.ci_high,
+            "mean_market_move_1m": self.mean_market_move_1m,
             "mean_market_move_5m": self.mean_market_move_5m,
             "mean_market_move_60m": self.mean_market_move_60m,
             "mean_closing_move": self.mean_closing_move,
@@ -605,6 +673,10 @@ class AlphaEvaluation:
             "by_market": self.by_market,
             "by_league": self.by_league,
             "by_book": self.by_book,
+            "by_odds_band": self.by_odds_band,
+            "by_ttk_band": self.by_ttk_band,
+            "by_gap_band": self.by_gap_band,
+            "by_book_band": self.by_book_band,
         }
 
 
@@ -616,16 +688,20 @@ def _dimension_stats(obs: Sequence[ForwardObservation], key) -> dict[str, dict]:
     for name, rows in sorted(groups.items()):
         follows = [o.market_followed for o in rows if o.market_followed is not None]
         convs = [o.converged for o in rows if o.converged is not None]
-        moves = [
-            o.market_move.get(FORWARD_HORIZONS[0]) for o in rows
-            if o.market_move.get(FORWARD_HORIZONS[0]) is not None
+        moves_1m = [
+            o.market_move.get(60) for o in rows
+            if o.market_move.get(60) is not None
+        ]
+        moves_5m = [
+            o.market_move.get(300) for o in rows
+            if o.market_move.get(300) is not None
         ]
         signed = []
         for o in rows:
-            first = o.market_move.get(FORWARD_HORIZONS[0])
-            if first is None or o.direction not in ("UP", "DOWN"):
+            five = o.market_move.get(300)
+            if five is None or o.direction not in ("UP", "DOWN"):
                 continue
-            signed.append(first if o.direction == "UP" else -first)
+            signed.append(five if o.direction == "UP" else -five)
         out[name] = {
             "n": len(rows),
             "follow_rate": (
@@ -634,7 +710,8 @@ def _dimension_stats(obs: Sequence[ForwardObservation], key) -> dict[str, dict]:
             "converged_rate": (
                 sum(1 for c in convs if c) / len(convs) if convs else None
             ),
-            "mean_move_5m": (sum(moves) / len(moves)) if moves else None,
+            "mean_move_1m": (sum(moves_1m) / len(moves_1m)) if moves_1m else None,
+            "mean_move_5m": (sum(moves_5m) / len(moves_5m)) if moves_5m else None,
             "signed_move_5m": (sum(signed) / len(signed)) if signed else None,
         }
     return out
@@ -674,6 +751,27 @@ def _consistency_side(
     return same / len(values)
 
 
+#: Rótulo humano de cada dimensão de consistência.
+_CONSISTENCY_DIMS = (
+    ("market", 0), ("league", 1), ("book", 2),
+    ("odds_band", 3), ("ttk_band", 4), ("gap_band", 5), ("book_band", 6),
+)
+
+
+def _consistency_all(
+    dims: Sequence[dict[str, dict]], *, metric_key: str,
+    reference: float, above: bool,
+) -> dict[str, float]:
+    """Consistência por TODAS as dimensões relevantes (segmentação)."""
+    out: dict[str, float] = {}
+    for label, idx in _CONSISTENCY_DIMS:
+        if idx < len(dims):
+            out[label] = _consistency_side(
+                dims[idx], metric_key, reference=reference, above=above
+            )
+    return out
+
+
 def evaluate_alpha(
     observations: Sequence[ForwardObservation],
     *,
@@ -707,9 +805,13 @@ def evaluate_alpha(
     alpha_id = observations[0].alpha_id
     signal_type = observations[0].signal_type
     directional = observations[0].direction in ("UP", "DOWN")
+    moves_1m = [
+        o.market_move.get(60) for o in observations
+        if o.market_move.get(60) is not None
+    ]
     moves_5m = [
-        o.market_move.get(FORWARD_HORIZONS[0]) for o in observations
-        if o.market_move.get(FORWARD_HORIZONS[0]) is not None
+        o.market_move.get(300) for o in observations
+        if o.market_move.get(300) is not None
     ]
     moves_60m = [
         o.market_move.get(3600) for o in observations
@@ -722,7 +824,8 @@ def evaluate_alpha(
             alpha_id=alpha_id, signal_type=signal_type, n=n,
             metric_kind="directional" if directional else "convergence",
             primary_metric=None, primary_label="", ci_low=None, ci_high=None,
-            mean_market_move_5m=None, mean_market_move_60m=None,
+            mean_market_move_1m=None, mean_market_move_5m=None,
+            mean_market_move_60m=None,
             mean_closing_move=None, consistency={}, status=STATUS_INSUFFICIENT,
             limitations=[f"amostra {n} < {min_sample}: INSUFFICIENT_DATA"],
         )
@@ -730,14 +833,18 @@ def evaluate_alpha(
     by_market = _dimension_stats(observations, lambda o: o.market)
     by_league = _dimension_stats(observations, lambda o: o.league or "?")
     by_book = _dimension_stats(observations, lambda o: o.bookmaker)
+    by_odds_band = _dimension_stats(observations, lambda o: o.odds_band or "?")
+    by_ttk_band = _dimension_stats(observations, lambda o: o.ttk_band or "?")
+    by_gap_band = _dimension_stats(observations, lambda o: o.gap_band or "?")
+    by_book_band = _dimension_stats(observations, lambda o: o.book_band or "?")
 
     if directional:
         metric_kind = "directional"
         primary_label = "signed_market_move_5m"
         signed = []
         for o in observations:
-            first = o.market_move.get(FORWARD_HORIZONS[0])
-            if first is None:
+            first = o.market_move.get(300)
+            if first is None or o.direction not in ("UP", "DOWN"):
                 continue
             signed.append(first if o.direction == "UP" else -first)
         if not signed:
@@ -745,7 +852,8 @@ def evaluate_alpha(
                 alpha_id=alpha_id, signal_type=signal_type, n=n,
                 metric_kind=metric_kind, primary_metric=None,
                 primary_label=primary_label, ci_low=None, ci_high=None,
-                mean_market_move_5m=None, mean_market_move_60m=None,
+                mean_market_move_1m=None, mean_market_move_5m=None,
+                mean_market_move_60m=None,
                 mean_closing_move=None, consistency={},
                 status=STATUS_INSUFFICIENT,
                 limitations=["sem movimento posterior mensurável"],
@@ -753,14 +861,11 @@ def evaluate_alpha(
         primary = sum(signed) / len(signed)
         ci_low, ci_high = _bootstrap_ci(signed)
         above = primary > 0
-        consistency = {
-            "market": _consistency_side(by_market, "signed_move_5m",
-                                        reference=0.0, above=above),
-            "league": _consistency_side(by_league, "signed_move_5m",
-                                        reference=0.0, above=above),
-            "book": _consistency_side(by_book, "signed_move_5m",
-                                      reference=0.0, above=above),
-        }
+        consistency = _consistency_all(
+            (by_market, by_league, by_book, by_odds_band, by_ttk_band,
+             by_gap_band, by_book_band),
+            metric_key="signed_move_5m", reference=0.0, above=above,
+        )
         crosses_null = ci_low <= 0 <= ci_high
     else:
         metric_kind = "convergence"
@@ -771,7 +876,8 @@ def evaluate_alpha(
                 alpha_id=alpha_id, signal_type=signal_type, n=n,
                 metric_kind=metric_kind, primary_metric=None,
                 primary_label=primary_label, ci_low=None, ci_high=None,
-                mean_market_move_5m=None, mean_market_move_60m=None,
+                mean_market_move_1m=None, mean_market_move_5m=None,
+                mean_market_move_60m=None,
                 mean_closing_move=None, consistency={},
                 status=STATUS_INSUFFICIENT,
                 limitations=["sem horizonte posterior para medir convergência"],
@@ -779,14 +885,11 @@ def evaluate_alpha(
         primary = sum(1 for c in conv if c) / len(conv)
         ci_low, ci_high = _bootstrap_ci_binary(conv)
         above = primary > 0.5
-        consistency = {
-            "market": _consistency_side(by_market, "converged_rate",
-                                        reference=0.5, above=above),
-            "league": _consistency_side(by_league, "converged_rate",
-                                        reference=0.5, above=above),
-            "book": _consistency_side(by_book, "converged_rate",
-                                      reference=0.5, above=above),
-        }
+        consistency = _consistency_all(
+            (by_market, by_league, by_book, by_odds_band, by_ttk_band,
+             by_gap_band, by_book_band),
+            metric_key="converged_rate", reference=0.5, above=above,
+        )
         crosses_null = ci_low <= 0.5 <= ci_high
 
     if crosses_null:
@@ -815,6 +918,7 @@ def evaluate_alpha(
         primary_label=primary_label,
         ci_low=(ci_low if ci_low == ci_low else None),
         ci_high=(ci_high if ci_high == ci_high else None),
+        mean_market_move_1m=(sum(moves_1m) / len(moves_1m)) if moves_1m else None,
         mean_market_move_5m=(sum(moves_5m) / len(moves_5m)) if moves_5m else None,
         mean_market_move_60m=(sum(moves_60m) / len(moves_60m)) if moves_60m else None,
         mean_closing_move=(
@@ -822,6 +926,8 @@ def evaluate_alpha(
         ),
         consistency=consistency, status=status, limitations=limitations,
         by_market=by_market, by_league=by_league, by_book=by_book,
+        by_odds_band=by_odds_band, by_ttk_band=by_ttk_band,
+        by_gap_band=by_gap_band, by_book_band=by_book_band,
     )
 
 
@@ -839,6 +945,60 @@ def evaluate_all(
     }
 
 
+def line_shopping_ablation(
+    observations: Sequence[ForwardObservation],
+) -> dict:
+    """Separa EDGE DE PREÇO (line shopping) de edge de modelo.
+
+    Para cada sinal, mede:
+      - `entry_advantage_pct`: quanto o melhor preço supera a mediana no
+        instante do sinal (o ganho BRUTO de pegar a melhor cotação);
+      - `best_persistence_5m`: fração em que o preço de referência (a
+        melhor casa) ainda estava no mesmo nível ou melhor em +5min;
+      - `median_move_5m`: movimento da mediana (o mercado).
+
+    Não declara edge: mostra explicitamente quanto do resultado depende de
+    PEGAR A MELHOR COTAÇÃO vs o mercado se mover.
+    """
+    by_signal: dict[str, list[ForwardObservation]] = {}
+    for o in observations:
+        by_signal.setdefault(o.signal_type, []).append(o)
+
+    out: dict[str, dict] = {}
+    for signal_type, rows in sorted(by_signal.items()):
+        advantages = [
+            (o.best_price - o.median_price) / o.median_price
+            for o in rows if o.median_price > 0
+        ]
+        ref_5m = [
+            o.reference_move.get(300) for o in rows
+            if o.reference_move.get(300) is not None
+        ]
+        med_5m = [
+            o.market_move.get(300) for o in rows
+            if o.market_move.get(300) is not None
+        ]
+        out[signal_type] = {
+            "n": len(rows),
+            "entry_advantage_pct": (
+                sum(advantages) / len(advantages) if advantages else None
+            ),
+            "best_persistence_5m": (
+                sum(1 for m in ref_5m if m >= 0) / len(ref_5m)
+                if ref_5m else None
+            ),
+            "median_move_5m": (
+                sum(med_5m) / len(med_5m) if med_5m else None
+            ),
+            "note": (
+                "entry_advantage = ganho BRUTO de pegar a melhor cotação; "
+                "persistence = a melhor cotação se manteve. Nenhum dos dois "
+                "é edge de modelo por si só."
+            ),
+        }
+    return out
+
+
 __all__ = [
     "AlphaSpec",
     "default_alpha_registry",
@@ -846,6 +1006,7 @@ __all__ = [
     "observe_signal",
     "evaluate_alpha",
     "evaluate_all",
+    "line_shopping_ablation",
     "AlphaEvaluation",
     "FORWARD_HORIZONS",
     "MIN_ALPHA_SAMPLE",

@@ -164,3 +164,26 @@ def test_market_endpoint_e_informacional(client):
 def test_alpha_lab_endpoint_nao_recalcula(client):
     body = client.get("/api/quant/alpha-lab").json()
     assert body["status"] in ("OK", "NOT_RUN")
+
+
+def test_clv_progress_endpoint(client):
+    body = client.get("/api/quant/clv/progress").json()
+    for key in ("target", "closed", "pending", "no_close", "remaining", "status"):
+        assert key in body, f"/clv/progress sem '{key}'"
+    assert body["target"] == 200
+    assert body["status"] in ("CLV_INSUFFICIENT_DATA", "CLV_READY")
+
+
+def test_execution_status_endpoint(client):
+    body = client.get("/api/quant/execution/status").json()
+    assert body["status"] in ("MEASURED", "UNKNOWN")
+    assert body["n_executions"] >= 0
+
+
+def test_alpha_lab_endpoint_carrega_progress_e_readiness(client):
+    body = client.get("/api/quant/alpha-lab").json()
+    assert body["status"] in ("OK", "NOT_RUN")
+    if body["status"] == "OK":
+        for key in ("clv_dataset", "ablation", "capture_readiness",
+                    "promotion"):
+            assert key in body, f"/alpha-lab sem '{key}'"

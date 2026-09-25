@@ -156,6 +156,53 @@ const clvReport = {
   source: "football-data.co.uk",
 };
 
+const clvProgress = {
+  target: 200,
+  closed: 0,
+  pending: 891,
+  no_close: 3,
+  invalid: 0,
+  mismatch: 0,
+  n_entries: 894,
+  remaining: 200,
+  status: "CLV_INSUFFICIENT_DATA",
+  note: "CLV válido = CLOSED + closing real.",
+};
+
+const executionStatus = {
+  n_executions: 0,
+  status: "UNKNOWN",
+  note: "Sem execução registrada, o estado é UNKNOWN.",
+};
+
+const alphaLab = {
+  status: "OK",
+  evaluations: {
+    n_observations: 51865,
+    dataset_fingerprint: "1b6e922b85ad2c08",
+    evaluations: {
+      BOOKMAKER_OUTLIER: {
+        alpha_id: "bookmaker_outlier",
+        signal_type: "BOOKMAKER_OUTLIER",
+        n: 40919,
+        metric_kind: "directional",
+        primary_metric: 0.0005,
+        primary_label: "signed_market_move_5m",
+        ci_low: -0.0001,
+        ci_high: 0.0012,
+        status: "NO_EVIDENCE",
+        limitations: [],
+      },
+    },
+  },
+  clv: { progress: { closed: 0, target: 200 } },
+  execution: { execution: { status: "UNKNOWN", n_measured: 0 } },
+  capture_readiness: {
+    readiness: { status: "WAITING_FOR_PROVIDER_QUOTA", blocked: ["The Odds API"] },
+  },
+  promotion: { verdict: "NO_BET", production_eligible: false },
+};
+
 function fullRoutes() {
   return routeQuant({
     "/api/quant/benchmarks": benchmarks,
@@ -163,11 +210,29 @@ function fullRoutes() {
     "/api/quant/line-shopping": lineShopping,
     "/api/quant/ml": ml,
     "/api/quant/clv/status": clvStatus,
+    "/api/quant/clv/progress": clvProgress,
+    "/api/quant/execution/status": executionStatus,
+    "/api/quant/alpha-lab": alphaLab,
     "/api/clv": clvReport,
   });
 }
 
 describe("QuantPage", () => {
+  it("exibe o painel do Alpha Lab com progresso CLV e veredito NO_BET", async () => {
+    fullRoutes();
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText("Alpha Lab — evidência")).toBeInTheDocument(),
+    );
+    // progresso CLV 0/200 e status por sinal
+    await waitFor(() => expect(screen.getByText(/0 \/ 200/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("NO_EVIDENCE")).toBeInTheDocument(),
+    );
+    // veredito de promoção explícito
+    expect(screen.getAllByText("NO_BET").length).toBeGreaterThan(0);
+  });
+
   it("exibe a referência com o estado de cada cache (VALID/STALE/MISSING)", async () => {
     fullRoutes();
     renderPage();
@@ -214,7 +279,10 @@ describe("QuantPage", () => {
     );
     await waitFor(() => expect(screen.getByText("480")).toBeInTheDocument());
     expect(screen.getAllByText("PENDING").length).toBeGreaterThan(0);
-    expect(screen.getByText(/BLOCKED/)).toBeInTheDocument();
+    // nota específica do promotion gate (evita casar com a legenda do Alpha Lab)
+    expect(
+      screen.getByText(/Promotion Gate permanece BLOCKED/),
+    ).toBeInTheDocument();
   });
 
   it("declara Ensemble como PENDENTE e não fabrica ranking", async () => {
@@ -323,13 +391,15 @@ describe("QuantPage", () => {
     expect(screen.queryByText("0,5869")).toBeNull();
   });
 
-  it("nunca exibe decisão (action/stake): observabilidade não decide", async () => {
+  it("nunca exibe stake/ação operacional: observabilidade não decide", async () => {
     fullRoutes();
     renderPage();
     await waitFor(() =>
       expect(screen.getByText("Auditoria do line-shopping")).toBeInTheDocument(),
     );
-    expect(screen.queryByText("NO_BET")).toBeNull();
+    // O painel do Alpha Lab expõe o VEREDITO de promoção (evidência real),
+    // nunca uma ação/stake operacional.
     expect(screen.queryByText(/stake/i)).toBeNull();
+    expect(screen.queryByText(/APOSTAR/)).toBeNull();
   });
 });

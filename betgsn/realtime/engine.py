@@ -293,12 +293,33 @@ class RealtimeOddsEngine:
     def _tick_once(self) -> None:
         now = self.clock()
         now_ts = now.timestamp()
-        for loop in self.loops:
-            if now_ts >= loop.next_due:
+        due = [loop for loop in self.loops if now_ts >= loop.next_due]
+        if due:
+            # Scheduler consciente de quota (health PERSISTIDO, entre
+            # processos): um provider EXHAUSTED/RATE_LIMITED nao e chamado
+            # ate o cooldown vencer. Nenhum request e desperdicado.
+            scheduler = self._quota_scheduler(now)
+            for loop in due:
+                if not scheduler.should_attempt(loop.name):
+                    quota = scheduler.status(loop.name)
+                    loop.last_error = (
+                        f"quota {quota.state}; proxima tentativa "
+                        f"{quota.next_attempt_at or 'n/d'}"
+                    )
+                    loop.next_due = now_ts + loop.interval_seconds
+                    continue
                 self._capture_tick(loop)
                 loop.next_due = self.clock().timestamp() + loop.interval_seconds
         self._publish_heartbeat()
         self._stop.wait(timeout=0.05)
+
+    def _quota_scheduler(self, now: datetime):
+        from ..quota_scheduler import QuotaScheduler
+
+        try:
+            return QuotaScheduler.from_store(self.store, now=now)
+        except Exception:  # noqa: BLE001 - scheduler e observabilidade
+            return QuotaScheduler(now=now)
 
     def _sleep_until_next(self) -> float:
         now_ts = self.clock().timestamp()
@@ -590,8 +611,18 @@ class RealtimeOddsEngine:
                 "last_movement_at": self._last_movement_at(),
                 "last_signal_at": self._last_signal_at(),
                 "metrics": self.market_metrics(),
+                "capture_readiness": self.capture_readiness(),
                 "now": now.isoformat(),
             }
+
+    def capture_readiness(self) -> dict:
+        """READY ou WAITING_FOR_PROVIDER_QUOTA (consciente de quota)."""
+        try:
+            scheduler = self._quota_scheduler(self.clock())
+            return scheduler.overall([loop.name for loop in self.loops])
+        except Exception:  # noqa: BLE001
+            return {"status": "UNKNOWN", "attemptable": [], "blocked": [],
+                    "providers": {}}
 
     def market_metrics(self) -> dict:
         """Observabilidade agregada: permite achar RÁPIDO onde está o problema.

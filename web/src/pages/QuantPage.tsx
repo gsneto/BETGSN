@@ -16,6 +16,7 @@ import {
   fetchQuantMl,
   fetchQuantModelVsMarket,
 } from "@/api/quant";
+import AlphaLabPanel from "@/components/quant/AlphaLabPanel";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import { KpiCard } from "@/components/ui";
@@ -50,6 +51,9 @@ export default function QuantPage() {
 
   return (
     <div className="flex flex-col gap-3">
+      {/* --------------------------- Alpha Lab / evidência --------------------------- */}
+      <AlphaLabPanel />
+
       {/* ------------------------- referência / benchmark ------------------------- */}
       <Card
         title="Referência de benchmark (Etapa 19)"

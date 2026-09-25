@@ -39,12 +39,15 @@ sys.path.insert(0, str(ROOT))
 from betgsn.alpha_lab import (  # noqa: E402
     default_alpha_registry,
     evaluate_all,
+    line_shopping_ablation,
 )
 from betgsn.alpha_replay import replay_signals  # noqa: E402
+from betgsn.clv_dataset import clv_dataset, clv_progress  # noqa: E402
 from betgsn.market_audit import audit_all_markets  # noqa: E402
 from betgsn.market_dataset import dataset_fingerprint  # noqa: E402
 from betgsn.odds_normalize import NormalizedQuote  # noqa: E402
 from betgsn.odds_snapshots import OddsSnapshotStore  # noqa: E402
+from betgsn.quota_scheduler import QuotaScheduler  # noqa: E402
 from betgsn.signal_registry import build_registry, registry_to_dict  # noqa: E402
 from betgsn.timeutil import now_utc  # noqa: E402
 
@@ -135,11 +138,20 @@ def main(argv: list[str] | None = None) -> int:
     quotes = _quotes_from_store(store, markets)
     audit = {m: a.to_dict() for m, a in audit_all_markets(quotes, markets).items()}
 
-    # CLV prospectivo + execução
+    # CLV prospectivo + progresso + dataset + execução
     from betgsn.value_walkforward import prospective_clv_evidence
 
     clv = prospective_clv_evidence(store)
+    clv_prog = clv_progress(store)
+    clv_ds = clv_dataset(store)
     execution = _execution_gap(store)
+    ablation = line_shopping_ablation(observations)
+
+    # estado de captura (quota-aware)
+    scheduler = QuotaScheduler.from_store(store)
+    operational = ["The Odds API", "ParlayAPI", "OddsPapi"]
+    readiness = scheduler.overall(operational)
+    external_block = readiness["status"] == "WAITING_FOR_PROVIDER_QUOTA"
 
     registry = build_registry(
         alpha_evaluations={k: v.to_dict() for k, v in evaluations.items()},
@@ -150,36 +162,56 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "alpha_registry.json").write_text(json.dumps(
-        {"kind": "alpha_registry", "fingerprint": fingerprint,
-         "alphas": {k: v.to_dict() for k, v in default_alpha_registry().items()}},
-        indent=2, ensure_ascii=False), encoding="utf-8")
-    (OUT / "alpha_evaluations.json").write_text(json.dumps(
-        {"kind": "alpha_evaluations", "fingerprint": fingerprint,
-         "n_observations": len(observations),
-         "evaluations": {k: v.to_dict() for k, v in evaluations.items()}},
-        indent=2, ensure_ascii=False), encoding="utf-8")
-    (OUT / "market_audit.json").write_text(json.dumps(
-        {"kind": "market_audit", "markets": audit},
-        indent=2, ensure_ascii=False), encoding="utf-8")
-    (OUT / "clv_evidence.json").write_text(json.dumps(
-        {"kind": "clv_evidence", "clv": clv},
-        indent=2, ensure_ascii=False), encoding="utf-8")
-    (OUT / "execution_gap.json").write_text(json.dumps(
-        {"kind": "execution_gap", "execution": execution},
-        indent=2, ensure_ascii=False), encoding="utf-8")
-    (OUT / "signal_registry.json").write_text(json.dumps(
-        {"kind": "signal_registry", "fingerprint": fingerprint,
-         "signals": registry_to_dict(registry)},
-        indent=2, ensure_ascii=False), encoding="utf-8")
-    (OUT / "robustness_report.json").write_text(json.dumps(
-        {"kind": "robustness_report",
-         "by_signal": {k: {"consistency": v.consistency,
-                           "by_market": v.by_market,
-                           "by_league": v.by_league,
-                           "by_book": v.by_book}
-                       for k, v in evaluations.items()}},
-        indent=2, ensure_ascii=False), encoding="utf-8")
+    run_meta = {
+        "generated_at": now_utc(),
+        "dataset_fingerprint": fingerprint,
+        "n_observations": len(observations),
+        "stride_seconds": args.stride,
+        "markets": markets,
+        "max_matches": args.max_matches,
+    }
+
+    def _write(name: str, payload: dict) -> None:
+        (OUT / name).write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    _write("alpha_registry.json", {
+        "kind": "alpha_registry", **run_meta,
+        "alphas": {k: v.to_dict() for k, v in default_alpha_registry().items()}})
+    _write("alpha_evaluations.json", {
+        "kind": "alpha_evaluations", **run_meta,
+        "evaluations": {k: v.to_dict() for k, v in evaluations.items()}})
+    _write("market_audit.json", {"kind": "market_audit", **run_meta,
+                                 "markets": audit})
+    _write("clv_evidence.json", {"kind": "clv_evidence", **run_meta,
+                                 "clv": clv, "progress": clv_prog})
+    _write("clv_dataset.json", {"kind": "clv_dataset", **run_meta,
+                                "fingerprint_clv": clv_ds["fingerprint"],
+                                "progress": clv_ds["progress"],
+                                "rows": clv_ds["rows"]})
+    _write("execution_gap.json", {"kind": "execution_gap", **run_meta,
+                                  "execution": execution})
+    _write("signal_registry.json", {"kind": "signal_registry", **run_meta,
+                                    "signals": registry_to_dict(registry)})
+    _write("robustness_report.json", {
+        "kind": "robustness_report", **run_meta,
+        "by_signal": {
+            k: {
+                "consistency": v.consistency,
+                "by_market": v.by_market,
+                "by_league": v.by_league,
+                "by_book": v.by_book,
+                "by_odds_band": v.by_odds_band,
+                "by_ttk_band": v.by_ttk_band,
+                "by_gap_band": v.by_gap_band,
+                "by_book_band": v.by_book_band,
+            }
+            for k, v in evaluations.items()
+        }})
+    _write("line_shopping_ablation.json", {
+        "kind": "line_shopping_ablation", **run_meta, "ablation": ablation})
+    _write("capture_readiness.json", {
+        "kind": "capture_readiness", **run_meta, "readiness": readiness})
 
     clv_ok = (
         int(clv.get("n") or 0) >= 200 and (clv.get("mean") or 0) > 0
@@ -189,21 +221,31 @@ def main(argv: list[str] | None = None) -> int:
         clv_ok and execution["status"] == "MEASURED"
         and any(v.status == "VALIDATED" for v in evaluations.values())
     )
-    (OUT / "promotion_report.json").write_text(json.dumps({
-        "kind": "promotion_report",
-        "fingerprint": fingerprint,
+    if external_block:
+        verdict = "BLOCKED_EXTERNAL_PROVIDER_QUOTA"
+    elif production_eligible:
+        verdict = "REVIEW"
+    else:
+        verdict = "NO_BET"
+    _write("promotion_report.json", {
+        "kind": "promotion_report", **run_meta,
         "clv_ok": clv_ok,
         "clv_n": clv.get("n"),
+        "clv_closed": clv_prog["closed"],
+        "clv_target": clv_prog["target"],
         "execution_status": execution["status"],
         "validated_alphas": [k for k, v in evaluations.items()
                              if v.status == "VALIDATED"],
         "production_eligible": production_eligible,
-        "verdict": "REVIEW" if production_eligible else "NO_BET",
+        "capture_readiness": readiness["status"],
+        "verdict": verdict,
         "note": (
             "production_eligible exige OOS + CLV n>=200 + execução medida. "
-            "Enquanto faltar qualquer gate, NO_BET."
+            "Enquanto faltar qualquer gate, NO_BET. Sem quota de provider, "
+            "BLOCKED_EXTERNAL_PROVIDER_QUOTA (o store acumulado segue "
+            "analisável)."
         ),
-    }, indent=2, ensure_ascii=False), encoding="utf-8")
+    })
 
     print("\n=== VEREDITO POR SINAL ===")
     for signal_type, ev in sorted(evaluations.items()):
@@ -212,10 +254,15 @@ def main(argv: list[str] | None = None) -> int:
         ci = (f"[{ev.ci_low:.4f},{ev.ci_high:.4f}]"
               if ev.ci_low is not None else "n/d")
         print(f"  {signal_type:22s} n={ev.n:5d} {metric} CI={ci} -> {ev.status}")
-    print(f"\n  CLV: n={clv.get('n')} mean={clv.get('mean')} -> "
-          f"{'OK' if clv_ok else 'BLOCKED'}")
-    print(f"  EXECUTION: {execution['status']} (n_measured={execution['n_measured']})")
-    print(f"  VERDICT: {'REVIEW' if production_eligible else 'NO_BET'}")
+    print("\n=== CLV ===")
+    print(f"  closed={clv_prog['closed']}/{clv_prog['target']} "
+          f"pending={clv_prog['pending']} no_close={clv_prog['no_close']} "
+          f"invalid={clv_prog['invalid']} -> {clv_prog['status']}")
+    print(f"  EXECUTION: {execution['status']} "
+          f"(n_measured={execution['n_measured']})")
+    print(f"  CAPTURE: {readiness['status']} "
+          f"(blocked={readiness['blocked']})")
+    print(f"  VERDICT: {verdict}")
     print(f"\nartefatos: {OUT}")
     return 0
 

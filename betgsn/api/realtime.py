@@ -532,8 +532,40 @@ def register_realtime_routes(app: FastAPI) -> None:
             "registry": _load("signal_registry.json"),
             "market_audit": _load("market_audit.json"),
             "clv": _load("clv_evidence.json"),
+            "clv_dataset": _load("clv_dataset.json"),
             "execution": _load("execution_gap.json"),
+            "ablation": _load("line_shopping_ablation.json"),
+            "capture_readiness": _load("capture_readiness.json"),
             "promotion": _load("promotion_report.json"),
+        }
+
+    @app.get("/api/quant/clv/progress", tags=["quant"])
+    def quant_clv_progress() -> dict:
+        """Progresso do CLV: closed/target (200) — leitura do store real."""
+        from ..clv_dataset import clv_progress
+        from ..odds_snapshots import OddsSnapshotStore
+
+        return {
+            "kind": "clv_progress",
+            **clv_progress(OddsSnapshotStore()),
+        }
+
+    @app.get("/api/quant/execution/status", tags=["quant"])
+    def quant_execution_status() -> dict:
+        """Estado da execução: 0 fills = UNKNOWN (nunca presumido)."""
+        from ..odds_snapshots import OddsSnapshotStore
+
+        store = OddsSnapshotStore()
+        executions = store.load_executions()
+        measured = len(executions)
+        return {
+            "kind": "execution_status",
+            "n_executions": measured,
+            "status": "MEASURED" if measured else "UNKNOWN",
+            "note": (
+                "Sem execução registrada, o estado é UNKNOWN — nunca "
+                "presumido EXECUTED."
+            ),
         }
 
     @app.get("/api/realtime/stream", tags=["realtime"])

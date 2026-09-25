@@ -29,12 +29,51 @@ PROVIDERS → CAPTURE → NORMALIZE → MATCH → SNAPSHOT → MOVEMENT
 | Módulo | Papel |
 |---|---|
 | `betgsn/market_dataset.py` | estado PIT por linha (best/2nd/median/worst/dispersion/book_count) + fingerprint |
-| `betgsn/alpha_lab.py` | hipóteses, observação forward, avaliação estatística |
+| `betgsn/alpha_lab.py` | hipóteses, observação forward, avaliação estatística, ablation |
 | `betgsn/alpha_replay.py` | replay PIT do store gerando observações dos sinais |
 | `betgsn/market_audit.py` | MARKET_RAW vs MARKET_FAIR por mercado (overround, complete) |
+| `betgsn/clv_dataset.py` | progresso CLV (closed/200) + dataset com referências de fechamento |
+| `betgsn/quota_scheduler.py` | estados de quota + cooldown + WAITING_FOR_PROVIDER_QUOTA |
 | `betgsn/signal_registry.py` | status central por sinal/alpha |
 | `tools/alpha_lab_run.py` | executa e grava os artefatos |
 | `tools/provider_diagnostics.py` | ProviderStatus estruturado (sem segredos) |
+| `tools/research_daily.py` | orquestrador idempotente (capture → sweep → alpha lab) |
+
+## Replay intra-line
+
+O replay reconstrói, por linha (evento + mercado + resultado), a sequência
+cronológica de preços e mede o movimento POSTERIOR em horizontes curtos:
+
+```
++1m  +5m  +10m  +15m  +30m  +60m  → closing (quando existir)
+```
+
+Para cada sinal: `signal_timestamp`, `price_at_signal`, `future_price`,
+`movement`, `movement_direction`, `movement_magnitude`, `closing_price`.
+Nunca usa dados anteriores como posteriores.
+
+## Segmentação
+
+Cada alpha é quebrado por: `market`, `league`, `book`, `odds_band`,
+`ttk_band` (tempo até o kickoff), `gap_band` (best-vs-median),
+`book_band` (número de casas). A consistência é medida por dimensão:
+efeito estável exige ≥55% dos subgrupos (n≥10) do mesmo lado do geral.
+
+## CLV dataset e progresso
+
+- `clv_progress`: `closed / 200` com pending/no_close/invalid/mismatch.
+  Abaixo do alvo → `CLV_INSUFFICIENT_DATA`.
+- `clv_dataset`: referências de fechamento SEPARADAS —
+  `bookmaker_close` (Pinnacle), `exchange_close` (Betfair),
+  `consensus_close` (mediana). Sem timestamp/close real → CLV `None`.
+
+## Quota-aware capture
+
+Estados: `AVAILABLE` / `DEGRADED` / `RATE_LIMITED` / `EXHAUSTED` /
+`AUTH_ERROR` / `DOWN` / `UNKNOWN`, com cooldown por estado (auth 24h,
+exhausted 6h, rate-limit 15min). Quando todos os operacionais estão em
+cooldown, o sistema entra em `WAITING_FOR_PROVIDER_QUOTA` — não gasta
+chamadas e o store acumulado segue analisável.
 
 ## Estados do registry
 
@@ -63,6 +102,46 @@ Fingerprint do dataset: `1b6e922b85ad2c08` · 51.865 observações ·
   ~31% < 50%): o gap de preço e a dispersão NÃO fecham em 15min. Isso é
   consistente com valor real de line shopping — mas **não** prova edge sem
   CLV/closing, que está BLOCKED (kickoffs futuros).
+
+### Segmentação (por odds band / tempo-até-kickoff / gap / nº de casas)
+
+| Sinal | odds_band | ttk_band | gap_band | book_band |
+|---|---|---|---|---|
+| BEST_PRICE_GAP | 0,80 | 1,00 | 1,00 | 1,00 |
+| BOOKMAKER_OUTLIER | 0,60 | 0,67 | 0,75 | 1,00 |
+| DISPERSION_SPIKE | 1,00 | 1,00 | 1,00 | 1,00 |
+
+*(consistência = fração de subgrupos com n≥10 do mesmo lado do efeito geral)*
+
+Destaques da segmentação:
+
+- **BEST_PRICE_GAP** por `book_band`: `books>10` converge 36,8%,
+  `books6-10` apenas 6,9% — o efeito depende de profundidade de mercado.
+  Por `gap_band`: `gap>=10%` converge 43,5% vs `gap2-5%` 27,2%.
+- **BOOKMAKER_OUTLIER** tem `market` consistência 0,50 (1X2 vs demais
+  divergem) e `gap_band 2-5%` com move **negativo** (−0,4%) — reforça a
+  reversão. `gap<2%` mostra +0,58% (n=808), mas com consistência 0,75 e IC
+  amplo **não** é promovido (não se escolhe sub-bucket olhando o resultado).
+
+### Ablation (line shopping separado de edge de modelo)
+
+| Sinal | entry_advantage | best_persistence_5m | median_move_5m |
+|---|---:|---:|---:|
+| BEST_PRICE_GAP | 7,7% | 94,8% | +1,3% |
+| BOOKMAKER_OUTLIER | 9,3% | 97,6% | +1,5% |
+| DISPERSION_SPIKE | 9,3% | 100% | +1,9% |
+
+O ganho de pegar a melhor cotação (~8–9%) e a persistência (95–100%) são
+**ganho de PREÇO**, não edge de modelo. Registrado explicitamente para não
+confundir line shopping com previsão.
+
+### CLV e captura
+
+- CLV: **closed=0 / 200** (pending 885, no_close 9) → `CLV_INSUFFICIENT_DATA`.
+- Execução: **UNKNOWN** (0 fills).
+- Captura: **WAITING_FOR_PROVIDER_QUOTA** (3 providers em cooldown).
+- **VERDICT: BLOCKED_EXTERNAL_PROVIDER_QUOTA** — o bloqueio restante é
+  fechamento real + quota de provider, não código.
 
 ## Market audit
 

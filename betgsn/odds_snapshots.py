@@ -780,6 +780,28 @@ class OddsSnapshotStore:
                 conn.close()
         return [self._to_obs(r) for r in rows]
 
+    def line_observations(
+        self, match_key: str, market: str, outcome: str
+    ) -> list[OddsObservation]:
+        """Observações de UMA linha (evento + mercado + resultado).
+
+        Leitura direcionada para o sweep de CLV: carregar a partida inteira
+        (todos os mercados) é desnecessário quando só a linha da entrada
+        importa.
+        """
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    """SELECT * FROM odds_observations
+                       WHERE match_key = ? AND market = ? AND outcome = ?
+                       ORDER BY timestamp""",
+                    (match_key, market, outcome),
+                ).fetchall()
+            finally:
+                conn.close()
+        return [self._to_obs(r) for r in rows]
+
     def match_keys(self) -> list[str]:
         """Todas as chaves de partida observadas (ordenadas)."""
         with self._lock:
@@ -911,6 +933,47 @@ class OddsSnapshotStore:
         )
 
     # ------------------------------------------------------------- movimento
+
+    def closing_by_book(
+        self,
+        match_key: str,
+        market: str,
+        outcome: str,
+        window_minutes: float = CLOSING_WINDOW_MINUTES,
+    ) -> dict[str, tuple[float, str, float]]:
+        """Último preço POR CASA dentro da janela do kickoff.
+
+        Devolve {bookmaker: (odd, timestamp, minutos_antes)}. Base para
+        separar `bookmaker_close` / `exchange_close` / `consensus_close`
+        sem fabricar fonte: cada casa é a sua própria referência.
+        """
+        with self._lock:
+            conn = self._conn()
+            try:
+                rows = conn.execute(
+                    """SELECT bookmaker, odd, timestamp, minutes_before_kickoff
+                       FROM odds_observations o
+                       WHERE match_key = ? AND market = ? AND outcome = ?
+                         AND timestamp = (
+                             SELECT MAX(timestamp) FROM odds_observations i
+                             WHERE i.match_key = o.match_key
+                               AND i.market = o.market
+                               AND i.outcome = o.outcome
+                               AND i.bookmaker = o.bookmaker
+                         )""",
+                    (match_key, market, outcome),
+                ).fetchall()
+            finally:
+                conn.close()
+        out: dict[str, tuple[float, str, float]] = {}
+        for r in rows:
+            minutes = r["minutes_before_kickoff"]
+            if minutes is None or not (0 < minutes <= window_minutes):
+                continue
+            out[r["bookmaker"]] = (
+                float(r["odd"]), r["timestamp"], float(minutes)
+            )
+        return out
 
     def observations_at_or_before(
         self, match_key: str, cutoff: str
@@ -1276,6 +1339,7 @@ class OddsSnapshotStore:
         *,
         now: Optional[str] = None,
         window_minutes: float = CLOSING_WINDOW_MINUTES,
+        observations: Optional[list] = None,
     ) -> "ClvLifecycle":
         """Estado do ciclo de vida de uma entrada de CLV.
 
@@ -1309,11 +1373,15 @@ class OddsSnapshotStore:
             state = "INVALID"
             detail = "timestamps da decisao fora de ordem"
         else:
-            has_obs = any(
-                o.market == entry.market and o.outcome == entry.outcome
-                for o in self.all_observations(entry.match_key)
-            )
-            if not has_obs:
+            # `observations` pre-carregadas (sweep em lote) evitam reler a
+            # mesma partida N vezes — o custo cai de O(entries x obs) para
+            # O(matches x obs). Sem cache injetado, lê do store.
+            obs = observations if observations is not None else self.all_observations(entry.match_key)
+            line_obs = [
+                o for o in obs
+                if o.market == entry.market and o.outcome == entry.outcome
+            ]
+            if not line_obs:
                 state = "MISMATCH"
                 detail = (
                     "entrada sem nenhuma observacao correspondente no "
@@ -1324,13 +1392,11 @@ class OddsSnapshotStore:
                 if entry.entry_bookmaker and not any(
                     o.bookmaker == entry.entry_bookmaker
                     and o.timestamp <= utc_key(entry.prediction_timestamp)
-                    for o in self.all_observations(entry.match_key)
-                    if o.market == entry.market and o.outcome == entry.outcome
+                    for o in line_obs
                 ):
                     return ClvLifecycle(entry, "MISMATCH", detail="bookmaker original nao observado")
                 if any(utc_key(o.kickoff) != utc_key(entry.kickoff)
-                       for o in self.all_observations(entry.match_key)
-                       if o.market == entry.market and o.outcome == entry.outcome):
+                       for o in line_obs):
                     return ClvLifecycle(entry, "MISMATCH", detail="kickoff divergente")
                 if utc_key(now) < utc_key(entry.kickoff):
                     return ClvLifecycle(entry, "PENDING", detail="kickoff no futuro")
@@ -1370,6 +1436,108 @@ class OddsSnapshotStore:
         return ClvLifecycle(entry=entry, state=state, result=result,
                             detail=detail)
 
+    def clv_state_counts(
+        self,
+        *,
+        now: Optional[str] = None,
+        window_minutes: float = CLOSING_WINDOW_MINUTES,
+    ) -> dict:
+        """Contagem por estado do CLV em UMA passada (monitor rápido).
+
+        Mesma classificação do `clv_lifecycle`, mas sem carregar as
+        observações: um agregado por linha (n_obs, n_close, closing_ts)
+        decide o estado. O sweep completo (`clv_lifecycle_sweep`) continua
+        sendo a fonte autoritativa para o relatório.
+        """
+        now = now or now_utc()
+        counts = {s: 0 for s in CLV_LIFECYCLE_STATES}
+        with self._lock:
+            conn = self._conn()
+            try:
+                entries = conn.execute("SELECT * FROM clv_entries").fetchall()
+                agg: dict[tuple[str, str, str], tuple[int, int, str]] = {}
+                for r in conn.execute(
+                    """SELECT match_key, market, outcome,
+                              COUNT(*) AS n_obs,
+                              SUM(CASE WHEN minutes_before_kickoff > 0
+                                        AND minutes_before_kickoff <= ?
+                                       THEN 1 ELSE 0 END) AS n_close,
+                              MAX(CASE WHEN minutes_before_kickoff > 0
+                                        AND minutes_before_kickoff <= ?
+                                       THEN timestamp END) AS closing_ts
+                       FROM odds_observations
+                       GROUP BY match_key, market, outcome""",
+                    (window_minutes, window_minutes),
+                ):
+                    agg[(r["match_key"], r["market"], r["outcome"])] = (
+                        int(r["n_obs"] or 0), int(r["n_close"] or 0),
+                        r["closing_ts"] or "",
+                    )
+            finally:
+                conn.close()
+
+        for e in entries:
+            entry_odd = e["entry_odd"]
+            entry_ts = e["entry_timestamp"]
+            pred_ts = e["prediction_timestamp"]
+            kickoff = e["kickoff"]
+            if (not math.isfinite(entry_odd) or entry_odd <= 1.0
+                    or utc_key(entry_ts) >= utc_key(kickoff)
+                    or utc_key(entry_ts) > utc_key(pred_ts)
+                    or utc_key(pred_ts) >= utc_key(kickoff)):
+                counts["INVALID"] += 1
+                continue
+            n_obs, n_close, closing_ts = agg.get(
+                (e["match_key"], e["market"], e["outcome"]), (0, 0, ""))
+            if n_obs == 0:
+                counts["MISMATCH"] += 1
+            elif n_close == 0:
+                counts["PENDING" if utc_key(now) < utc_key(kickoff)
+                       else "NO_CLOSE"] += 1
+            elif closing_ts and utc_key(closing_ts) <= utc_key(pred_ts):
+                # fechamento anterior à entrada: não é evidência prospectiva
+                counts["INVALID"] += 1
+            else:
+                counts["CLOSED"] += 1
+        return {
+            "by_state": counts,
+            "n_entries": len(entries),
+            "evaluated_at": utc_key(now),
+        }
+
+    def _observations_for_entries(
+        self, entries: Sequence[ClvEntryRecord]
+    ) -> dict[tuple[str, str, str], list]:
+        """{(match, market, outcome): [observações]} em queries em lote.
+
+        Lê as linhas das entradas em poucas queries (chunks de match_key),
+        em vez de uma query por entrada — cada `_conn()` abre conexão.
+        """
+        keys = sorted({e.match_key for e in entries})
+        out: dict[tuple[str, str, str], list] = {}
+        if not keys:
+            return out
+        chunk = 400
+        with self._lock:
+            conn = self._conn()
+            try:
+                for i in range(0, len(keys), chunk):
+                    part = keys[i:i + chunk]
+                    marks = ",".join("?" for _ in part)
+                    rows = conn.execute(
+                        f"""SELECT * FROM odds_observations
+                            WHERE match_key IN ({marks})
+                            ORDER BY timestamp""",
+                        part,
+                    ).fetchall()
+                    for r in rows:
+                        out.setdefault(
+                            (r["match_key"], r["market"], r["outcome"]), []
+                        ).append(self._to_obs(r))
+            finally:
+                conn.close()
+        return out
+
     def clv_lifecycle_sweep(
         self,
         *,
@@ -1387,8 +1555,17 @@ class OddsSnapshotStore:
         now = now or now_utc()
         by_state: dict[str, int] = {s: 0 for s in CLV_LIFECYCLE_STATES}
         lifecycles: list[ClvLifecycle] = []
-        for rec in self.clv_entries():
-            lc = self.clv_lifecycle(rec, now=now, window_minutes=window_minutes)
+        entries = self.clv_entries()
+        # Observações das linhas das entradas em POUCAS queries (bulk por
+        # match_key em chunks): com centenas de entradas, uma query por
+        # linha abria uma conexão por entrada e dominava o tempo.
+        obs_by_line = self._observations_for_entries(entries)
+        for rec in entries:
+            key = (rec.match_key, rec.market, rec.outcome)
+            lc = self.clv_lifecycle(
+                rec, now=now, window_minutes=window_minutes,
+                observations=obs_by_line.get(key, []),
+            )
             by_state[lc.state] += 1
             lifecycles.append(lc)
         return ClvLifecycleSummary(

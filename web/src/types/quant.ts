@@ -175,3 +175,52 @@ export interface QuantClvStatus {
   lifecycle_note: string;
   evaluated_at: string;
 }
+
+/** GET /api/quant/clv/progress */
+export interface ClvProgress {
+  target: number;
+  closed: number;
+  pending: number;
+  no_close: number;
+  invalid: number;
+  mismatch: number;
+  n_entries: number;
+  remaining: number;
+  status: "CLV_INSUFFICIENT_DATA" | "CLV_READY";
+  note: string;
+}
+
+/** GET /api/quant/execution/status */
+export interface ExecutionStatus {
+  n_executions: number;
+  status: "MEASURED" | "UNKNOWN";
+  note: string;
+}
+
+/** Avaliação de um alpha/sinal no Alpha Lab. */
+export interface AlphaEvaluation {
+  alpha_id: string;
+  signal_type: string;
+  n: number;
+  metric_kind: "directional" | "convergence" | "none";
+  primary_metric: number | null;
+  primary_label: string;
+  ci_low: number | null;
+  ci_high: number | null;
+  status: string;
+  limitations: string[];
+}
+
+/** GET /api/quant/alpha-lab */
+export interface QuantAlphaLab {
+  status: "OK" | "NOT_RUN";
+  evaluations?: {
+    evaluations: Record<string, AlphaEvaluation>;
+    n_observations: number;
+    dataset_fingerprint: string;
+  } | null;
+  clv?: { progress?: ClvProgress } | null;
+  execution?: { execution?: { status?: string; n_measured?: number } } | null;
+  capture_readiness?: { readiness?: { status?: string; blocked?: string[] } } | null;
+  promotion?: { verdict?: string; production_eligible?: boolean } | null;
+}

@@ -379,6 +379,30 @@ def capture_odds_cli(args: list[str]) -> int:
         providers = [(n, p) for n, p in all_configured if n in wanted]
         print(f"  providers selecionados: {', '.join(n for n, _ in providers)}")
 
+    # Scheduler consciente de quota: nao martela provider EXHAUSTED/RATE_LIMITED
+    # /AUTH_ERROR. O health e PERSISTIDO no store, entao a decisao sobrevive
+    # entre execucoes (CLI e engine compartilham o mesmo banco). `--force-capture`
+    # ignora o cooldown explicitamente (validacao manual consciente).
+    from betgsn.odds_snapshots import OddsSnapshotStore as _Store
+    from betgsn.quota_scheduler import QuotaScheduler
+
+    store_for_quota = _Store()
+    scheduler = QuotaScheduler.from_store(store_for_quota)
+    if not _flag(args, "force-capture"):
+        attemptable, blocked = scheduler.filter_attemptable(providers)
+        if blocked:
+            for name, quota in sorted(blocked.items()):
+                print(f"  provider bloqueado: {name} [{quota.state}] "
+                      f"proxima tentativa {quota.next_attempt_at or 'n/d'}")
+        if not attemptable:
+            print()
+            print("WAITING_FOR_PROVIDER_QUOTA: todos os providers operacionais "
+                  "estao em cooldown/exhausted.")
+            print("  Nenhuma chamada sera gasta. O store acumulado permanece "
+                  "disponivel para replay/analise.")
+            return 0
+        providers = attemptable
+
     raw = _arg(args, "sports", "")
     # Os fixtures sao SEMPRE carregados: alem de derivarem os sports keys
     # quando --sports nao vem, eles alimentam a resolucao de identidade

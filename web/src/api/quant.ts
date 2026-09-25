@@ -27,3 +27,18 @@ export function fetchQuantMl(signal?: AbortSignal): Promise<QuantMl> {
 export function fetchQuantClvStatus(signal?: AbortSignal): Promise<QuantClvStatus> {
   return apiGet<QuantClvStatus>("/api/quant/clv/status", undefined, { signal });
 }
+
+/** GET /api/quant/clv/progress — progresso CLV (closed/target). */
+export function fetchQuantClvProgress(signal?: AbortSignal): Promise<import("@/types/quant").ClvProgress> {
+  return apiGet<import("@/types/quant").ClvProgress>("/api/quant/clv/progress", undefined, { signal });
+}
+
+/** GET /api/quant/execution/status — estado da execução (0 fills = UNKNOWN). */
+export function fetchQuantExecutionStatus(signal?: AbortSignal): Promise<import("@/types/quant").ExecutionStatus> {
+  return apiGet<import("@/types/quant").ExecutionStatus>("/api/quant/execution/status", undefined, { signal });
+}
+
+/** GET /api/quant/alpha-lab — artefatos do Alpha Lab (somente leitura). */
+export function fetchQuantAlphaLab(signal?: AbortSignal): Promise<import("@/types/quant").QuantAlphaLab> {
+  return apiGet<import("@/types/quant").QuantAlphaLab>("/api/quant/alpha-lab", undefined, { signal });
+}

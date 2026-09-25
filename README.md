@@ -286,6 +286,7 @@ Comando:
 
 ```
 python tools/alpha_lab_run.py --stride=1800
+python tools/research_daily.py        # capture → sweep → alpha lab
 python tools/provider_diagnostics.py
 ```
 
@@ -302,12 +303,20 @@ mercado — majoritariamente reverte. BEST_PRICE_GAP e DISPERSION_SPIKE
 persistem, mas sem CLV/closing nao ha veredito de edge. **CLV BLOCKED
 (n=0), EXECUTION UNKNOWN → NO_BET.**
 
+Captura **consciente de quota**: provider `EXHAUSTED`/`RATE_LIMITED`/
+`AUTH_ERROR` entra em cooldown (6h/15min/24h) e nao e chamado ate vencer.
+Quando todos os operacionais estao em cooldown, o estado e
+`WAITING_FOR_PROVIDER_QUOTA` — nenhuma chamada e gasta e o store acumulado
+continua analisavel.
+
 Endpoints de observabilidade e laboratorio:
 
 ```
-GET /api/realtime/metrics      contadores (dado/provider/matching/freshness)
-GET /api/realtime/market       vista de mercado ao vivo (INFORMACIONAL, NO_BET)
-GET /api/quant/alpha-lab       artefatos do Alpha Lab (somente leitura)
+GET /api/realtime/metrics          contadores (dado/provider/matching/freshness)
+GET /api/realtime/market           vista de mercado ao vivo (INFORMACIONAL, NO_BET)
+GET /api/quant/alpha-lab           artefatos do Alpha Lab (somente leitura)
+GET /api/quant/clv/progress        progresso CLV (closed / 200)
+GET /api/quant/execution/status    execucao (0 fills = UNKNOWN)
 ```
 
 ## Backtest (validacao historica)

@@ -111,6 +111,24 @@ def check_backend(api_base: str) -> list[str]:
         if not isinstance(signals.get("signals"), list):
             failures.append("/signals.signals deve ser lista")
 
+    # Observabilidade + progresso CLV (Alpha Lab / FASE 26-27)
+    try:
+        _, metrics = _get(f"{api_base}/api/realtime/metrics")
+    except Exception as exc:
+        failures.append(f"/metrics inacessivel: {exc}")
+    else:
+        if "metrics" not in metrics:
+            failures.append("/metrics.metrics ausente")
+
+    try:
+        _, progress = _get(f"{api_base}/api/quant/clv/progress")
+    except Exception as exc:
+        failures.append(f"/quant/clv/progress inacessivel: {exc}")
+    else:
+        for key in ("target", "closed", "remaining", "status"):
+            if key not in progress:
+                failures.append(f"/quant/clv/progress sem '{key}'")
+
     return failures
 
 
