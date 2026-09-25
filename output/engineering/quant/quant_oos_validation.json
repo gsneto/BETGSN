@@ -224,9 +224,13 @@
     }
   ],
   "clv_prospective": {
-    "mean": 0.0,
+    "mean": null,
+    "median": null,
+    "positive_rate": null,
+    "n_positive": 0,
     "n": 0,
-    "prospective": true
+    "prospective": true,
+    "closed_only": true
   },
   "promotion": {
     "model": "value_short_favourites",
@@ -324,19 +328,876 @@
         "name": "evidencia_oos_janelas",
         "passed": true,
         "blocking": true,
-        "detail": "24 janela(s) walk-forward (minimo 2)"
+        "detail": "24 janela(s) walk-forward (minimo 3)"
       },
       {
         "name": "clv_nao_negativo",
         "passed": false,
         "blocking": true,
-        "detail": "CLV medio +0.0000%"
+        "detail": "CLV indisponivel; evidencia insuficiente: exige CLOSED prospectivo n>=200, mediana>0, beat-close>=55%"
       },
       {
         "name": "drawdown_aceitavel",
         "passed": true,
         "blocking": true,
         "detail": "drawdown 23.6% (maximo 50%)"
+      }
+    ]
+  },
+  "production_gate": {
+    "fingerprint": "7b0a4d8837f6e54b48693c22d8c678ccccbb553dbf96816f4442e5e2c78edef3",
+    "eligible": false,
+    "blocks": {
+      "MODEL": {
+        "status": "PENDING",
+        "reasons": [
+          "brier/logloss vs MARKET_RAW/FAIR ainda não pareado com modelo calibrado por janela"
+        ]
+      },
+      "CLV": {
+        "status": "RED",
+        "reasons": [
+          "n=0",
+          "mean=n/d",
+          "median=n/d",
+          "beat_close=n/d"
+        ]
+      },
+      "MARKET": {
+        "status": "PENDING",
+        "reasons": [
+          "EVgap absoluto <3pp por janela ainda não publicado"
+        ]
+      },
+      "EXECUTION": {
+        "status": "PENDING",
+        "reasons": [
+          "execução medida ainda não coletada (executed_price=null)"
+        ]
+      },
+      "ROBUSTNESS": {
+        "status": "GREEN",
+        "reasons": [
+          "4/4 cenários dentro do orçamento de degradação"
+        ]
+      },
+      "PROVENANCE": {
+        "status": "PENDING",
+        "reasons": [
+          "odds FDUK sem timestamp de publicação"
+        ]
+      },
+      "TEMPORAL": {
+        "status": "GREEN",
+        "reasons": [
+          "24 janelas OOS válidas"
+        ]
+      }
+    }
+  },
+  "thresholds": {
+    "version": 1,
+    "min_edge": 0.08,
+    "min_ev": 0.08,
+    "max_spread": 0.12,
+    "min_books": 3,
+    "max_ev_gap": 0.03,
+    "min_clv_sample": 200,
+    "min_beat_close": 0.55,
+    "min_windows": 3,
+    "max_execution_erosion": 0.5,
+    "markets": [
+      "Handicap Asiatico",
+      "Total de Gols"
+    ]
+  },
+  "breakdown_rule": {
+    "por_janela": [
+      {
+        "bucket": "?",
+        "n": 7277,
+        "roi": 0.018963721313728223,
+        "brier_raw": 0.14144392336607178,
+        "logloss_raw": 0.4534181422683613,
+        "brier_fair": 0.14438129403615624,
+        "logloss_fair": 0.4629313360887081,
+        "brier_calibrated": 0.1414376858094624,
+        "logloss_calibrated": 0.45739607985855296,
+        "n_fair": 7277,
+        "n_calibrated": 7277,
+        "evgap_calibrated": -0.002269058164535125
+      }
+    ],
+    "por_liga": [
+      {
+        "bucket": "Bundesliga (Germany)",
+        "n": 450,
+        "roi": -0.01808222222222223,
+        "brier_raw": 0.16088284895390642,
+        "logloss_raw": 0.502767061126335,
+        "brier_fair": 0.1591623045517527,
+        "logloss_fair": 0.49691714468921444,
+        "brier_calibrated": 0.16149609198474496,
+        "logloss_calibrated": 0.5064635838219587,
+        "n_fair": 450,
+        "n_calibrated": 450,
+        "evgap_calibrated": 0.03094768520027114
+      },
+      {
+        "bucket": "Bundesliga 2 (Germany)",
+        "n": 35,
+        "roi": -0.20028571428571426,
+        "brier_raw": 0.26289661383472795,
+        "logloss_raw": 0.7284462641219647,
+        "brier_fair": 0.2501942442037073,
+        "logloss_fair": 0.6960001152543228,
+        "brier_calibrated": 0.2646951982510422,
+        "logloss_calibrated": 0.7334197399557421,
+        "n_fair": 35,
+        "n_calibrated": 35,
+        "evgap_calibrated": 0.20985441517499237
+      },
+      {
+        "bucket": "Championship (England)",
+        "n": 77,
+        "roi": -0.004935064935064905,
+        "brier_raw": 0.17401359182342188,
+        "logloss_raw": 0.5299122521816423,
+        "brier_fair": 0.17382727158365785,
+        "logloss_fair": 0.5296714691207692,
+        "brier_calibrated": 0.17363941045678155,
+        "logloss_calibrated": 0.5281157076076177,
+        "n_fair": 77,
+        "n_calibrated": 77,
+        "evgap_calibrated": 0.025074066902990546
+      },
+      {
+        "bucket": "Championship (Scotland)",
+        "n": 126,
+        "roi": 0.017698412698412717,
+        "brier_raw": 0.15855370238237607,
+        "logloss_raw": 0.49813963260959676,
+        "brier_fair": 0.16028509471124053,
+        "logloss_fair": 0.5022037657675983,
+        "brier_calibrated": 0.15678617380676887,
+        "logloss_calibrated": 0.49278562933568687,
+        "n_fair": 126,
+        "n_calibrated": 126,
+        "evgap_calibrated": 0.008484108338497658
+      },
+      {
+        "bucket": "Conference (England)",
+        "n": 147,
+        "roi": 0.002081632653061255,
+        "brier_raw": 0.16727300633140468,
+        "logloss_raw": 0.5131751139826592,
+        "brier_fair": 0.16896199030161993,
+        "logloss_fair": 0.5194219001868625,
+        "brier_calibrated": 0.16683652558947507,
+        "logloss_calibrated": 0.5111682732214736,
+        "n_fair": 147,
+        "n_calibrated": 147,
+        "evgap_calibrated": 0.012955916678146655
+      },
+      {
+        "bucket": "Eredivisie (Netherlands)",
+        "n": 836,
+        "roi": 0.009924641148325329,
+        "brier_raw": 0.13646275918776232,
+        "logloss_raw": 0.4396747676860567,
+        "brier_fair": 0.14009098838397718,
+        "logloss_fair": 0.45194601719923233,
+        "brier_calibrated": 0.13791302318897675,
+        "logloss_calibrated": 0.4698743589592027,
+        "n_fair": 836,
+        "n_calibrated": 836,
+        "evgap_calibrated": 0.009266162145284928
+      },
+      {
+        "bucket": "Jupiler League (Belgium)",
+        "n": 325,
+        "roi": 0.010504615384615406,
+        "brier_raw": 0.15673929017643295,
+        "logloss_raw": 0.49245512467438246,
+        "brier_fair": 0.1594563095243943,
+        "logloss_fair": 0.5000004266917082,
+        "brier_calibrated": 0.15698938769909604,
+        "logloss_calibrated": 0.5272923423772099,
+        "n_fair": 325,
+        "n_calibrated": 325,
+        "evgap_calibrated": 0.010833858422708311
+      },
+      {
+        "bucket": "La Liga (Spain)",
+        "n": 762,
+        "roi": 0.038246719160104956,
+        "brier_raw": 0.12454214877610782,
+        "logloss_raw": 0.4121684100666543,
+        "brier_fair": 0.1277563715392091,
+        "logloss_fair": 0.42314950546884667,
+        "brier_calibrated": 0.1235832855574813,
+        "logloss_calibrated": 0.40648570987195354,
+        "n_fair": 762,
+        "n_calibrated": 762,
+        "evgap_calibrated": -0.023032561227251894
+      },
+      {
+        "bucket": "League One (England)",
+        "n": 62,
+        "roi": -0.032580645161290285,
+        "brier_raw": 0.18458298011101765,
+        "logloss_raw": 0.5503385285770325,
+        "brier_fair": 0.1864576630137329,
+        "logloss_fair": 0.557103379705481,
+        "brier_calibrated": 0.18759761122264587,
+        "logloss_calibrated": 0.558984814461013,
+        "n_fair": 62,
+        "n_calibrated": 62,
+        "evgap_calibrated": 0.04447265214762358
+      },
+      {
+        "bucket": "League One (Scotland)",
+        "n": 121,
+        "roi": 0.00230578512396696,
+        "brier_raw": 0.16107521429744806,
+        "logloss_raw": 0.5088003289159593,
+        "brier_fair": 0.1641178744015238,
+        "logloss_fair": 0.5128082614345885,
+        "brier_calibrated": 0.16280979973249385,
+        "logloss_calibrated": 0.5187326121161867,
+        "n_fair": 121,
+        "n_calibrated": 121,
+        "evgap_calibrated": 0.006023844803355764
+      },
+      {
+        "bucket": "League Two (England)",
+        "n": 18,
+        "roi": -0.19777777777777775,
+        "brier_raw": 0.2579765827255579,
+        "logloss_raw": 0.7167145370876968,
+        "brier_fair": 0.2440253989200305,
+        "logloss_fair": 0.6816562385035099,
+        "brier_calibrated": 0.2580522568397916,
+        "logloss_calibrated": 0.7163711731583242,
+        "n_fair": 18,
+        "n_calibrated": 18,
+        "evgap_calibrated": 0.20899208132195218
+      },
+      {
+        "bucket": "League Two (Scotland)",
+        "n": 151,
+        "roi": -0.05695364238410593,
+        "brier_raw": 0.1742018254035713,
+        "logloss_raw": 0.528462129923783,
+        "brier_fair": 0.1742502205374296,
+        "logloss_fair": 0.5307360455393745,
+        "brier_calibrated": 0.1746134038820167,
+        "logloss_calibrated": 0.5262891596822565,
+        "n_fair": 151,
+        "n_calibrated": 151,
+        "evgap_calibrated": 0.08100959027090053
+      },
+      {
+        "bucket": "Ligue 1 (France)",
+        "n": 316,
+        "roi": 0.030696202531645567,
+        "brier_raw": 0.13859726997773825,
+        "logloss_raw": 0.4450379006134416,
+        "brier_fair": 0.14055436091978218,
+        "logloss_fair": 0.45181480068900143,
+        "brier_calibrated": 0.13776566887427358,
+        "logloss_calibrated": 0.4416490177742528,
+        "n_fair": 316,
+        "n_calibrated": 316,
+        "evgap_calibrated": -0.01823881605816858
+      },
+      {
+        "bucket": "Ligue 2 (France)",
+        "n": 21,
+        "roi": 0.11476190476190479,
+        "brier_raw": 0.13366988375220387,
+        "logloss_raw": 0.443632733306824,
+        "brier_fair": 0.140302114403727,
+        "logloss_fair": 0.4602438349429938,
+        "brier_calibrated": 0.13364704192639626,
+        "logloss_calibrated": 0.44286331982204147,
+        "n_fair": 21,
+        "n_calibrated": 21,
+        "evgap_calibrated": -0.09402035484960154
+      },
+      {
+        "bucket": "Premier League (England)",
+        "n": 768,
+        "roi": 0.009227864583333318,
+        "brier_raw": 0.1505859202063464,
+        "logloss_raw": 0.4753512368352619,
+        "brier_fair": 0.15220438626838093,
+        "logloss_fair": 0.480486574950805,
+        "brier_calibrated": 0.15028828074933145,
+        "logloss_calibrated": 0.4747093123350978,
+        "n_fair": 768,
+        "n_calibrated": 768,
+        "evgap_calibrated": 0.005397742088440162
+      },
+      {
+        "bucket": "Premiership (Scotland)",
+        "n": 611,
+        "roi": -0.0002111292962356934,
+        "brier_raw": 0.14159338896918108,
+        "logloss_raw": 0.45451717179947415,
+        "brier_fair": 0.1442795456608369,
+        "logloss_fair": 0.4628857829994176,
+        "brier_calibrated": 0.14169122430991546,
+        "logloss_calibrated": 0.45500345135951387,
+        "n_fair": 611,
+        "n_calibrated": 611,
+        "evgap_calibrated": 0.024439193225577506
+      },
+      {
+        "bucket": "Primeira Liga (Portugal)",
+        "n": 748,
+        "roi": 0.05024866310160426,
+        "brier_raw": 0.12241120756290626,
+        "logloss_raw": 0.4082336742303044,
+        "brier_fair": 0.12742841896231322,
+        "logloss_fair": 0.4245071758392405,
+        "brier_calibrated": 0.12121811399324502,
+        "logloss_calibrated": 0.4025517011444503,
+        "n_fair": 748,
+        "n_calibrated": 748,
+        "evgap_calibrated": -0.035562734859256206
+      },
+      {
+        "bucket": "Segunda División (Spain)",
+        "n": 55,
+        "roi": 0.10618181818181821,
+        "brier_raw": 0.13445166000401657,
+        "logloss_raw": 0.4450588463929142,
+        "brier_fair": 0.14560410076016522,
+        "logloss_fair": 0.47342796460391023,
+        "brier_calibrated": 0.13740420672424913,
+        "logloss_calibrated": 0.4588278810051219,
+        "n_fair": 55,
+        "n_calibrated": 55,
+        "evgap_calibrated": -0.08669539650613722
+      },
+      {
+        "bucket": "Serie A (Italy)",
+        "n": 561,
+        "roi": 0.012329768270944749,
+        "brier_raw": 0.1526751168465829,
+        "logloss_raw": 0.4806290767750022,
+        "brier_fair": 0.1541538383265811,
+        "logloss_fair": 0.4856264413355776,
+        "brier_calibrated": 0.15373486287504876,
+        "logloss_calibrated": 0.48488926251809605,
+        "n_fair": 561,
+        "n_calibrated": 561,
+        "evgap_calibrated": 0.0019780861040264047
+      },
+      {
+        "bucket": "Serie B (Italy)",
+        "n": 84,
+        "roi": 0.07145238095238096,
+        "brier_raw": 0.10595703605235775,
+        "logloss_raw": 0.36892926202044946,
+        "brier_fair": 0.11788318644275157,
+        "logloss_fair": 0.40572650200045723,
+        "brier_calibrated": 0.1031799761310355,
+        "logloss_calibrated": 0.35735075619827716,
+        "n_fair": 84,
+        "n_calibrated": 84,
+        "evgap_calibrated": -0.05701698849812793
+      },
+      {
+        "bucket": "Super League (Greece)",
+        "n": 626,
+        "roi": 0.06632587859424921,
+        "brier_raw": 0.10879457600338877,
+        "logloss_raw": 0.37400495445548576,
+        "brier_fair": 0.11651688396302734,
+        "logloss_fair": 0.3995559468212857,
+        "brier_calibrated": 0.10850790524512496,
+        "logloss_calibrated": 0.3720253736070406,
+        "n_fair": 626,
+        "n_calibrated": 626,
+        "evgap_calibrated": -0.05327982846083764
+      },
+      {
+        "bucket": "Süper Lig (Turkey)",
+        "n": 377,
+        "roi": 0.018840848806366033,
+        "brier_raw": 0.15260996200905777,
+        "logloss_raw": 0.4811393149166554,
+        "brier_fair": 0.15489700143883942,
+        "logloss_fair": 0.4883507466757399,
+        "brier_calibrated": 0.15231384079476198,
+        "logloss_calibrated": 0.4789461271107696,
+        "n_fair": 377,
+        "n_calibrated": 377,
+        "evgap_calibrated": 0.0031231494610971466
+      }
+    ],
+    "por_mercado": [
+      {
+        "bucket": "Resultado Final (1X2)",
+        "n": 7277,
+        "roi": 0.018963721313728223,
+        "brier_raw": 0.14144392336607178,
+        "logloss_raw": 0.4534181422683613,
+        "brier_fair": 0.14438129403615624,
+        "logloss_fair": 0.4629313360887081,
+        "brier_calibrated": 0.1414376858094624,
+        "logloss_calibrated": 0.45739607985855296,
+        "n_fair": 7277,
+        "n_calibrated": 7277,
+        "evgap_calibrated": -0.002269058164535125
+      }
+    ],
+    "por_odd": [
+      {
+        "bucket": "1.30-1.50",
+        "n": 2091,
+        "roi": 0.019007651841224188,
+        "brier_raw": 0.18164235042949703,
+        "logloss_raw": 0.5493797441544884,
+        "brier_fair": 0.1832725240176443,
+        "logloss_fair": 0.5534512041095931,
+        "brier_calibrated": 0.18179767370743977,
+        "logloss_calibrated": 0.5498014510601024,
+        "n_fair": 2091,
+        "n_calibrated": 2091,
+        "evgap_calibrated": -0.0008628760496519174
+      },
+      {
+        "bucket": "<1.30",
+        "n": 5186,
+        "roi": 0.018946008484381414,
+        "brier_raw": 0.12523588036768807,
+        "logloss_raw": 0.4147263355688105,
+        "brier_fair": 0.12870031411110971,
+        "logloss_fair": 0.42643364152031765,
+        "brier_calibrated": 0.12516450133305468,
+        "logloss_calibrated": 0.4201381486625681,
+        "n_fair": 5186,
+        "n_calibrated": 5186,
+        "evgap_calibrated": -0.0028360320947742293
+      }
+    ]
+  },
+  "breakdown_market": {
+    "por_janela": [
+      {
+        "bucket": "?",
+        "n": 546533,
+        "roi": -0.04232239773261794,
+        "brier_raw": 0.2007738775898729,
+        "logloss_raw": 0.5875371078043762,
+        "brier_fair": 0.20078001254679614,
+        "logloss_fair": 0.5876169668708107,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 546533,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      }
+    ],
+    "por_liga": [
+      {
+        "bucket": "Bundesliga (Germany)",
+        "n": 22032,
+        "roi": -0.02123838053740006,
+        "brier_raw": 0.19725784757664072,
+        "logloss_raw": 0.5796738968296488,
+        "brier_fair": 0.19708969041848218,
+        "logloss_fair": 0.5793234392947398,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 22032,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Bundesliga 2 (Germany)",
+        "n": 22032,
+        "roi": -0.03026801924473476,
+        "brier_raw": 0.2088925449740083,
+        "logloss_raw": 0.6067114941379065,
+        "brier_fair": 0.20881181859801173,
+        "logloss_fair": 0.6065137160562107,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 22032,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Championship (England)",
+        "n": 39744,
+        "roi": -0.03122124094202945,
+        "brier_raw": 0.2092714106450994,
+        "logloss_raw": 0.6074327096721337,
+        "brier_fair": 0.20913602172760531,
+        "logloss_fair": 0.607160133655668,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 39744,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Championship (Scotland)",
+        "n": 12696,
+        "roi": -0.034985822306237986,
+        "brier_raw": 0.20641204918635947,
+        "logloss_raw": 0.6007658841888429,
+        "brier_fair": 0.20617242473598146,
+        "logloss_fair": 0.6003244306992447,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 12696,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Conference (England)",
+        "n": 33555,
+        "roi": -0.0398077484726571,
+        "brier_raw": 0.20538955008281656,
+        "logloss_raw": 0.598733020801418,
+        "brier_fair": 0.20529912181181628,
+        "logloss_fair": 0.598530296638508,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 33555,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Eredivisie (Netherlands)",
+        "n": 21810,
+        "roi": -0.04909637780834473,
+        "brier_raw": 0.18585661794182118,
+        "logloss_raw": 0.5524779006926254,
+        "brier_fair": 0.18588517820372175,
+        "logloss_fair": 0.5526624998462747,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 21810,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Jupiler League (Belgium)",
+        "n": 19635,
+        "roi": -0.05066656480774142,
+        "brier_raw": 0.19509133671967824,
+        "logloss_raw": 0.5750731247643193,
+        "brier_fair": 0.1951738117168485,
+        "logloss_fair": 0.5753016030970189,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 19635,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "La Liga (Spain)",
+        "n": 27357,
+        "roi": -0.03872730928098837,
+        "brier_raw": 0.19210402505378116,
+        "logloss_raw": 0.5670548775959108,
+        "brier_fair": 0.19220040171258826,
+        "logloss_fair": 0.5674253802496299,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 27357,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "League One (England)",
+        "n": 39285,
+        "roi": -0.04017787959781119,
+        "brier_raw": 0.2079157358270854,
+        "logloss_raw": 0.6044284345095,
+        "brier_fair": 0.2078122984177006,
+        "logloss_fair": 0.6041896615040196,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 39285,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "League One (Scotland)",
+        "n": 12627,
+        "roi": -0.05492088382038477,
+        "brier_raw": 0.2023180765063151,
+        "logloss_raw": 0.5918297873311977,
+        "brier_fair": 0.2022628217905954,
+        "logloss_fair": 0.5915702857873947,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 12627,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "League Two (England)",
+        "n": 39393,
+        "roi": -0.029470388140025314,
+        "brier_raw": 0.21239288190563615,
+        "logloss_raw": 0.6145467671527952,
+        "brier_fair": 0.21218490186561317,
+        "logloss_fair": 0.6141113856712613,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 39393,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "League Two (Scotland)",
+        "n": 12618,
+        "roi": -0.050366302108099406,
+        "brier_raw": 0.20197875449706282,
+        "logloss_raw": 0.5909242962341547,
+        "brier_fair": 0.20191504050665213,
+        "logloss_fair": 0.5907070707811822,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 12618,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Ligue 1 (France)",
+        "n": 26391,
+        "roi": -0.03602364442423549,
+        "brier_raw": 0.20011042754725483,
+        "logloss_raw": 0.5859414057360748,
+        "brier_fair": 0.20013251968624685,
+        "logloss_fair": 0.5860174434902823,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 26391,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Ligue 2 (France)",
+        "n": 25470,
+        "roi": -0.04390867687475421,
+        "brier_raw": 0.20905403162520242,
+        "logloss_raw": 0.606910595075252,
+        "brier_fair": 0.20905887751178512,
+        "logloss_fair": 0.6068778087314312,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 25470,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Premier League (England)",
+        "n": 27360,
+        "roi": -0.03421374269005863,
+        "brier_raw": 0.19072914019519638,
+        "logloss_raw": 0.5642577708757518,
+        "brier_fair": 0.1907855666651161,
+        "logloss_fair": 0.5644973899005142,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 27360,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Premiership (Scotland)",
+        "n": 16269,
+        "roi": -0.051446308931096,
+        "brier_raw": 0.18871086191517045,
+        "logloss_raw": 0.5588306490101439,
+        "brier_fair": 0.18889727960040598,
+        "logloss_fair": 0.5593833314332795,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 16269,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Primeira Liga (Portugal)",
+        "n": 20418,
+        "roi": -0.0700414340287981,
+        "brier_raw": 0.18583779737456274,
+        "logloss_raw": 0.5516687399614717,
+        "brier_fair": 0.18620112758188453,
+        "logloss_fair": 0.5528281005475956,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 20418,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Segunda División (Spain)",
+        "n": 33165,
+        "roi": -0.04128524046434487,
+        "brier_raw": 0.2094751950092496,
+        "logloss_raw": 0.607847504290662,
+        "brier_fair": 0.20949494039252564,
+        "logloss_fair": 0.6079147779983911,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 33165,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Serie A (Italy)",
+        "n": 26895,
+        "roi": -0.05148603829708097,
+        "brier_raw": 0.1906397643298229,
+        "logloss_raw": 0.563900350431378,
+        "brier_fair": 0.19088685501366548,
+        "logloss_fair": 0.5645940234818646,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 26895,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Serie B (Italy)",
+        "n": 29553,
+        "roi": -0.0501099042398406,
+        "brier_raw": 0.20750018690710623,
+        "logloss_raw": 0.6025882946759086,
+        "brier_fair": 0.20746786321536576,
+        "logloss_fair": 0.6025749169129779,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 29553,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Super League (Greece)",
+        "n": 15398,
+        "roi": -0.07261865177295732,
+        "brier_raw": 0.18284102417416287,
+        "logloss_raw": 0.5440209095319324,
+        "brier_fair": 0.18320568414639532,
+        "logloss_fair": 0.5453942812676271,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 15398,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "Süper Lig (Turkey)",
+        "n": 22830,
+        "roi": -0.050650284713096724,
+        "brier_raw": 0.19549638124171734,
+        "logloss_raw": 0.5758845578747872,
+        "brier_fair": 0.19569398934124962,
+        "logloss_fair": 0.5763591576416198,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 22830,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      }
+    ],
+    "por_mercado": [
+      {
+        "bucket": "Resultado Final (1X2)",
+        "n": 546533,
+        "roi": -0.04232239773261794,
+        "brier_raw": 0.2007738775898729,
+        "logloss_raw": 0.5875371078043762,
+        "brier_fair": 0.20078001254679614,
+        "logloss_fair": 0.5876169668708107,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 546533,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      }
+    ],
+    "por_odd": [
+      {
+        "bucket": "1.30-1.50",
+        "n": 11595,
+        "roi": 0.0059341957740403056,
+        "brier_raw": 0.19916084848432095,
+        "logloss_raw": 0.5874425410750699,
+        "brier_fair": 0.20055405501642373,
+        "logloss_fair": 0.590729702638719,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 11595,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "1.50-2.00",
+        "n": 57680,
+        "roi": -0.01969386269070731,
+        "brier_raw": 0.24356105367944877,
+        "logloss_raw": 0.6801243322317304,
+        "brier_fair": 0.24367839363207744,
+        "logloss_fair": 0.680377318590973,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 57680,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "2.00-3.00",
+        "n": 138233,
+        "roi": -0.03052889686254068,
+        "brier_raw": 0.23789310831631552,
+        "logloss_raw": 0.6686099333111627,
+        "brier_fair": 0.23775466712392376,
+        "logloss_fair": 0.6683129280271518,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 138233,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": "<1.30",
+        "n": 6458,
+        "roi": 0.01634530814493693,
+        "brier_raw": 0.13135143719226544,
+        "logloss_raw": 0.430046875278943,
+        "brier_fair": 0.1346843239567769,
+        "logloss_fair": 0.44084735469648334,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 6458,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
+      },
+      {
+        "bucket": ">=3.00",
+        "n": 332567,
+        "roi": -0.05397080588272249,
+        "brier_raw": 0.17932847337001892,
+        "logloss_raw": 0.5408421483819912,
+        "brier_fair": 0.17926245334011406,
+        "logloss_fair": 0.5407286228632955,
+        "brier_calibrated": null,
+        "logloss_calibrated": null,
+        "n_fair": 332567,
+        "n_calibrated": 0,
+        "evgap_calibrated": null
       }
     ]
   },
@@ -405,9 +1266,13 @@
       "embargo_days": 2
     },
     "prospectivo": {
-      "mean": 0.0,
+      "mean": null,
+      "median": null,
+      "positive_rate": null,
+      "n_positive": 0,
       "n": 0,
-      "prospective": true
+      "prospective": true,
+      "closed_only": true
     },
     "producao": {
       "production_eligible": false,
